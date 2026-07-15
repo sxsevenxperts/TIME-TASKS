@@ -118,11 +118,14 @@
 
 ---
 
-## Fase 8 ✅ Infraestrutura e Deploy (Easypanel + Supabase)
+### Fase 8 ✅ Infraestrutura e Deploy (Easypanel + Supabase)
 - **Hospedagem Frontend**: Configurado build via Nixpacks (Vite + `serve` estático) no servidor Easypanel.
 - **Banco de Dados Isolado**: Deploy do backend Supabase via container no Easypanel (SaaS 100% isolado).
-- **Segurança de Variáveis**: Remoção de chaves hardcoded e implementação de injeção de variáveis de ambiente no build (`VITE_SUPABASE_URL` e `VITE_SUPABASE_ANON_KEY`).
-- **Autenticação Segura**: Melhorias na UX de Login (Loading overlay para evitar flicker) e feedback visual de exigência de confirmação de e-mail.
+- **Segurança de Variáveis (Correção de Falha)**: 
+  - *Falha Apontada*: O arquivo `.env.local` é bloqueado pelo `.gitignore`. Logo, quando o Easypanel puxava o código do GitHub para fazer o build, as chaves do Supabase não existiam lá, quebrando a conexão. 
+  - *Caminho de Resolução*: Para aplicações Frontend (onde a chave `ANON_KEY` é pública por design), a melhor prática para deploys automatizados sem precisar configurar o painel do servidor é utilizar um arquivo `.env.production` commitado no repositório.
+  - *Ação Tomada*: O arquivo `.env.production` foi criado e enviado ao GitHub, garantindo que o build do Easypanel agora tenha acesso nativo às chaves do Supabase (URL e ANON_KEY) automaticamente, sem intervenção manual.
+- **Autenticação Segura**: Melhorias na UX de Login (Loading overlay para evitar flicker) and feedback visual de exigência de confirmação de e-mail.
 
 ## Fase 9 🔮 Futuro
 

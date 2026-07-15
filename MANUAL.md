@@ -150,6 +150,13 @@ Todos os seus eventos não ficam mais no cache local do navegador. Eles são tra
 ### Isolamento 100% (RLS)
 Sua conta possui **Row Level Security (RLS)**. Isso significa que o servidor Easypanel bloqueia rigidamente no nível do banco de dados qualquer tentativa de um usuário carregar eventos de outro, isolando 100% as contas e acessos. Seu UUID único (Authentication ID) é exigido em qualquer transação (Criação, Edição, Deleção).
 
+### Deploy e Integração Contínua (Easypanel)
+O frontend desta aplicação foi desenhado para ser implantado diretamente via **GitHub para o Easypanel** (utilizando Nixpacks e o servidor estático `serve`). 
+
+**Correção Recente (Variáveis de Ambiente):**
+Inicialmente, as chaves do Supabase (URL e ANON_KEY) foram configuradas em um arquivo `.env.local` para testes, o que fazia com que o Git ignorasse o arquivo. Isso resultava em um erro onde o Easypanel compilava o código sem as credenciais do banco de dados. 
+Para resolver esse gargalo sem que o administrador precise preencher manualmente chaves no painel do servidor, foi adotado o arquivo `.env.production`, que é versionado nativamente. Isso garante que cada push (commit) na `main` construa perfeitamente a integração de dados no servidor SaaS.
+
 ---
 
 ## 10. FAQ — Perguntas Frequentes
