@@ -7,6 +7,8 @@ import { seedDemoEvents, loadCalendarVisibility } from './events.js';
 import { initSidebar } from './sidebar.js';
 import { initModal } from './modal.js';
 import { initCalendar, refreshCalendar, navigateToDate } from './calendar.js';
+import { initNavigation } from './navigation.js';
+import { initAI } from './ai.js';
 
 /**
  * Inicializa toda a aplicação
@@ -39,7 +41,15 @@ function init() {
   // 5. Calendário
   initCalendar();
 
-  // 6. Atalhos de teclado
+  // 6. Navegação
+  initNavigation();
+
+  // 7. IA (SX)
+  initAI({
+    onEventCreated: () => refreshCalendar()
+  });
+
+  // 8. Atalhos de teclado
   setupKeyboardShortcuts();
 
   console.log('🕐 Time Tasks inicializado com sucesso!');

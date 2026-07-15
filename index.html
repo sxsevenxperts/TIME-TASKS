@@ -10,180 +10,294 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet" />
     <link rel="stylesheet" href="/style.css" />
+    <link rel="stylesheet" href="/layout.css" />
   </head>
   <body>
     <div id="app" class="app-layout">
-      <!-- ========== SIDEBAR ========== -->
-      <aside id="sidebar" class="sidebar">
-        <div class="sidebar__header">
-          <div class="sidebar__logo">
-            <svg class="sidebar__logo-icon" viewBox="0 0 32 32" fill="none">
+      <!-- ========== NAV STRIP (Far Left) ========== -->
+      <nav class="nav-strip">
+        <div class="nav-strip__top">
+          <!-- Toki Logo / Chat Toggle -->
+          <button class="nav-btn" id="btn-toggle-chat" title="Toki Chat">
+            <svg viewBox="0 0 32 32" fill="none" width="24" height="24">
               <rect width="32" height="32" rx="8" fill="var(--color-primary)"/>
               <path d="M8 12h16M8 16h10M8 20h13" stroke="#fff" stroke-width="2" stroke-linecap="round"/>
               <circle cx="24" cy="20" r="4" fill="#fff" opacity="0.9"/>
               <path d="M24 18.5v1.5l1 1" stroke="var(--color-primary)" stroke-width="1.2" stroke-linecap="round"/>
             </svg>
-            <span class="sidebar__logo-text">Time Tasks</span>
-          </div>
-          <button id="theme-toggle" class="btn-icon" aria-label="Alternar tema" title="Alternar tema">
-            <svg class="icon-sun" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
-              <circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/>
-            </svg>
-            <svg class="icon-moon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
-              <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/>
-            </svg>
+          </button>
+          
+          <button class="nav-btn active" data-target="calendar" title="Calendário">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="20" height="20"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+          </button>
+          
+          <button class="nav-btn" data-target="seeds" title="Sementes">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="20" height="20"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
+          </button>
+          
+          <button class="nav-btn" data-target="booking" title="Páginas de Agendamento">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="20" height="20"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
           </button>
         </div>
-
-        <button id="btn-new-event" class="btn-primary sidebar__new-event">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" width="18" height="18">
-            <line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/>
-          </svg>
-          Novo Evento
-        </button>
-
-        <div id="mini-calendar" class="mini-calendar">
-          <div class="mini-calendar__header">
-            <button id="mini-cal-prev" class="btn-icon btn-icon--sm" aria-label="Mês anterior">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" width="16" height="16"><polyline points="15 18 9 12 15 6"/></svg>
-            </button>
-            <span id="mini-cal-title" class="mini-calendar__title"></span>
-            <button id="mini-cal-next" class="btn-icon btn-icon--sm" aria-label="Próximo mês">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" width="16" height="16"><polyline points="9 18 15 12 9 6"/></svg>
-            </button>
-          </div>
-          <div class="mini-calendar__grid">
-            <div class="mini-calendar__weekdays">
-              <span>D</span><span>S</span><span>T</span><span>Q</span><span>Q</span><span>S</span><span>S</span>
-            </div>
-            <div id="mini-cal-days" class="mini-calendar__days"></div>
-          </div>
+        
+        <div class="nav-strip__bottom">
+          <button class="nav-btn" data-target="settings" title="Configurações">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="20" height="20"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+          </button>
         </div>
+      </nav>
 
-        <div class="sidebar__calendars">
-          <h3 class="sidebar__section-title">Meus Calendários</h3>
-          <div id="calendar-list" class="calendar-list"></div>
-        </div>
-      </aside>
-
-      <!-- ========== MAIN CONTENT ========== -->
-      <main class="main-content">
-        <!-- Header -->
-        <header class="main-header">
-          <div class="main-header__left">
-            <button id="sidebar-toggle" class="btn-icon main-header__menu" aria-label="Menu">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" width="20" height="20">
-                <line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/>
+      <div class="app-body">
+        <!-- ========== SUB-SIDEBAR (Contextual) ========== -->
+        <aside id="sub-sidebar" class="sub-sidebar">
+          <!-- Calendar Sidebar -->
+          <div id="sidebar-calendar" class="sidebar-section active">
+            <button id="btn-new-event" class="btn-primary sidebar__new-event">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" width="18" height="18">
+                <line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/>
               </svg>
+              Novo Evento
             </button>
-            <button id="btn-today" class="btn-secondary">Hoje</button>
-            <div class="main-header__nav">
-              <button id="btn-prev" class="btn-icon" aria-label="Anterior">
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" width="18" height="18"><polyline points="15 18 9 12 15 6"/></svg>
-              </button>
-              <button id="btn-next" class="btn-icon" aria-label="Próximo">
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" width="18" height="18"><polyline points="9 18 15 12 9 6"/></svg>
-              </button>
-            </div>
-            <h1 id="current-date-title" class="main-header__title"></h1>
-          </div>
-          <div class="main-header__right">
-            <div id="view-selector" class="view-selector">
-              <button class="view-selector__btn" data-view="day">Dia</button>
-              <button class="view-selector__btn" data-view="3day">3 Dias</button>
-              <button class="view-selector__btn active" data-view="week">Semana</button>
-              <button class="view-selector__btn" data-view="month">Mês</button>
-            </div>
-          </div>
-        </header>
 
-        <!-- Calendar Grid -->
-        <div id="calendar-container" class="calendar-container">
-          <!-- All-day events row -->
-          <div id="allday-row" class="allday-row">
-            <div class="time-gutter allday-gutter">
-              <span>Dia todo</span>
+            <div id="mini-calendar" class="mini-calendar">
+              <div class="mini-calendar__header">
+                <button id="mini-cal-prev" class="btn-icon btn-icon--sm" aria-label="Mês anterior">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" width="16" height="16"><polyline points="15 18 9 12 15 6"/></svg>
+                </button>
+                <span id="mini-cal-title" class="mini-calendar__title"></span>
+                <button id="mini-cal-next" class="btn-icon btn-icon--sm" aria-label="Próximo mês">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" width="16" height="16"><polyline points="9 18 15 12 9 6"/></svg>
+                </button>
+              </div>
+              <div class="mini-calendar__grid">
+                <div class="mini-calendar__weekdays">
+                  <span>D</span><span>S</span><span>T</span><span>Q</span><span>Q</span><span>S</span><span>S</span>
+                </div>
+                <div id="mini-cal-days" class="mini-calendar__days"></div>
+              </div>
             </div>
-            <div id="allday-cells" class="allday-cells"></div>
+
+            <div class="sidebar__calendars">
+              <h3 class="sidebar__section-title">Meus Calendários</h3>
+              <div id="calendar-list" class="calendar-list"></div>
+            </div>
           </div>
 
-          <!-- Scrollable time grid -->
-          <div id="time-grid-scroll" class="time-grid-scroll">
-            <div id="time-grid" class="time-grid">
-              <div class="time-gutter" id="time-labels"></div>
-              <div id="day-columns" class="day-columns"></div>
-              <!-- Now indicator -->
-              <div id="now-indicator" class="now-indicator">
-                <div class="now-indicator__dot"></div>
-                <div class="now-indicator__line"></div>
+          <!-- Seeds Sidebar -->
+          <div id="sidebar-seeds" class="sidebar-section" style="display:none;">
+            <div class="sidebar__header-simple">
+              <h3 class="sidebar__section-title">PRÓXIMOS 8</h3>
+            </div>
+            <div class="seeds-list">
+              <label class="seed-item"><input type="checkbox"> <span>Ver com o CREA...</span></label>
+              <label class="seed-item"><input type="checkbox"> <span>Ver a questão...</span></label>
+              <label class="seed-item"><input type="checkbox"> <span>Criar um an...</span></label>
+              <label class="seed-item"><input type="checkbox"> <span>Visitar a Ca...</span></label>
+            </div>
+          </div>
+
+          <!-- Booking Sidebar -->
+          <div id="sidebar-booking" class="sidebar-section" style="display:none;">
+            <div class="sidebar__header-simple">
+              <h3 class="sidebar__section-title">Páginas de agendamento <span class="plus-icon">+</span></h3>
+            </div>
+            <p class="sidebar__empty-text">Ainda não há páginas de agendamento<br><span style="font-size:0.8rem;color:var(--color-text-light);">Suas páginas aparecerão aqui depois que você criá-las.</span></p>
+          </div>
+
+          <!-- Settings Sidebar -->
+          <div id="sidebar-settings" class="sidebar-section" style="display:none;">
+            <div class="sidebar__header-simple">
+              <h3 class="sidebar__section-title">CONFIGURAÇÕES</h3>
+            </div>
+            <ul class="settings-nav">
+              <li>Meu Plano <span class="badge">GRÁTIS</span></li>
+              <li class="active">Conta</li>
+              <li>Geral</li>
+              <li>Calendários</li>
+              <li>Notificações</li>
+              <li id="btn-ai-config">IA (Gemini)</li>
+              <li>Novos Eventos</li>
+              <li>Sobre</li>
+            </ul>
+          </div>
+        </aside>
+
+        <!-- ========== MAIN CONTENT ========== -->
+        <main class="main-content">
+          <!-- Calendar View -->
+          <div id="view-calendar" class="view-container active">
+            <header class="main-header">
+              <div class="main-header__left">
+                <button id="sidebar-toggle" class="btn-icon main-header__menu" aria-label="Menu" style="display:none;">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" width="20" height="20">
+                    <line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/>
+                  </svg>
+                </button>
+                <button id="btn-today" class="btn-secondary">Hoje</button>
+                <div class="main-header__nav">
+                  <button id="btn-prev" class="btn-icon" aria-label="Anterior">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" width="18" height="18"><polyline points="15 18 9 12 15 6"/></svg>
+                  </button>
+                  <button id="btn-next" class="btn-icon" aria-label="Próximo">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" width="18" height="18"><polyline points="9 18 15 12 9 6"/></svg>
+                  </button>
+                </div>
+                <h1 id="current-date-title" class="main-header__title"></h1>
+              </div>
+              <div class="main-header__right">
+                <button id="theme-toggle" class="btn-icon theme-toggle" aria-label="Alternar tema" title="Alternar tema">
+                  <svg class="icon-sun" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
+                    <circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/>
+                  </svg>
+                  <svg class="icon-moon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
+                    <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/>
+                  </svg>
+                </button>
+                <div id="view-selector" class="view-selector">
+                  <button class="view-selector__btn" data-view="day">Dia</button>
+                  <button class="view-selector__btn" data-view="3day">3 Dias</button>
+                  <button class="view-selector__btn active" data-view="week">Semana</button>
+                  <button class="view-selector__btn" data-view="month">Mês</button>
+                </div>
+              </div>
+            </header>
+
+            <div id="calendar-container" class="calendar-container">
+              <div id="allday-row" class="allday-row">
+                <div class="time-gutter allday-gutter"><span>Dia todo</span></div>
+                <div id="allday-cells" class="allday-cells"></div>
+              </div>
+              <div id="time-grid-scroll" class="time-grid-scroll">
+                <div id="time-grid" class="time-grid">
+                  <div class="time-gutter" id="time-labels"></div>
+                  <div id="day-columns" class="day-columns"></div>
+                  <div id="now-indicator" class="now-indicator">
+                    <div class="now-indicator__dot"></div>
+                    <div class="now-indicator__line"></div>
+                  </div>
+                </div>
+              </div>
+              <div id="month-grid" class="month-grid" style="display:none;"></div>
+            </div>
+          </div>
+
+          <!-- Seeds View -->
+          <div id="view-seeds" class="view-container" style="display:none;">
+             <header class="main-header"><h1 class="main-header__title">Sementes (Histórico)</h1></header>
+            <div class="empty-state">
+              <h2>Sementes (Tarefas)</h2>
+              <p>Funcionalidade em desenvolvimento.</p>
+            </div>
+          </div>
+
+          <!-- Booking View -->
+          <div id="view-booking" class="view-container" style="display:none;">
+            <header class="main-header"><h1 class="main-header__title">Todas as reservas</h1></header>
+            <div class="booking-empty-state">
+              <div class="booking-icon">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="48" height="48"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/><path d="M12 15l-2 2-2-2"/><path d="M12 15v-4"/></svg>
+              </div>
+              <h2>Crie sua primeira página de agendamento</h2>
+              <p>Compartilhe um link público para que as pessoas possam marcar horários com<br> você com base na sua disponibilidade.</p>
+              <button class="btn-primary" style="margin-top:20px; border-radius: 20px;">+ Criar página de agendamento</button>
+            </div>
+          </div>
+
+          <!-- Settings View -->
+          <div id="view-settings" class="view-container" style="display:none;">
+            <div class="settings-content">
+              <h2 style="padding: 24px; border-bottom: 1px solid var(--color-border); font-size: 1.2rem; font-weight: 500;">Geral</h2>
+              <div class="settings-card" style="padding: 24px;">
+                <div class="setting-item" style="display:flex; justify-content:space-between; align-items:center; margin-bottom:20px;">
+                  <div>
+                    <strong style="display:block; font-weight:500;">Idioma da interface web</strong>
+                    <span style="font-size:0.85rem; color:var(--color-text-light);">Isso afeta o idioma de todos os textos da interface, como menus e botões.</span>
+                  </div>
+                  <select class="form-select" style="width: auto;"><option>pt-BR</option></select>
+                </div>
+                <div class="setting-item" style="display:flex; justify-content:space-between; align-items:center; margin-bottom:20px;">
+                  <div>
+                    <strong style="display:block; font-weight:500;">Tema de cores</strong>
+                  </div>
+                  <select class="form-select" style="width: auto;"><option>Seguir Sistema</option></select>
+                </div>
               </div>
             </div>
           </div>
+        </main>
 
-          <!-- Month view (hidden by default) -->
-          <div id="month-grid" class="month-grid" style="display:none;"></div>
-        </div>
-      </main>
+        <!-- ========== AI CHAT (Right Sidebar) ========== -->
+        <aside id="ai-sidebar" class="ai-sidebar">
+          <div class="ai-chat-header" style="display: flex; justify-content: center; align-items: center; padding: 16px;">
+            <div class="ai-logo-pill" style="display: flex; align-items: center; gap: 8px; background: rgba(255,255,255,0.05); padding: 8px 16px; border-radius: 20px; font-weight: 500; font-size: 0.9rem;">
+              <svg viewBox="0 0 32 32" fill="none" width="20" height="20">
+                <rect width="32" height="32" rx="8" fill="var(--color-primary)"/>
+                <path d="M8 12h16M8 16h10M8 20h13" stroke="#fff" stroke-width="2" stroke-linecap="round"/>
+              </svg>
+              SX
+            </div>
+          </div>
+          
+          <div id="ai-chat-history" class="ai-chat-history">
+            <!-- Messages go here -->
+            <div class="ai-msg ai-msg--system">
+              Olá! Como posso ajudar com seu calendário hoje?
+            </div>
+          </div>
+
+          <div class="ai-chat-input-area">
+            <div class="ai-input-wrapper">
+              <button class="btn-icon ai-attach-btn"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="20" height="20"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg></button>
+              <input type="text" id="ai-input" placeholder="Pergunte à SX sobre seu calendário..." autocomplete="off"/>
+              <button id="btn-ai-submit" class="btn-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="18" height="18"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg></button>
+            </div>
+          </div>
+        </aside>
+      </div>
     </div>
 
-    <!-- ========== EVENT MODAL ========== -->
+    <!-- API Key Modal -->
+    <div id="apikey-modal" class="modal-overlay" aria-hidden="true">
+      <div class="modal" role="dialog">
+        <div class="modal__header">
+          <h2 class="modal__title">Configurar IA (Gemini)</h2>
+          <button id="apikey-close" class="btn-icon" aria-label="Fechar"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" width="20" height="20"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>
+        </div>
+        <div class="modal__form" style="padding: 16px;">
+          <p style="margin-bottom: 1rem; color: var(--color-text-light); font-size: 0.9rem; line-height: 1.5;">Para a SX entender seus comandos de texto e criar eventos inteligentemente, precisamos da chave de API gratuita do Google Gemini.</p>
+          <div class="form-group">
+            <label class="form-label">Gemini API Key</label>
+            <input type="password" id="apikey-input" class="form-input" placeholder="AIzaSy..." />
+          </div>
+          <div class="modal__actions" style="margin-top: 1.5rem;">
+            <div class="modal__actions-right">
+              <button type="button" id="apikey-save" class="btn-primary">Salvar Chave</button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Event Modal -->
     <div id="event-modal" class="modal-overlay" aria-hidden="true">
       <div class="modal" role="dialog" aria-labelledby="modal-title">
         <div class="modal__header">
           <h2 id="modal-title" class="modal__title">Novo Evento</h2>
-          <button id="modal-close" class="btn-icon" aria-label="Fechar">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" width="20" height="20">
-              <line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>
-            </svg>
-          </button>
+          <button id="modal-close" class="btn-icon" aria-label="Fechar"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" width="20" height="20"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>
         </div>
         <form id="event-form" class="modal__form">
-          <div class="form-group">
-            <input type="text" id="event-title" class="form-input form-input--title" placeholder="Adicionar título" required autocomplete="off" />
-          </div>
-
+          <div class="form-group"><input type="text" id="event-title" class="form-input form-input--title" placeholder="Adicionar título" required autocomplete="off" /></div>
           <div class="form-row">
-            <div class="form-group">
-              <label for="event-date" class="form-label">Data</label>
-              <input type="date" id="event-date" class="form-input" required />
-            </div>
-            <div class="form-group">
-              <label class="form-label">
-                <input type="checkbox" id="event-allday" class="form-checkbox" />
-                Dia inteiro
-              </label>
-            </div>
+            <div class="form-group"><label class="form-label">Data</label><input type="date" id="event-date" class="form-input" required /></div>
+            <div class="form-group"><label class="form-label"><input type="checkbox" id="event-allday" class="form-checkbox" /> Dia inteiro</label></div>
           </div>
-
           <div id="time-inputs" class="form-row">
-            <div class="form-group">
-              <label for="event-start" class="form-label">Início</label>
-              <input type="time" id="event-start" class="form-input" value="09:00" />
-            </div>
-            <div class="form-group">
-              <label for="event-end" class="form-label">Fim</label>
-              <input type="time" id="event-end" class="form-input" value="10:00" />
-            </div>
+            <div class="form-group"><label class="form-label">Início</label><input type="time" id="event-start" class="form-input" value="09:00" /></div>
+            <div class="form-group"><label class="form-label">Fim</label><input type="time" id="event-end" class="form-input" value="10:00" /></div>
           </div>
-
-          <div class="form-group">
-            <label for="event-calendar" class="form-label">Calendário</label>
-            <select id="event-calendar" class="form-select">
-              <option value="pessoal">Pessoal</option>
-              <option value="trabalho">Trabalho</option>
-              <option value="saude">Saúde</option>
-              <option value="estudos">Estudos</option>
-              <option value="social">Social</option>
-            </select>
-          </div>
-
-          <div class="form-group">
-            <label for="event-description" class="form-label">Descrição</label>
-            <textarea id="event-description" class="form-input form-textarea" rows="3" placeholder="Adicionar descrição..."></textarea>
-          </div>
-
+          <div class="form-group"><label class="form-label">Calendário</label><select id="event-calendar" class="form-select"><option value="pessoal">Pessoal</option><option value="trabalho">Trabalho</option><option value="saude">Saúde</option><option value="estudos">Estudos</option><option value="social">Social</option></select></div>
+          <div class="form-group"><label class="form-label">Descrição</label><textarea id="event-description" class="form-input form-textarea" rows="3" placeholder="Adicionar descrição..."></textarea></div>
           <input type="hidden" id="event-id" />
-
           <div class="modal__actions">
             <button type="button" id="btn-delete-event" class="btn-danger" style="display:none;">Excluir</button>
             <div class="modal__actions-right">
@@ -195,40 +309,24 @@
       </div>
     </div>
 
-    <!-- ========== EVENT PREVIEW POPOVER ========== -->
+    <!-- Event Popover -->
     <div id="event-popover" class="event-popover" aria-hidden="true">
       <div class="event-popover__header">
         <div id="popover-color" class="event-popover__color"></div>
         <h3 id="popover-title" class="event-popover__title"></h3>
-        <button id="popover-close" class="btn-icon btn-icon--sm" aria-label="Fechar">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" width="16" height="16">
-            <line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>
-          </svg>
-        </button>
+        <button id="popover-close" class="btn-icon btn-icon--sm" aria-label="Fechar"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" width="16" height="16"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>
       </div>
       <div class="event-popover__body">
-        <div class="event-popover__row">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="16" height="16"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
-          <span id="popover-datetime"></span>
-        </div>
-        <div id="popover-desc-row" class="event-popover__row">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="16" height="16"><line x1="17" y1="10" x2="3" y2="10"/><line x1="21" y1="6" x2="3" y2="6"/><line x1="21" y1="14" x2="3" y2="14"/><line x1="17" y1="18" x2="3" y2="18"/></svg>
-          <span id="popover-description"></span>
-        </div>
+        <div class="event-popover__row"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="16" height="16"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg><span id="popover-datetime"></span></div>
+        <div id="popover-desc-row" class="event-popover__row"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="16" height="16"><line x1="17" y1="10" x2="3" y2="10"/><line x1="21" y1="6" x2="3" y2="6"/><line x1="21" y1="14" x2="3" y2="14"/><line x1="17" y1="18" x2="3" y2="18"/></svg><span id="popover-description"></span></div>
       </div>
       <div class="event-popover__actions">
-        <button id="popover-edit" class="btn-secondary btn-secondary--sm">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="14" height="14"><path d="M17 3a2.83 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5L17 3z"/></svg>
-          Editar
-        </button>
-        <button id="popover-delete" class="btn-danger btn-danger--sm">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="14" height="14"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
-          Excluir
-        </button>
+        <button id="popover-edit" class="btn-secondary btn-secondary--sm">Editar</button>
+        <button id="popover-delete" class="btn-danger btn-danger--sm">Excluir</button>
       </div>
     </div>
 
-    <!-- ========== TOAST ========== -->
+    <!-- Toast Container -->
     <div id="toast-container" class="toast-container"></div>
 
     <script type="module" src="/js/app.js"></script>
