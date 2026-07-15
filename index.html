@@ -9,9 +9,18 @@
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet" />
+    <script>
+      window.addEventListener('error', function(e) {
+        const el = document.getElementById('loading-overlay');
+        if (el) el.innerHTML = '<div style="color:white; text-align:center; padding: 20px;"><b>Erro Crítico:</b><br>' + e.message + '<br><br><button onclick="localStorage.clear(); window.location.reload(true);" style="padding:10px; cursor:pointer;">Limpar Dados e Recarregar</button></div>';
+      });
+      window.addEventListener('unhandledrejection', function(e) {
+        const el = document.getElementById('loading-overlay');
+        if (el) el.innerHTML = '<div style="color:white; text-align:center; padding: 20px;"><b>Erro de Conexão:</b><br>' + (e.reason && e.reason.message ? e.reason.message : e.reason) + '<br><br><button onclick="localStorage.clear(); window.location.reload(true);" style="padding:10px; cursor:pointer;">Limpar Dados e Recarregar</button></div>';
+      });
+    </script>
     <link rel="stylesheet" href="/style.css" />
     <link rel="stylesheet" href="/layout.css" />
-    <script type="module" src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   </head>
   <body>
     <!-- Loading Overlay -->
