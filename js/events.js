@@ -1,10 +1,12 @@
 // ============================================================
-// events.js — Gerenciamento de eventos (CRUD + localStorage)
+// events.js — Gerenciamento de eventos no Supabase
 // ============================================================
 
 import { generateId, toDateKey, timeToMinutes } from './utils.js';
+import { supabase } from './supabase.js';
+import { getCurrentUser } from './auth.js';
 
-const EVENTS_KEY = 'time-tasks-events';
+let localEvents = [];
 
 /**
  * Definição dos calendários disponíveis e suas cores
@@ -19,9 +21,6 @@ export const CALENDARS = {
 
 const CALENDARS_KEY = 'time-tasks-calendars-visibility';
 
-/**
- * Carrega visibilidade dos calendários
- */
 export function loadCalendarVisibility() {
   const saved = localStorage.getItem(CALENDARS_KEY);
   if (saved) {
@@ -34,9 +33,6 @@ export function loadCalendarVisibility() {
   }
 }
 
-/**
- * Salva visibilidade dos calendários
- */
 export function saveCalendarVisibility() {
   const vis = {};
   Object.keys(CALENDARS).forEach(key => {
@@ -45,9 +41,6 @@ export function saveCalendarVisibility() {
   localStorage.setItem(CALENDARS_KEY, JSON.stringify(vis));
 }
 
-/**
- * Alterna visibilidade de um calendário
- */
 export function toggleCalendarVisibility(calKey) {
   if (CALENDARS[calKey]) {
     CALENDARS[calKey].visible = !CALENDARS[calKey].visible;
@@ -56,77 +49,153 @@ export function toggleCalendarVisibility(calKey) {
 }
 
 /**
- * Carrega todos os eventos do localStorage
+ * Carrega todos os eventos do Supabase para a memória
  */
+export async function loadEventsFromServer() {
+  const user = getCurrentUser();
+  if (!user) {
+    localEvents = [];
+    return [];
+  }
+
+  const { data, error } = await supabase
+    .from('events')
+    .select('*')
+    .eq('user_id', user.id);
+
+  if (error) {
+    console.error('Erro ao buscar eventos do Supabase:', error);
+    localEvents = [];
+    return [];
+  }
+
+  // Converter snake_case para camelCase para o frontend não quebrar
+  localEvents = data.map(dbEvent => ({
+    id: dbEvent.id,
+    title: dbEvent.title,
+    date: dbEvent.date,
+    startTime: dbEvent.start_time,
+    endTime: dbEvent.end_time,
+    allDay: dbEvent.all_day,
+    calendar: dbEvent.calendar,
+    description: dbEvent.description,
+    createdAt: dbEvent.created_at
+  }));
+
+  return localEvents;
+}
+
 export function loadEvents() {
-  const data = localStorage.getItem(EVENTS_KEY);
-  return data ? JSON.parse(data) : [];
+  return localEvents; // Retorna da memória
 }
 
 /**
- * Salva todos os eventos no localStorage
+ * Cria um novo evento no Supabase e na memória
  */
-function saveEvents(events) {
-  localStorage.setItem(EVENTS_KEY, JSON.stringify(events));
-}
+export async function createEvent(eventData) {
+  const user = getCurrentUser();
+  if (!user) return null;
 
-/**
- * Cria um novo evento
- */
-export function createEvent(eventData) {
-  const events = loadEvents();
   const newEvent = {
-    id: generateId(),
+    user_id: user.id,
     title: eventData.title,
     date: eventData.date,        // "YYYY-MM-DD"
-    startTime: eventData.startTime, // "HH:MM" ou null se allDay
-    endTime: eventData.endTime,     // "HH:MM" ou null se allDay
-    allDay: eventData.allDay || false,
+    start_time: eventData.startTime, // "HH:MM" ou null se allDay
+    end_time: eventData.endTime,     // "HH:MM" ou null se allDay
+    all_day: eventData.allDay || false,
     calendar: eventData.calendar || 'pessoal',
-    description: eventData.description || '',
-    createdAt: new Date().toISOString(),
+    description: eventData.description || ''
   };
-  events.push(newEvent);
-  saveEvents(events);
-  return newEvent;
+
+  const { data, error } = await supabase
+    .from('events')
+    .insert([newEvent])
+    .select();
+
+  if (error) {
+    console.error('Erro ao criar evento:', error);
+    return null;
+  }
+
+  if (data && data.length > 0) {
+    const dbEvent = data[0];
+    const savedEvent = {
+      id: dbEvent.id,
+      title: dbEvent.title,
+      date: dbEvent.date,
+      startTime: dbEvent.start_time,
+      endTime: dbEvent.end_time,
+      allDay: dbEvent.all_day,
+      calendar: dbEvent.calendar,
+      description: dbEvent.description,
+      createdAt: dbEvent.created_at
+    };
+    localEvents.push(savedEvent);
+    return savedEvent;
+  }
+  return null;
 }
 
 /**
  * Atualiza um evento existente
  */
-export function updateEvent(id, eventData) {
-  const events = loadEvents();
-  const idx = events.findIndex(e => e.id === id);
+export async function updateEvent(id, eventData) {
+  const idx = localEvents.findIndex(e => e.id === id);
   if (idx === -1) return null;
 
-  events[idx] = { ...events[idx], ...eventData };
-  saveEvents(events);
-  return events[idx];
+  const updatePayload = {
+    title: eventData.title,
+    date: eventData.date,
+    start_time: eventData.startTime,
+    end_time: eventData.endTime,
+    all_day: eventData.allDay,
+    calendar: eventData.calendar,
+    description: eventData.description
+  };
+
+  const { error } = await supabase
+    .from('events')
+    .update(updatePayload)
+    .eq('id', id);
+
+  if (error) {
+    console.error('Erro ao atualizar evento:', error);
+    return null;
+  }
+
+  localEvents[idx] = { ...localEvents[idx], ...eventData };
+  return localEvents[idx];
 }
 
 /**
  * Remove um evento
  */
-export function deleteEvent(id) {
-  let events = loadEvents();
-  events = events.filter(e => e.id !== id);
-  saveEvents(events);
+export async function deleteEvent(id) {
+  const { error } = await supabase
+    .from('events')
+    .delete()
+    .eq('id', id);
+
+  if (error) {
+    console.error('Erro ao deletar evento:', error);
+    return;
+  }
+
+  localEvents = localEvents.filter(e => e.id !== id);
 }
 
 /**
- * Busca evento por ID
+ * Busca evento por ID (da memória)
  */
 export function getEventById(id) {
-  const events = loadEvents();
-  return events.find(e => e.id === id) || null;
+  return localEvents.find(e => e.id === id) || null;
 }
 
 /**
  * Retorna eventos de um dia específico (filtrando por visibilidade do calendário)
  */
 export function getEventsForDay(dateKey) {
-  const events = loadEvents();
-  return events.filter(e =>
+  return localEvents.filter(e =>
     e.date === dateKey &&
     CALENDARS[e.calendar]?.visible !== false
   );
@@ -136,27 +205,20 @@ export function getEventsForDay(dateKey) {
  * Retorna eventos em um intervalo de datas
  */
 export function getEventsInRange(startDate, endDate) {
-  const events = loadEvents();
   const startKey = toDateKey(startDate);
   const endKey = toDateKey(endDate);
 
-  return events.filter(e =>
+  return localEvents.filter(e =>
     e.date >= startKey &&
     e.date <= endKey &&
     CALENDARS[e.calendar]?.visible !== false
   );
 }
 
-/**
- * Retorna a cor de um calendário
- */
 export function getCalendarColor(calKey) {
   return CALENDARS[calKey]?.color || '#8e8e93';
 }
 
-/**
- * Detecta conflitos para um evento em um dia
- */
 export function detectConflicts(dateKey, startTime, endTime, excludeId = null) {
   const dayEvents = getEventsForDay(dateKey).filter(e => !e.allDay && e.id !== excludeId);
   const newStart = timeToMinutes(startTime);
@@ -167,44 +229,4 @@ export function detectConflicts(dateKey, startTime, endTime, excludeId = null) {
     const eEnd = timeToMinutes(e.endTime);
     return newStart < eEnd && newEnd > eStart;
   });
-}
-
-/**
- * Popula eventos de exemplo se não houver nenhum
- */
-export function seedDemoEvents() {
-  const events = loadEvents();
-  if (events.length > 0) return;
-
-  const today = new Date();
-  const todayKey = toDateKey(today);
-
-  const tomorrow = new Date(today);
-  tomorrow.setDate(tomorrow.getDate() + 1);
-  const tomorrowKey = toDateKey(tomorrow);
-
-  const dayAfter = new Date(today);
-  dayAfter.setDate(dayAfter.getDate() + 2);
-  const dayAfterKey = toDateKey(dayAfter);
-
-  const yesterday = new Date(today);
-  yesterday.setDate(yesterday.getDate() - 1);
-  const yesterdayKey = toDateKey(yesterday);
-
-  const demos = [
-    { title: 'Reunião de Planejamento', date: todayKey, startTime: '09:00', endTime: '10:30', calendar: 'trabalho', description: 'Revisão de sprints e metas do trimestre' },
-    { title: 'Almoço com equipe', date: todayKey, startTime: '12:00', endTime: '13:00', calendar: 'social', description: 'Restaurante novo no centro' },
-    { title: 'Academia', date: todayKey, startTime: '07:00', endTime: '08:00', calendar: 'saude', description: 'Treino de pernas' },
-    { title: 'Estudo de JavaScript', date: todayKey, startTime: '15:00', endTime: '17:00', calendar: 'estudos', description: 'Módulos ES6 e Promises' },
-    { title: 'Consulta médica', date: tomorrowKey, startTime: '10:00', endTime: '11:00', calendar: 'saude', description: 'Check-up anual' },
-    { title: 'Deploy do projeto', date: tomorrowKey, startTime: '14:00', endTime: '16:00', calendar: 'trabalho', description: 'Deploy da versão 2.0' },
-    { title: 'Aniversário da Ana', date: dayAfterKey, allDay: true, calendar: 'social', description: 'Comprar presente!' },
-    { title: 'Entrega do relatório', date: dayAfterKey, startTime: '09:00', endTime: '10:00', calendar: 'trabalho', description: 'Relatório mensal de performance' },
-    { title: 'Yoga', date: yesterdayKey, startTime: '06:30', endTime: '07:30', calendar: 'saude', description: 'Sessão matinal de yoga' },
-    { title: 'Call com cliente', date: yesterdayKey, startTime: '14:00', endTime: '15:00', calendar: 'trabalho', description: 'Apresentação do protótipo' },
-    { title: 'Happy Hour', date: todayKey, startTime: '18:00', endTime: '20:00', calendar: 'social', description: 'Bar do João com a galera' },
-    { title: 'Revisão de código', date: tomorrowKey, startTime: '16:30', endTime: '18:00', calendar: 'trabalho', description: 'PR #234 — refactor do módulo de auth' },
-  ];
-
-  demos.forEach(d => createEvent(d));
 }

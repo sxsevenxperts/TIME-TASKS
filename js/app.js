@@ -3,22 +3,25 @@
 // ============================================================
 
 import { initTheme } from './theme.js';
-import { seedDemoEvents, loadCalendarVisibility } from './events.js';
+import { loadCalendarVisibility } from './events.js';
 import { initSidebar } from './sidebar.js';
 import { initModal } from './modal.js';
 import { initCalendar, refreshCalendar, navigateToDate } from './calendar.js';
 import { initNavigation } from './navigation.js';
 import { initAI } from './ai.js';
+import { initAuth } from './auth.js';
 
 /**
  * Inicializa toda a aplicação
  */
 function init() {
-  // 1. Tema
+  // 1. Autenticação (Supabase)
+  initAuth();
+
+  // 2. Tema
   initTheme();
 
-  // 2. Dados de exemplo
-  seedDemoEvents();
+  // 3. Dados
   loadCalendarVisibility();
 
   // 3. Sidebar

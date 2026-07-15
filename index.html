@@ -11,9 +11,40 @@
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet" />
     <link rel="stylesheet" href="/style.css" />
     <link rel="stylesheet" href="/layout.css" />
+    <script type="module" src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   </head>
   <body>
-    <div id="app" class="app-layout">
+    <!-- Auth Overlay -->
+    <div id="auth-overlay" class="auth-overlay">
+      <div class="auth-card">
+        <div class="auth-logo">
+          <svg viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <rect width="32" height="32" rx="8" fill="var(--color-primary)"/>
+            <path d="M8 12h16M8 16h10M8 20h13" stroke="#fff" stroke-width="2" stroke-linecap="round"/>
+          </svg>
+          Time Tasks
+        </div>
+        <p class="auth-subtitle">Faça login para acessar seus eventos isolados no Supabase.</p>
+        
+        <form id="login-form" class="auth-form">
+          <div class="form-group">
+            <label class="form-label">E-mail</label>
+            <input type="email" id="auth-email" class="form-input" required placeholder="seu@email.com" />
+          </div>
+          <div class="form-group">
+            <label class="form-label">Senha</label>
+            <input type="password" id="auth-password" class="form-input" required placeholder="********" />
+          </div>
+          <p id="auth-error" class="auth-error"></p>
+          <button type="submit" id="auth-submit" class="btn-primary" style="width: 100%; margin-top: 10px;">Entrar</button>
+        </form>
+        
+        <a href="#" id="auth-toggle-mode" class="auth-link">Não tem uma conta? <span>Criar conta</span></a>
+      </div>
+    </div>
+
+    <!-- Main Layout (Hidden by default until authed) -->
+    <div id="app" class="app-layout" style="visibility: hidden; opacity: 0; transition: opacity 0.3s ease;">
       <!-- ========== NAV STRIP (Far Left) ========== -->
       <nav class="nav-strip">
         <div class="nav-strip__top">
@@ -118,6 +149,7 @@
               <li id="btn-ai-config">IA (Gemini)</li>
               <li>Novos Eventos</li>
               <li>Sobre</li>
+              <li id="btn-logout" style="color: #ff3b30; font-weight: 500;">Sair</li>
             </ul>
           </div>
         </aside>
