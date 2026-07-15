@@ -145,10 +145,10 @@ Clique no **botão de tema** na sidebar (sol ☀️ ou lua 🌙) para alternar o
 A mudança mais significativa da versão atual é o **Banco de Dados Real**. 
 
 ### Como os Dados são Salvos
-Todos os seus eventos não ficam mais no cache local do navegador. Eles são transmitidos criptografados via protocolo HTTPS para o nosso banco de dados em nuvem operando no **Supabase**.
+Todos os seus eventos não ficam mais no cache local do navegador. Eles são transmitidos criptografados via protocolo HTTPS para o nosso banco de dados em nuvem operando no **Supabase**. Toda a infraestrutura deste SaaS roda de forma privada em servidor próprio (via Easypanel), garantindo soberania total dos dados.
 
 ### Isolamento 100% (RLS)
-Sua conta possui **Row Level Security**. Isso significa que o servidor bloqueia rigidamente no nível do banco de dados qualquer tentativa de um usuário carregar eventos de outro. Seu UUID único (Authentication ID) é exigido em qualquer transação (Criação, Edição, Deleção).
+Sua conta possui **Row Level Security (RLS)**. Isso significa que o servidor Easypanel bloqueia rigidamente no nível do banco de dados qualquer tentativa de um usuário carregar eventos de outro, isolando 100% as contas e acessos. Seu UUID único (Authentication ID) é exigido em qualquer transação (Criação, Edição, Deleção).
 
 ---
 

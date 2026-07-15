@@ -115,23 +115,16 @@
 
 > Documentação completa do projeto.
 
-- 📖 **README.md** — Apresentação do projeto e instruções
-- 🗺️ **ROADMAP.md** — Todas as fases de desenvolvimento
-- 📘 **MANUAL.md** — Manual do usuário, atalhos, login e IA
 
 ---
 
-## Fase 9 ✅ GitHub
+## Fase 8 ✅ Infraestrutura e Deploy (Easypanel + Supabase)
+- **Hospedagem Frontend**: Configurado build via Nixpacks (Vite + `serve` estático) no servidor Easypanel.
+- **Banco de Dados Isolado**: Deploy do backend Supabase via container no Easypanel (SaaS 100% isolado).
+- **Segurança de Variáveis**: Remoção de chaves hardcoded e implementação de injeção de variáveis de ambiente no build (`VITE_SUPABASE_URL` e `VITE_SUPABASE_ANON_KEY`).
+- **Autenticação Segura**: Melhorias na UX de Login (Loading overlay para evitar flicker) e feedback visual de exigência de confirmação de e-mail.
 
-> Publicação e versionamento do projeto.
-
-- Repositório no GitHub configurado com as chaves ofuscadas
-- `.gitignore` protegendo as variáveis locais `.env.local`
-- Versionamento do Schema SQL do banco de dados
-
----
-
-## Fase 10 🔮 Futuro
+## Fase 9 🔮 Futuro
 
 > Funcionalidades planejadas para versões futuras.
 

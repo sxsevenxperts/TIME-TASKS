@@ -47,20 +47,30 @@ export async function initAuth() {
       submitBtn.disabled = true;
       submitBtn.textContent = 'Aguarde...';
       
-      let error = null;
-      
       if (isLoginMode) {
-        const result = await supabase.auth.signInWithPassword({ email, password });
-        error = result.error;
+        const { error } = await supabase.auth.signInWithPassword({ email, password });
+        if (error) throw error;
       } else {
-        const result = await supabase.auth.signUp({ email, password });
-        error = result.error;
-      }
+        const { data, error } = await supabase.auth.signUp({ email, password });
+        if (error) throw error;
+        
+        if (data.user && data.user.identities && data.user.identities.length === 0) {
+            authError.textContent = 'Este e-mail já está em uso.';
+            submitBtn.disabled = false;
+            submitBtn.textContent = 'Criar Conta';
+            return;
+        }
 
-      if (error) throw error;
-      
-      // If success, the onAuthStateChange will handle the UI update.
+        if (data.session === null) {
+          authError.style.color = 'var(--color-success)';
+          authError.textContent = 'Conta criada! Verifique sua caixa de e-mail para confirmar.';
+          submitBtn.disabled = false;
+          submitBtn.textContent = 'Criar Conta';
+          return;
+        }
+      }
     } catch (err) {
+      authError.style.color = 'var(--color-danger)';
       authError.textContent = err.message || 'Erro na autenticação.';
       submitBtn.disabled = false;
       submitBtn.textContent = isLoginMode ? 'Entrar' : 'Criar Conta';
@@ -69,6 +79,12 @@ export async function initAuth() {
 
   // Listen to Auth State Changes
   supabase.auth.onAuthStateChange(async (event, session) => {
+    const loadingOverlay = document.getElementById('loading-overlay');
+    if (loadingOverlay) {
+        loadingOverlay.style.opacity = '0';
+        setTimeout(() => loadingOverlay.style.display = 'none', 300);
+    }
+
     if (session && session.user) {
       currentUser = session.user;
       
