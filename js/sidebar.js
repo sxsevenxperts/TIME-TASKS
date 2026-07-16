@@ -39,9 +39,13 @@ export function initSidebar({ onDateSelected, onCalendarVisibilityChange }) {
     renderMiniCalendar();
   });
 
-  // Toggle sidebar on mobile
+  // Toggle da sub-sidebar no mobile
   document.getElementById('sidebar-toggle')?.addEventListener('click', () => {
-    document.getElementById('sidebar')?.classList.toggle('sidebar--open');
+    const toggle = document.getElementById('sidebar-toggle');
+    const panel = document.getElementById('sub-sidebar');
+    const open = !panel?.classList.contains('sub-sidebar--open');
+    panel?.classList.toggle('sub-sidebar--open', open);
+    toggle?.setAttribute('aria-expanded', String(open));
   });
 }
 

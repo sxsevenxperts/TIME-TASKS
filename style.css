@@ -141,58 +141,11 @@ input, select, textarea {
   color: inherit;
 }
 
-/* ── App Layout ────────────────────────────────────────────── */
-.app-layout {
-  display: flex;
-  height: 100vh;
-  overflow: hidden;
-}
+/* .app-layout é definido em layout.css (fonte única para evitar drift entre os dois arquivos). */
 
-/* ── Sidebar ───────────────────────────────────────────────── */
-.sidebar {
-  width: var(--sidebar-width);
-  height: 100vh;
-  background: var(--glass-bg);
-  backdrop-filter: blur(var(--glass-blur));
-  -webkit-backdrop-filter: blur(var(--glass-blur));
-  border-right: 1px solid var(--border-color);
-  display: flex;
-  flex-direction: column;
-  padding: 16px;
-  gap: 16px;
-  overflow-y: auto;
-  flex-shrink: 0;
-  transition: transform var(--transition-normal), background-color var(--transition-normal);
-  z-index: 100;
-}
-
-.sidebar__header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-}
-
-.sidebar__logo {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-}
-
-.sidebar__logo-icon {
-  width: 32px;
-  height: 32px;
-  flex-shrink: 0;
-}
-
-.sidebar__logo-text {
-  font-size: 1.125rem;
-  font-weight: 700;
-  letter-spacing: -0.02em;
-  background: linear-gradient(135deg, var(--color-primary), #FF6B9D);
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
-  background-clip: text;
-}
+/* Nota: a navegação lateral principal usa #sub-sidebar/.sub-sidebar (ver layout.css).
+   As classes .sidebar/.sidebar__* foram removidas por não terem nenhum elemento
+   correspondente no DOM atual — eram um scaffold anterior à sub-sidebar. */
 
 /* ── Buttons ───────────────────────────────────────────────── */
 .btn-icon {
@@ -616,7 +569,7 @@ input, select, textarea {
 .time-grid-scroll {
   flex: 1;
   overflow-y: auto;
-  overflow-x: hidden;
+  overflow-x: auto;
   scroll-behavior: smooth;
 }
 
@@ -1211,14 +1164,14 @@ input, select, textarea {
 
 /* ── Responsive ────────────────────────────────────────────── */
 @media (max-width: 900px) {
-  .sidebar {
+  .sub-sidebar {
     position: fixed;
     left: 0;
     top: 0;
     transform: translateX(-100%);
   }
 
-  .sidebar--open {
+  .sub-sidebar--open {
     transform: translateX(0);
     box-shadow: var(--shadow-xl);
   }

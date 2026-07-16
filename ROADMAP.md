@@ -71,7 +71,45 @@
 - [x] `npm audit --omit=dev`: zero vulnerabilidades.
 - [x] Build Vite e sintaxe de todos os módulos aprovados.
 
-## Falhas encontradas e corrigidas nesta revisão
+---
+
+## Planner Mestre — Fases 1–3 (concluídas em 16/07/2026)
+
+### Fase 1 — Fundação responsiva
+
+- [x] F-01: `js/sidebar.js` corrigido para usar `#sub-sidebar` e classe `sub-sidebar--open`.
+- [x] F-02: `style="display:none"` removido de `#sidebar-toggle`; `aria-controls`/`aria-expanded` adicionados.
+- [x] F-03: `.app-layout`, `.sidebar`, `.sidebar__header`, `.sidebar__logo*` removidos de `style.css`; `layout.css` passa a ser fonte única.
+- [x] F-04: `overflow-x: hidden` → `overflow-x: auto` em `.time-grid-scroll`.
+- [x] F-05: Navegação unificada em `[data-target]` — nav-strip desktop e tab bar mobile servidos pelo mesmo listener.
+- [x] F-06: `setChatOpen()` exportada; todos os controles de abertura/fechamento da SX usam a mesma função.
+
+### Fase 2 — Shell e navegação mobile
+
+- [x] `#mobile-tabbar` com quatro botões: Calendário, Seed, Trigger, SX.
+- [x] Ao clicar no botão de histórico (relógio) dentro da SX, o painel fecha e navega para Seeds com `keepChatState: true`.
+- [x] SX abre em tela cheia no mobile (`inset: 0`).
+- [x] Cabeçalho duplo na SX: pill centralizada no desktop; abas Bate-papo/Notif. + botão de perfil no mobile.
+- [x] Painel de notificações (`#ai-pane-notifications`) com lista e estado vazio.
+- [x] `setAiTab()` sincroniza abas, paines e visibilidade da área de input.
+- [x] Tab bar oculta `.nav-strip` no mobile (`@media max-width: 900px`).
+- [x] `safe-area-inset-bottom` aplicado na tab bar e no padding do `.app-body` mobile.
+- [x] Shell do Trigger: botão no nav-strip, sidebar `#sidebar-trigger`, view `#view-trigger`.
+
+### Fase 3 — Calendário mobile e SX fixa no desktop
+
+- [x] Calendário inicia em visão Mês no mobile, Semana no desktop (`initialViewForViewport()`).
+- [x] `hourHeight()` retorna 44 px no mobile e 60 px no desktop (evita colunas ilegíveis).
+- [x] Colunas do grid com `minmax(92px, 1fr)` no mobile com múltiplos dias — scroll horizontal habilitado.
+- [x] `syncViewSelectorButtons()` aplica estado ativo nos botões ao inicializar.
+- [x] No desktop (`≥901px`), `activateView()` abre a SX automaticamente em cada troca de view.
+- [x] Evento `timetasks:session` abre a SX no desktop logo após login.
+- [x] Layout de 3 colunas (sub-sidebar + main-content + ai-sidebar) entregue pelo flexbox existente sem CSS extra.
+- [x] Correção de `.ai-input-wrapper` duplicado em `layout.css` (merged em única regra).
+
+---
+
+## Falhas encontradas e corrigidas (histórico consolidado)
 
 | Falha | Correção | Evidência |
 |---|---|---|
@@ -82,29 +120,59 @@
 | Horários apareciam com segundos | normalização no mapeamento do evento | exibição `HH:MM` |
 | Chave da IA poderia ir ao cliente | proxy autenticado no servidor | frontend não contém chave privada |
 | Documentação descrevia demo/SevenChat/`public.events` | manual, README e roadmap reescritos | documentação 2.0 |
+| `#sidebar` referenciado em sidebar.js em vez de `#sub-sidebar` | corrigido para ID correto + `sub-sidebar--open` | toggle mobile funciona |
+| `style="display:none"` bloqueava CSS do sidebar-toggle | atributo removido, aria adicionado | botão visível e acessível |
+| `.app-layout` e `.sidebar` duplicados entre style.css e layout.css | removidos de style.css; layout.css é fonte única | sem drift entre arquivos |
+| Navegação desktop não funcionava na tab bar mobile | seletor unificado `[data-target]` em navigation.js | ambas as barras sincronizadas |
+| Múltiplos controles da SX sem estado central | `setChatOpen()` exportada e usada em todos os pontos | toggle consistente |
+| `.ai-input-wrapper` definido duas vezes em layout.css | regras merged em uma única declaração | sem override inesperado |
+
+---
 
 ## Próximas fases
 
-### P1 — infraestrutura
+### Fase 4 — Login e versículo por acesso
 
-- [ ] Provisionar uma instância Supabase dedicada se o requisito evoluir de isolamento lógico para isolamento físico de Auth, banco, chaves e recursos.
-- [ ] Web Push + service worker + fila de entrega para notificações com navegador totalmente fechado.
-- [ ] Monitoramento de erros, disponibilidade da API de versículos e métricas da SX.
-- [ ] Rotação periódica de todas as credenciais operacionais.
+- [ ] Toggle mostrar/ocultar senha no formulário de login.
+- [ ] Versículo bíblico exibido em balão ao abrir o app, com botão X para fechar.
+- [ ] Um versículo por acesso (não por período do dia como nas notificações).
 
-### P2 — integrações
+### Fase 5 — Previsão climática
 
-- [ ] Google Calendar bidirecional com OAuth.
-- [ ] Canais WhatsApp e Telegram.
-- [ ] Eventos recorrentes e edição em série.
-- [ ] Sugestão automática de reagendamento em conflitos.
+- [ ] Widget de clima via Open-Meteo (sem chave de API).
+- [ ] Exibição compacta no header ou sidebar do calendário.
+- [ ] Geolocalização via `navigator.geolocation` com fallback manual de cidade.
 
-### P3 — evolução do produto
+### Fase 6 — Trigger e central de notificações
 
-- [ ] Drag-and-drop e redimensionamento de eventos.
-- [ ] Modo offline com sincronização posterior.
-- [ ] Resumo semanal e indicadores de produtividade pela SX.
-- [ ] Aplicativos móveis/lojas, caso o uso web valide a demanda.
+- [ ] Schema `time_tasks_triggers` com RLS por usuário.
+- [ ] UI de criação/edição de triggers (tipo, condição, canal de entrega).
+- [ ] Worker Node.js para polling/cronograma e despacho de notificações.
+- [ ] Preencher `#ai-pane-notifications` com notificações reais do banco.
+- [ ] Dot indicador (`#notifications-dot`) ativo quando há itens não lidos.
+
+### Fase 7 — Acessibilidade, segurança e robustez
+
+- [ ] Auditoria WCAG: foco, contraste, roles, labels, navegação por teclado.
+- [ ] `npm audit` limpo após novas dependências das fases anteriores.
+- [ ] Rate limit e validação de entrada nas novas rotas do servidor.
+- [ ] Smoke test automatizado dos fluxos críticos.
+
+### Fase 8 — Documentação
+
+- [ ] Criar `MANUAL_DE_BORDO.md` consolidando todo o histórico, decisões e anti-padrões.
+- [ ] Atualizar `README.md` com as fases concluídas e instruções de deploy atualizadas.
+- [ ] Revisar `AGENTS.md` para refletir o estado atual dos módulos.
+
+### Fase 9 — Verificação, build e produção
+
+- [ ] `npm run build` limpo.
+- [ ] `node --check` em todos os módulos JS.
+- [ ] `HEAD == origin/main` verificado.
+- [ ] Deploy no EasyPanel validado com healthcheck e smoke test.
+- [ ] Paridade entre local e produção confirmada.
+
+---
 
 ## Critério permanente de pronto
 

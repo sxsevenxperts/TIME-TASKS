@@ -1,12 +1,30 @@
 let currentTarget = 'calendar';
 
-export function activateView(target) {
+function isDesktopViewport() {
+  return window.matchMedia('(min-width: 901px)').matches;
+}
+
+/**
+ * Fonte única de navegação: qualquer botão com [data-target], esteja ele no
+ * nav-strip do desktop ou na mobile-tabbar, é sincronizado por aqui.
+ *
+ * `options.keepChatState` evita reabrir a SX automaticamente no desktop —
+ * usado apenas pelo botão "Ver Sementes" (Histórico), que fecha a SX de
+ * propósito para navegar. Fora desse caso, a SX permanece sempre aberta no
+ * desktop após login e troca de views, sem exigir clique manual.
+ */
+export function activateView(target, options = {}) {
   currentTarget = target;
-  const navButtons = document.querySelectorAll('.nav-strip .nav-btn[data-target]');
+  const navButtons = document.querySelectorAll('[data-target]');
   const sidebars = document.querySelectorAll('.sidebar-section');
   const views = document.querySelectorAll('.view-container');
 
-  navButtons.forEach(button => button.classList.toggle('active', button.dataset.target === target));
+  navButtons.forEach(button => {
+    const active = button.dataset.target === target;
+    button.classList.toggle('active', active);
+    if (active) button.setAttribute('aria-current', 'page');
+    else button.removeAttribute('aria-current');
+  });
   sidebars.forEach(sidebar => {
     const active = sidebar.id === `sidebar-${target}`;
     sidebar.classList.toggle('active', active);
@@ -25,26 +43,81 @@ export function activateView(target) {
       detail: { section: activeItem?.dataset.settings || 'account' }
     }));
   }
+
+  if (isDesktopViewport() && !options.keepChatState) {
+    setChatOpen(true);
+  }
 }
 
 export function getActiveView() {
   return currentTarget;
 }
 
+/**
+ * Abre/fecha a SX e sincroniza todos os controles que a controlam
+ * (botão do nav-strip no desktop e botão circular no mobile).
+ */
+export function setChatOpen(open) {
+  const assistant = document.getElementById('ai-sidebar');
+  if (!assistant) return;
+  const resolved = open ?? !assistant.classList.contains('ai-sidebar--open');
+  assistant.classList.toggle('ai-sidebar--open', resolved);
+  assistant.setAttribute('aria-hidden', String(!resolved));
+  document.querySelectorAll('[data-chat-toggle]').forEach(button => {
+    button.classList.toggle('active', resolved);
+    button.setAttribute('aria-expanded', String(resolved));
+  });
+  if (resolved) document.getElementById('ai-input')?.focus();
+  return resolved;
+}
+
+export function isChatOpen() {
+  return document.getElementById('ai-sidebar')?.classList.contains('ai-sidebar--open') ?? false;
+}
+
+function setAiTab(tab) {
+  document.querySelectorAll('.ai-header-tab[data-ai-tab]').forEach(button => {
+    const active = button.dataset.aiTab === tab;
+    button.classList.toggle('active', active);
+    button.setAttribute('aria-selected', String(active));
+  });
+  const chatPane = document.getElementById('ai-pane-chat');
+  const notificationsPane = document.getElementById('ai-pane-notifications');
+  const inputArea = document.getElementById('ai-chat-input-area');
+  if (chatPane) {
+    chatPane.classList.toggle('active', tab === 'chat');
+    chatPane.style.display = tab === 'chat' ? 'flex' : 'none';
+  }
+  if (notificationsPane) {
+    notificationsPane.classList.toggle('active', tab === 'notifications');
+    notificationsPane.style.display = tab === 'notifications' ? 'flex' : 'none';
+  }
+  if (inputArea) inputArea.style.display = tab === 'chat' ? 'flex' : 'none';
+  if (tab === 'notifications') {
+    document.dispatchEvent(new Event('timetasks:notifications-viewed'));
+  }
+}
+
 export function initNavigation() {
-  document.querySelectorAll('.nav-strip .nav-btn[data-target]').forEach(button => {
+  document.querySelectorAll('[data-target]').forEach(button => {
     button.addEventListener('click', () => activateView(button.dataset.target));
   });
 
-  const chatButton = document.getElementById('btn-toggle-chat');
-  const assistant = document.getElementById('ai-sidebar');
-  chatButton?.addEventListener('click', () => {
-    const open = !assistant.classList.contains('ai-sidebar--open');
-    assistant.classList.toggle('ai-sidebar--open', open);
-    chatButton.classList.toggle('active', open);
-    chatButton.setAttribute('aria-expanded', String(open));
-    assistant.setAttribute('aria-hidden', String(!open));
-    if (open) document.getElementById('ai-input')?.focus();
+  document.querySelectorAll('[data-chat-toggle]').forEach(button => {
+    button.addEventListener('click', () => setChatOpen());
+  });
+
+  document.getElementById('btn-ai-history')?.addEventListener('click', () => {
+    setChatOpen(false);
+    activateView('seeds', { keepChatState: true });
+  });
+
+  document.addEventListener('timetasks:session', event => {
+    if (event.detail?.user && isDesktopViewport()) setChatOpen(true);
+  });
+
+  document.querySelectorAll('.ai-header-tab[data-ai-tab]').forEach(button => {
+    button.addEventListener('click', () => setAiTab(button.dataset.aiTab));
   });
 
   document.querySelectorAll('.settings-nav [data-settings]').forEach(item => {

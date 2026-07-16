@@ -63,7 +63,7 @@
       <nav class="nav-strip">
         <div class="nav-strip__top">
           <!-- SX Logo / Chat Toggle -->
-          <button class="nav-btn nav-btn--brand" id="btn-toggle-chat" type="button" title="Abrir a SX" aria-label="Abrir a assistente SX" aria-controls="ai-sidebar" aria-expanded="false">
+          <button class="nav-btn nav-btn--brand" id="btn-toggle-chat" data-chat-toggle type="button" title="Abrir a SX" aria-label="Abrir a assistente SX" aria-controls="ai-sidebar" aria-expanded="false">
             <img class="brand-logo brand-logo--nav" src="/sx-time-tasks-logo.png" alt="" />
           </button>
           
@@ -77,6 +77,10 @@
           
           <button class="nav-btn" data-target="booking" title="Páginas de Agendamento">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="20" height="20"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+          </button>
+
+          <button class="nav-btn" data-target="trigger" title="Trigger">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="20" height="20"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>
           </button>
         </div>
         
@@ -146,6 +150,14 @@
             <div id="booking-sidebar-list" class="booking-sidebar-list"></div>
           </div>
 
+          <!-- Trigger Sidebar -->
+          <div id="sidebar-trigger" class="sidebar-section" style="display:none;">
+            <div class="sidebar__header-simple">
+              <h3 class="sidebar__section-title">TRIGGERS</h3>
+            </div>
+            <p class="sidebar__empty-text">Automações que verificam condições ou executam em um cronograma.</p>
+          </div>
+
           <!-- Settings Sidebar -->
           <div id="sidebar-settings" class="sidebar-section" style="display:none;">
             <div class="sidebar__header-simple">
@@ -171,7 +183,7 @@
           <div id="view-calendar" class="view-container active">
             <header class="main-header">
               <div class="main-header__left">
-                <button id="sidebar-toggle" class="btn-icon main-header__menu" aria-label="Menu" style="display:none;">
+                <button id="sidebar-toggle" class="btn-icon main-header__menu" aria-label="Menu" aria-controls="sub-sidebar" aria-expanded="false">
                   <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" width="20" height="20">
                     <line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/>
                   </svg>
@@ -264,29 +276,75 @@
             </div>
           </div>
 
+          <!-- Trigger View -->
+          <div id="view-trigger" class="view-container" style="display:none;">
+            <header class="main-header">
+              <h1 class="main-header__title">Trigger</h1>
+              <button id="btn-new-trigger" class="btn-primary" type="button">+ Criar um Trigger</button>
+            </header>
+            <div class="feature-page">
+              <p class="trigger-intro">Diga o que monitorar — clima, resumo da agenda e, no futuro, notícias ou calendários esportivos. O Trigger verifica em um cronograma e age quando as condições são atendidas.</p>
+              <div id="trigger-list" class="feature-list"></div>
+              <div id="trigger-empty" class="feature-empty" hidden>
+                <h2>Nenhum Trigger configurado</h2>
+                <p>Crie um Trigger de clima ou resumo semanal para começar.</p>
+              </div>
+            </div>
+          </div>
+
           <!-- Settings View -->
           <div id="view-settings" class="view-container" style="display:none;">
             <div id="settings-content" class="settings-content" aria-live="polite"></div>
           </div>
         </main>
 
-        <!-- ========== AI CHAT (Right Sidebar) ========== -->
+        <!-- ========== AI CHAT (Right Sidebar / view própria no mobile) ========== -->
         <aside id="ai-sidebar" class="ai-sidebar" aria-label="Assistente SX" aria-hidden="true">
-          <div class="ai-chat-header" style="display: flex; justify-content: center; align-items: center; padding: 16px;">
-            <div class="ai-logo-pill" style="display: flex; align-items: center; gap: 8px; background: rgba(255,255,255,0.05); padding: 8px 16px; border-radius: 20px; font-weight: 500; font-size: 0.9rem;">
+          <!-- Cabeçalho desktop: pill centralizada -->
+          <div class="ai-chat-header ai-chat-header--desktop">
+            <div class="ai-logo-pill">
               <img class="brand-logo brand-logo--chat" src="/sx-time-tasks-logo.png" alt="" />
               SX
             </div>
           </div>
-          
-          <div id="ai-chat-history" class="ai-chat-history">
-            <!-- Messages go here -->
-            <div class="ai-msg ai-msg--system">
-              Olá! Eu sou a SX. Diga ou fale o que deseja agendar.
+
+          <!-- Cabeçalho mobile: perfil, abas Bate-papo/Notif., mais opções -->
+          <div class="ai-chat-header ai-chat-header--mobile">
+            <button id="btn-ai-profile" class="btn-icon" type="button" aria-label="Perfil">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="20" height="20"><circle cx="12" cy="8" r="4"/><path d="M4 21v-1a8 8 0 0 1 16 0v1"/></svg>
+            </button>
+            <div class="ai-header-tabs" role="tablist" aria-label="Área da SX">
+              <button class="ai-header-tab active" data-ai-tab="chat" role="tab" aria-selected="true" type="button">Bate-papo</button>
+              <button class="ai-header-tab" data-ai-tab="notifications" role="tab" aria-selected="false" type="button">
+                Notif.
+                <span id="notifications-dot" class="ai-header-tab__dot" hidden></span>
+              </button>
+            </div>
+            <button id="btn-ai-more" class="btn-icon" type="button" aria-label="Mais opções" aria-haspopup="true" aria-expanded="false">
+              <svg viewBox="0 0 24 24" fill="currentColor" width="18" height="18"><circle cx="5" cy="12" r="1.6"/><circle cx="12" cy="12" r="1.6"/><circle cx="19" cy="12" r="1.6"/></svg>
+            </button>
+          </div>
+
+          <div id="ai-pane-chat" class="ai-pane active">
+            <div id="ai-chat-history" class="ai-chat-history">
+              <!-- Messages go here -->
+              <div class="ai-msg ai-msg--system">
+                Olá! Eu sou a SX. Diga ou fale o que deseja agendar.
+              </div>
             </div>
           </div>
 
-          <div class="ai-chat-input-area">
+          <div id="ai-pane-notifications" class="ai-pane" style="display:none;">
+            <div id="notifications-list" class="notifications-list"></div>
+            <div id="notifications-empty" class="feature-empty feature-empty--compact">
+              <p>Nenhuma notificação ainda.</p>
+            </div>
+          </div>
+
+          <div id="ai-chat-input-area" class="ai-chat-input-area">
+            <button id="btn-ai-history" class="btn-icon ai-history-btn" type="button" title="Ver Sementes" aria-label="Ver Sementes">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="20" height="20"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+            </button>
             <div class="ai-input-wrapper">
               <input type="text" id="ai-input" placeholder="Pergunte à SX sobre seu calendário..." autocomplete="off"/>
               <button id="btn-ai-voice" class="btn-icon" type="button" title="Falar com a SX" aria-label="Falar com a SX">
@@ -297,6 +355,26 @@
           </div>
         </aside>
       </div>
+
+      <!-- ========== MOBILE TAB BAR (Far bottom, mobile only) ========== -->
+      <nav id="mobile-tabbar" class="mobile-tabbar" aria-label="Navegação principal">
+        <button class="mobile-tab" data-target="calendar" type="button">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="22" height="22"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+          <span>Calendário</span>
+        </button>
+        <button class="mobile-tab" data-target="seeds" type="button">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="22" height="22"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+          <span>Seed</span>
+        </button>
+        <button class="mobile-tab" data-target="trigger" type="button">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="22" height="22"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>
+          <span>Trigger</span>
+        </button>
+        <button class="mobile-tab mobile-tab--sx" data-chat-toggle type="button" aria-label="Abrir a SX" aria-controls="ai-sidebar" aria-expanded="false">
+          <img class="brand-logo brand-logo--tabbar" src="/sx-time-tasks-logo.png" alt="" />
+          <span>SX</span>
+        </button>
+      </nav>
     </div>
 
     <!-- Event Modal -->

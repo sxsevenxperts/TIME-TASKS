@@ -11,17 +11,43 @@ import { getEventsForDay, getEventsInRange, getCalendarColor } from './events.js
 import { openPopover, openModal } from './modal.js';
 import { updateSelectedDate } from './sidebar.js';
 
-const HOUR_HEIGHT = 60; // px por hora
+const HOUR_HEIGHT = 60; // px por hora (desktop)
+const HOUR_HEIGHT_COMPACT = 44; // px por hora (mobile, ≤900px)
 const TOTAL_HOURS = 24;
+const MOBILE_QUERY = '(max-width: 900px)';
 
 let currentView = 'week'; // 'day' | '3day' | 'week' | 'month'
 let currentDate = new Date();
 let nowIndicatorInterval = null;
 
+function isMobileViewport() {
+  return window.matchMedia(MOBILE_QUERY).matches;
+}
+
+function hourHeight() {
+  return isMobileViewport() ? HOUR_HEIGHT_COMPACT : HOUR_HEIGHT;
+}
+
+/**
+ * Decide a visão inicial por breakpoint: Mês no mobile (Semana com 7 colunas
+ * é ilegível em ~375px), Semana no desktop (comportamento já existente).
+ */
+function initialViewForViewport() {
+  return isMobileViewport() ? 'month' : 'week';
+}
+
+function syncViewSelectorButtons(view) {
+  document.querySelectorAll('.view-selector__btn').forEach(button => {
+    button.classList.toggle('active', button.dataset.view === view);
+  });
+}
+
 /**
  * Inicializa o calendário
  */
 export function initCalendar() {
+  currentView = initialViewForViewport();
+  syncViewSelectorButtons(currentView);
   renderView();
   setupViewSelector();
   setupNavigation();
@@ -161,14 +187,18 @@ function renderTimeGrid() {
   renderAllDayEvents(days);
   updateNowIndicator();
 
-  // Ajustar CSS grid columns
+  // Ajustar CSS grid columns. No mobile, colunas têm largura mínima para
+  // permitir scroll horizontal em vez de espremer o dia a ilegibilidade.
+  const columnTemplate = isMobileViewport() && days.length > 1
+    ? `repeat(${days.length}, minmax(92px, 1fr))`
+    : `repeat(${days.length}, 1fr)`;
   const dayColumns = document.getElementById('day-columns');
   const alldayCells = document.getElementById('allday-cells');
   if (dayColumns) {
-    dayColumns.style.gridTemplateColumns = `repeat(${days.length}, 1fr)`;
+    dayColumns.style.gridTemplateColumns = columnTemplate;
   }
   if (alldayCells) {
-    alldayCells.style.gridTemplateColumns = `repeat(${days.length}, 1fr)`;
+    alldayCells.style.gridTemplateColumns = columnTemplate;
   }
 }
 
@@ -184,7 +214,7 @@ function renderTimeLabels() {
   for (let h = 0; h < TOTAL_HOURS; h++) {
     const label = document.createElement('div');
     label.className = 'time-label';
-    label.style.height = `${HOUR_HEIGHT}px`;
+    label.style.height = `${hourHeight()}px`;
 
     const span = document.createElement('span');
     span.textContent = h === 0 ? '' : formatTime(h);
@@ -228,13 +258,13 @@ function renderDayColumns(days) {
     // Slots de hora (para clique)
     const slotsContainer = document.createElement('div');
     slotsContainer.className = 'day-column__slots';
-    slotsContainer.style.height = `${TOTAL_HOURS * HOUR_HEIGHT}px`;
+    slotsContainer.style.height = `${TOTAL_HOURS * hourHeight()}px`;
 
     // Linhas de hora
     for (let h = 0; h < TOTAL_HOURS; h++) {
       const slot = document.createElement('div');
       slot.className = 'hour-slot';
-      slot.style.height = `${HOUR_HEIGHT}px`;
+      slot.style.height = `${hourHeight()}px`;
       slot.dataset.hour = h;
       slot.dataset.date = toDateKey(date);
 
@@ -243,7 +273,7 @@ function renderDayColumns(days) {
         if (e.target.closest('.event-block')) return;
         const rect = slot.getBoundingClientRect();
         const clickY = e.clientY - rect.top;
-        const minuteOffset = Math.floor((clickY / HOUR_HEIGHT) * 60);
+        const minuteOffset = Math.floor((clickY / hourHeight()) * 60);
         const roundedMinutes = Math.floor(minuteOffset / 15) * 15;
         const startTime = formatTime(h, roundedMinutes);
 
@@ -284,8 +314,8 @@ function renderEventsInColumn(container, events) {
     const endMin = timeToMinutes(event.endTime);
     const duration = Math.max(endMin - startMin, 15); // mínimo 15min
 
-    const top = (startMin / 60) * HOUR_HEIGHT;
-    const height = Math.max((duration / 60) * HOUR_HEIGHT, 20);
+    const top = (startMin / 60) * hourHeight();
+    const height = Math.max((duration / 60) * hourHeight(), 20);
     const color = getCalendarColor(event.calendar);
 
     const { col, totalCols } = columns[i];
@@ -510,7 +540,7 @@ function updateNowIndicator() {
 
   const now = new Date();
   const minutes = now.getHours() * 60 + now.getMinutes();
-  const top = (minutes / 60) * HOUR_HEIGHT;
+  const top = (minutes / 60) * hourHeight();
 
   // Encontrar qual coluna tem hoje
   const dayColumns = document.querySelectorAll('.day-column');
@@ -555,5 +585,5 @@ function scrollToCurrentTime() {
 
   const now = new Date();
   const targetHour = Math.max(now.getHours() - 1, 0);
-  scrollContainer.scrollTop = targetHour * HOUR_HEIGHT;
+  scrollContainer.scrollTop = targetHour * hourHeight();
 }
