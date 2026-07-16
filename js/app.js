@@ -15,6 +15,7 @@ import { initSeeds } from './seeds.js';
 import { initBooking, isPublicBookingRoute } from './booking.js';
 import { initReminders } from './reminders.js';
 import { initVerseAccess } from './verse-access.js';
+import { initWeather } from './weather.js';
 
 /**
  * Inicializa toda a aplicação
@@ -47,6 +48,7 @@ function init() {
   initSeeds();
   initReminders();
   initVerseAccess();
+  initWeather();
   initNavigation();
   initAI({
     onEventCreated: () => refreshCalendar()
