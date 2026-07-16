@@ -165,7 +165,7 @@ O schema `supabase/schema.sql` foi aplicado ao Postgres do Supabase no Easypanel
 
 ### Isolamento de acesso
 
-O Time Tasks/SevenChat possui Supabase e autenticação próprios, separados dos demais aplicativos. O login e a senha pertencem exclusivamente a este projeto; as sessões não devem ser reutilizadas entre aplicações. O RLS garante que cada usuário consulte, crie, edite ou exclua apenas os próprios eventos.
+O RLS garante que cada usuário consulte, crie, edite ou exclua apenas os próprios eventos. O endpoint Supabase atual também está configurado no Smart Stoma, então o Auth ainda compartilha o mesmo cadastro global de e-mails. Até a migração para um compose Supabase dedicado, não considerar o login e a senha fisicamente isolados entre aplicativos.
 
 ### Checklist de publicação
 
@@ -183,6 +183,7 @@ O Time Tasks/SevenChat possui Supabase e autenticação próprios, separados dos
 - Criação e exclusão de evento no Supabase: aprovadas.
 - RLS: ativo para `select`, `insert`, `update` e `delete` por `auth.uid()`.
 - Evento técnico de validação: removido após o teste.
+- Isolamento de linhas por usuário: aprovado; isolamento físico do Auth entre aplicativos: pendente de Supabase dedicado.
 
 ---
 

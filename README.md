@@ -134,7 +134,7 @@ O schema [`supabase/schema.sql`](./supabase/schema.sql) está aplicado no Supaba
 
 ### Isolamento obrigatório
 
-Este aplicativo usa exclusivamente o projeto Supabase próprio provisionado no Easypanel. Não compartilhar URL, banco, tabela, sessão, usuário ou credencial com outros aplicativos. Cada conta acessa somente os próprios eventos por login e senha e pelas políticas RLS.
+Cada conta acessa somente os próprios eventos por login e senha e pelas políticas RLS. O endpoint Supabase atualmente configurado também foi encontrado no Smart Stoma; portanto, os dados de `public.events` estão isolados, mas o namespace de Auth ainda é compartilhado. Para isolamento absoluto de cadastro, e-mail e senha entre aplicativos, provisionar um compose Supabase dedicado ao Time Tasks e substituir a URL e as chaves do build.
 
 ---
 

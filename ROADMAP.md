@@ -122,9 +122,9 @@
 
 ---
 
-### Fase 8 ✅ Infraestrutura e Deploy (Easypanel + Supabase)
+### Fase 8 ⚠️ Infraestrutura e Deploy (Easypanel + Supabase)
 - **Hospedagem Frontend**: Build pelo `Dockerfile` com Node 22 Alpine, Vite e `serve` estático na porta interna `3000`.
-- **Banco de Dados Isolado**: Deploy do backend Supabase via container no Easypanel (SaaS 100% isolado).
+- **Banco de Dados com RLS**: Eventos isolados por `auth.uid()` no Supabase self-hosted do Easypanel.
 - **Segurança de Variáveis (Correção de Falha)**: 
   - *Falha Apontada*: O arquivo `.env.local` é bloqueado pelo `.gitignore`. Logo, quando o Easypanel puxava o código do GitHub para fazer o build, as chaves do Supabase não existiam lá, quebrando a conexão. 
   - *Caminho de Resolução*: Para aplicações Frontend (onde a chave `ANON_KEY` é pública por design), a melhor prática para deploys automatizados sem precisar configurar o painel do servidor é utilizar um arquivo `.env.production` commitado no repositório.
@@ -134,7 +134,7 @@
 - **Roteamento corrigido**: O domínio apontava para a porta `80`; agora direciona corretamente para `startups_timetasks:3000`.
 - **Banco operacional**: O schema idempotente `supabase/schema.sql` foi aplicado ao Postgres self-hosted; `public.events`, RLS, índices e grants estão ativos.
 - **Validação real**: Login aprovado e evento criado/excluído no banco pelo frontend publicado em 16/07/2026.
-- **Regra de arquitetura**: Supabase, Auth, sessões, credenciais e tabela `events` são exclusivos deste aplicativo; não compartilhar recursos com outros projetos. O isolamento entre usuários é garantido pelas políticas RLS baseadas em `auth.uid()`.
+- **Falha crítica de isolamento identificada**: O mesmo endpoint Supabase está configurado no Smart Stoma. O RLS protege os eventos, mas cadastro de e-mail, senha e sessão pertencem ao mesmo namespace Auth. Isolamento absoluto exige compose, domínio, chaves e banco Supabase dedicados ao Time Tasks.
 - **Segurança corrigida no repositório**: scripts administrativos não carregam mais service-role key hardcoded; usar `SUPABASE_URL` e `SUPABASE_SERVICE_ROLE_KEY` somente no ambiente seguro.
 
 ### Fase 8.1 ✅ Gate de publicação concluído
@@ -144,6 +144,14 @@
 3. Login e carregamento do calendário validados no navegador.
 4. Criação e exclusão de evento validadas com retorno real do Supabase.
 5. Commit publicado no deploy: `c48b234a5ed10198880ad325125195df78d63143`.
+
+### Fase 8.2 🚨 Isolamento absoluto de Auth — obrigatório
+
+1. Provisionar `supabase-timetasks` como compose independente no Easypanel.
+2. Gerar novos `JWT_SECRET`, anon key, service-role key e senha do Postgres; não reutilizar os segredos do stack atual.
+3. Publicar domínio exclusivo do Supabase e atualizar `VITE_SUPABASE_URL`/`VITE_SUPABASE_ANON_KEY`.
+4. Aplicar `supabase/schema.sql` no novo Postgres.
+5. Criar ou migrar a conta autorizada e repetir login, restauração de sessão e CRUD real.
 
 ## Fase 9 🔮 Futuro
 
