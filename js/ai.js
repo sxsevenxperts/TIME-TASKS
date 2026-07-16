@@ -8,6 +8,7 @@ import { showToast } from './modal.js';
 let initialized = false;
 let sending = false;
 let recognition = null;
+let historyLoadVersion = 0;
 
 function historyElement() {
   return document.getElementById('ai-chat-history');
@@ -53,17 +54,23 @@ async function persistMessage(role, content, action = null) {
 }
 
 async function loadHistory() {
+  const loadVersion = ++historyLoadVersion;
   const user = getCurrentUser();
   const history = historyElement();
   if (!history) return;
-  history.innerHTML = '';
-  if (!user || !supabase) return renderWelcome();
+  if (!user || !supabase) {
+    if (loadVersion !== historyLoadVersion) return;
+    history.innerHTML = '';
+    return renderWelcome();
+  }
   const { data, error } = await supabase
     .from('time_tasks_sx_messages')
     .select('role,content,action,created_at')
     .eq('user_id', user.id)
     .order('created_at', { ascending: false })
     .limit(40);
+  if (loadVersion !== historyLoadVersion) return;
+  history.innerHTML = '';
   if (error) {
     console.error('Erro ao carregar histórico da SX:', error);
     return renderWelcome();
@@ -235,6 +242,7 @@ export function initAI(callbacks = {}) {
   document.addEventListener('timetasks:session', event => {
     if (event.detail?.user) void loadHistory();
     else {
+      historyLoadVersion += 1;
       historyElement().innerHTML = '';
       renderWelcome();
     }
