@@ -1,4 +1,4 @@
-# ⏰ Time Tasks
+# ⏰ Time Tasks / SevenChat
 
 > Um calendário web moderno e elegante, inspirado no [Toki Calendar](https://toki.day), construído com HTML, CSS e JavaScript puro.
 
@@ -101,11 +101,10 @@ time-tasks/
 ├── index.html          # Página principal
 ├── package.json        # Dependências e scripts
 ├── vite.config.js      # Configuração do Vite
-├── src/
-│   ├── main.js         # Ponto de entrada da aplicação
-│   ├── styles/         # Arquivos CSS
-│   └── modules/        # Módulos JavaScript
-├── public/             # Assets estáticos
+├── js/                 # Módulos do front-end
+├── style.css           # Tokens e componentes visuais
+├── layout.css          # Layout, responsividade e SevenChat
+├── .env.production     # Configuração pública do build (URL/anon key)
 ├── README.md           # Este arquivo
 ├── ROADMAP.md          # Roadmap do projeto
 └── MANUAL.md           # Manual do usuário
@@ -115,7 +114,7 @@ time-tasks/
 
 ## 📄 Documentação
 
-- 📖 [Manual do Usuário](./MANUAL.md) — Guia completo de uso da aplicação
+- 📖 [Manual do Usuário](./MANUAL.md) — Guia completo de uso, deploy e SevenChat
 - 🗺️ [Roadmap](./ROADMAP.md) — Fases de desenvolvimento e funcionalidades futuras
 
 ---

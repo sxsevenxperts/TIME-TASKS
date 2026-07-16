@@ -99,7 +99,7 @@
 
 ---
 
-## Fase 7 ✅ IA (SX) e Autenticação (SaaS Completo)
+## Fase 7 ⚠️ IA (SX), Autenticação e SevenChat
 
 > Segurança, isolamento de dados e assistente de inteligência artificial.
 
@@ -108,6 +108,10 @@
 - **SX IA (Integração Gemini)** — Chat inteligente embutido na interface
 - **Criação de Eventos por Linguagem Natural** — A IA interpreta frases ("reunião amanhã às 14h") e salva automaticamente no calendário
 - **Deploy no Servidor Easypanel** — Banco de dados hospedado em servidor Cloud
+- **SevenChat no front-end** — Sidebar com toggle, foco automático, estado acessível e layout responsivo
+- **Tratamento de inicialização** — Configuração Supabase inválida não derruba o shell; sessão inicial é restaurada explicitamente
+- **Persistência confirmada** — Criação, edição, exclusão e criação por IA aguardam o retorno do Supabase antes de exibir sucesso
+- **Pendente de ambiente** — O Supabase remoto ainda precisa permitir o domínio real do frontend no CORS; `Access-Control-Allow-Origin: *` com credenciais causa `Failed to fetch` no navegador e mantém o login bloqueado
 
 ---
 
@@ -118,7 +122,7 @@
 
 ---
 
-### Fase 8 ✅ Infraestrutura e Deploy (Easypanel + Supabase)
+### Fase 8 ⚠️ Infraestrutura e Deploy (Easypanel + Supabase)
 - **Hospedagem Frontend**: Configurado build via Nixpacks (Vite + `serve` estático) no servidor Easypanel.
 - **Banco de Dados Isolado**: Deploy do backend Supabase via container no Easypanel (SaaS 100% isolado).
 - **Segurança de Variáveis (Correção de Falha)**: 
@@ -126,6 +130,16 @@
   - *Caminho de Resolução*: Para aplicações Frontend (onde a chave `ANON_KEY` é pública por design), a melhor prática para deploys automatizados sem precisar configurar o painel do servidor é utilizar um arquivo `.env.production` commitado no repositório.
   - *Ação Tomada*: O arquivo `.env.production` foi criado e enviado ao GitHub, garantindo que o build do Easypanel agora tenha acesso nativo às chaves do Supabase (URL e ANON_KEY) automaticamente, sem intervenção manual.
 - **Autenticação Segura**: Melhorias na UX de Login (Loading overlay para evitar flicker) and feedback visual de exigência de confirmação de e-mail.
+- **Falha atual identificada**: O endpoint remoto responde `200` via `curl`, mas o navegador bloqueia a autenticação por CORS incompatível. Corrigir no gateway/Supabase com `Access-Control-Allow-Origin` igual ao domínio publicado do frontend e `Access-Control-Allow-Credentials: true`; não usar `*` nesse cenário.
+- **Segurança corrigida no repositório**: scripts administrativos não carregam mais service-role key hardcoded; usar `SUPABASE_URL` e `SUPABASE_SERVICE_ROLE_KEY` somente no ambiente seguro.
+
+### Fase 8.1 🔧 Gate de publicação — próximo passo obrigatório
+
+1. Configurar o domínio final do frontend na lista de origens permitidas do Supabase/EasyPanel.
+2. Rebuild e redeploy do frontend.
+3. Validar login, restauração de sessão, logout e abertura do SevenChat no navegador.
+4. Validar criação, edição e exclusão de evento com retorno real do banco.
+5. Registrar URL, horário do deploy e `HEAD` publicado no handoff.
 
 ## Fase 9 🔮 Futuro
 

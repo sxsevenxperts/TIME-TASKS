@@ -24,12 +24,14 @@ const CALENDARS_KEY = 'time-tasks-calendars-visibility';
 export function loadCalendarVisibility() {
   const saved = localStorage.getItem(CALENDARS_KEY);
   if (saved) {
-    const parsed = JSON.parse(saved);
-    Object.keys(parsed).forEach(key => {
-      if (CALENDARS[key]) {
-        CALENDARS[key].visible = parsed[key];
-      }
-    });
+    try {
+      const parsed = JSON.parse(saved);
+      Object.keys(parsed).forEach(key => {
+        if (CALENDARS[key]) CALENDARS[key].visible = parsed[key] !== false;
+      });
+    } catch {
+      localStorage.removeItem(CALENDARS_KEY);
+    }
   }
 }
 
@@ -53,7 +55,7 @@ export function toggleCalendarVisibility(calKey) {
  */
 export async function loadEventsFromServer() {
   const user = getCurrentUser();
-  if (!user) {
+  if (!user || !supabase) {
     localEvents = [];
     return [];
   }
@@ -94,7 +96,7 @@ export function loadEvents() {
  */
 export async function createEvent(eventData) {
   const user = getCurrentUser();
-  if (!user) return null;
+  if (!user || !supabase) return null;
 
   const newEvent = {
     user_id: user.id,
@@ -140,6 +142,7 @@ export async function createEvent(eventData) {
  * Atualiza um evento existente
  */
 export async function updateEvent(id, eventData) {
+  if (!supabase || !getCurrentUser()) return null;
   const idx = localEvents.findIndex(e => e.id === id);
   if (idx === -1) return null;
 
@@ -171,6 +174,7 @@ export async function updateEvent(id, eventData) {
  * Remove um evento
  */
 export async function deleteEvent(id) {
+  if (!supabase || !getCurrentUser()) return false;
   const { error } = await supabase
     .from('events')
     .delete()
@@ -178,10 +182,11 @@ export async function deleteEvent(id) {
 
   if (error) {
     console.error('Erro ao deletar evento:', error);
-    return;
+    return false;
   }
 
   localEvents = localEvents.filter(e => e.id !== id);
+  return true;
 }
 
 /**

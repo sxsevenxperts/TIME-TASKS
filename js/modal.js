@@ -45,16 +45,17 @@ export function initModal({ onEventChanged }) {
   });
 
   // Submit do formulário
-  form?.addEventListener('submit', (e) => {
+  form?.addEventListener('submit', async (e) => {
     e.preventDefault();
-    handleSubmit();
+    await handleSubmit();
   });
 
   // Botão de excluir
-  deleteBtn?.addEventListener('click', () => {
+  deleteBtn?.addEventListener('click', async () => {
     const id = document.getElementById('event-id')?.value;
     if (id) {
-      deleteEvent(id);
+      const deleted = await deleteEvent(id);
+      if (!deleted) return showToast('Não foi possível excluir o evento', 'error');
       closeModal();
       showToast('Evento excluído', 'success');
       if (onEventChange) onEventChange();
@@ -73,10 +74,11 @@ export function initModal({ onEventChanged }) {
     closePopover();
     if (id) openModal(id);
   });
-  document.getElementById('popover-delete')?.addEventListener('click', () => {
+  document.getElementById('popover-delete')?.addEventListener('click', async () => {
     const id = document.getElementById('event-popover')?.dataset.eventId;
     if (id) {
-      deleteEvent(id);
+      const deleted = await deleteEvent(id);
+      if (!deleted) return showToast('Não foi possível excluir o evento', 'error');
       closePopover();
       showToast('Evento excluído', 'success');
       if (onEventChange) onEventChange();
@@ -172,7 +174,7 @@ export function closeModal() {
 /**
  * Processa o envio do formulário
  */
-function handleSubmit() {
+async function handleSubmit() {
   const id = document.getElementById('event-id')?.value;
   const eventData = {
     title: document.getElementById('event-title')?.value?.trim(),
@@ -187,10 +189,12 @@ function handleSubmit() {
   if (!eventData.title) return;
 
   if (id) {
-    updateEvent(id, eventData);
+    const saved = await updateEvent(id, eventData);
+    if (!saved) return showToast('Não foi possível atualizar o evento', 'error');
     showToast('Evento atualizado', 'success');
   } else {
-    createEvent(eventData);
+    const saved = await createEvent(eventData);
+    if (!saved) return showToast('Não foi possível criar o evento', 'error');
     showToast('Evento criado', 'success');
   }
 

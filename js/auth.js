@@ -1,8 +1,15 @@
-import { supabase } from './supabase.js';
+import { supabase, supabaseConfigError } from './supabase.js';
 import { loadEventsFromServer } from './events.js';
 import { refreshCalendar } from './calendar.js';
 
 let currentUser = null;
+
+function withTimeout(promise, ms, message) {
+  return Promise.race([
+    promise,
+    new Promise((_, reject) => setTimeout(() => reject(new Error(message)), ms))
+  ]);
+}
 
 export async function initAuth() {
   const authOverlay = document.getElementById('auth-overlay');
@@ -16,6 +23,20 @@ export async function initAuth() {
   const submitBtn = document.getElementById('auth-submit');
   
   let isLoginMode = true;
+
+  const loadingOverlay = document.getElementById('loading-overlay');
+
+  const finishLoading = () => {
+    if (!loadingOverlay) return;
+    loadingOverlay.style.opacity = '0';
+    setTimeout(() => loadingOverlay.remove(), 300);
+  };
+
+  if (supabaseConfigError || !supabase) {
+    authError.textContent = supabaseConfigError || 'Serviço de autenticação indisponível.';
+    finishLoading();
+    return;
+  }
 
   // Toggle between Login and Register
   toggleModeBtn.addEventListener('click', (e) => {
@@ -48,10 +69,18 @@ export async function initAuth() {
       submitBtn.textContent = 'Aguarde...';
       
       if (isLoginMode) {
-        const { error } = await supabase.auth.signInWithPassword({ email, password });
+        const { error } = await withTimeout(
+          supabase.auth.signInWithPassword({ email, password }),
+          12000,
+          'O serviço demorou para responder. Verifique o CORS e a disponibilidade do Supabase.'
+        );
         if (error) throw error;
       } else {
-        const { data, error } = await supabase.auth.signUp({ email, password });
+        const { data, error } = await withTimeout(
+          supabase.auth.signUp({ email, password }),
+          12000,
+          'O serviço demorou para responder. Verifique o CORS e a disponibilidade do Supabase.'
+        );
         if (error) throw error;
         
         if (data.user && data.user.identities && data.user.identities.length === 0) {
@@ -77,26 +106,27 @@ export async function initAuth() {
     }
   });
 
-  // Listen to Auth State Changes
-  supabase.auth.onAuthStateChange(async (event, session) => {
-    const loadingOverlay = document.getElementById('loading-overlay');
-    if (loadingOverlay) {
-        loadingOverlay.style.opacity = '0';
-        setTimeout(() => loadingOverlay.style.display = 'none', 300);
-    }
-
+  // Atualiza a interface tanto no primeiro carregamento quanto após login/logout.
+  let lastSessionId = null;
+  const applySession = async (session) => {
     if (session && session.user) {
+      if (lastSessionId === session.user.id) return;
+      lastSessionId = session.user.id;
       currentUser = session.user;
       
       // Hide Auth UI, Show App
       authOverlay.style.display = 'none';
       appLayout.style.visibility = 'visible';
       appLayout.style.opacity = '1';
+      finishLoading();
+      submitBtn.disabled = false;
+      submitBtn.textContent = isLoginMode ? 'Entrar' : 'Criar Conta';
 
       // Carregar os eventos do servidor
       await loadEventsFromServer();
       refreshCalendar();
     } else {
+      lastSessionId = null;
       currentUser = null;
       // Show Auth UI, Hide App
       authOverlay.style.display = 'flex';
@@ -104,8 +134,22 @@ export async function initAuth() {
       appLayout.style.opacity = '0';
       submitBtn.disabled = false;
       submitBtn.textContent = isLoginMode ? 'Entrar' : 'Criar Conta';
+      finishLoading();
     }
+  };
+
+  supabase.auth.onAuthStateChange((_event, session) => {
+    // O callback não fica bloqueado por uma consulta ao banco.
+    void applySession(session);
   });
+
+  const { data, error: sessionError } = await supabase.auth.getSession();
+  if (sessionError) {
+    authError.textContent = 'Não foi possível restaurar sua sessão. Faça login novamente.';
+    finishLoading();
+  } else {
+    await applySession(data.session);
+  }
 
   // Bind Logout Button
   const logoutBtn = document.getElementById('btn-logout');
@@ -121,5 +165,5 @@ export function getCurrentUser() {
 }
 
 export async function signOut() {
-  await supabase.auth.signOut();
+  if (supabase) await supabase.auth.signOut();
 }

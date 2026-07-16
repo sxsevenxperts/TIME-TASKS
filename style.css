@@ -54,6 +54,8 @@
   --glass-bg: rgba(255, 255, 255, 0.72);
   --glass-border: rgba(255, 255, 255, 0.5);
   --glass-blur: 20px;
+  --color-surface: #ffffff;
+  --color-border: #e5e5ea;
 }
 
 /* ── Dark Theme ────────────────────────────────────────────── */
@@ -92,6 +94,8 @@
 
   --glass-bg: rgba(44, 44, 46, 0.72);
   --glass-border: rgba(255, 255, 255, 0.08);
+  --color-surface: #2c2c2e;
+  --color-border: #38383a;
 }
 
 /* ── Base Reset ────────────────────────────────────────────── */

@@ -47,6 +47,8 @@ Para garantir que ninguém tenha acesso aos seus eventos, o sistema agora exige 
 2. Clique em **Entrar**.
 3. Seus eventos serão baixados instantaneamente do servidor (Supabase) para o calendário.
 
+> Se o botão ficar em “Aguarde...” ou aparecer “Failed to fetch”, o problema não é a senha: o domínio do frontend ainda não está autorizado no CORS do Supabase. No EasyPanel, adicione o domínio publicado como origem permitida e mantenha `Access-Control-Allow-Credentials: true` sem usar `*` como origem.
+
 ### Como Sair (Logout)
 - Na barra lateral esquerda, expanda o menu de **Configurações**.
 - Clique na opção **Conta**.
@@ -58,8 +60,8 @@ Para garantir que ninguém tenha acesso aos seus eventos, o sistema agora exige 
 
 A interface do Time Tasks é dividida em áreas principais:
 
-### 🤖 Assistente SX (IA Gemini)
-- Fica localizada na aba **SX** no canto superior direito.
+### 🤖 SevenChat / Assistente SX (IA Gemini)
+- Abra pelo botão de chat na faixa vertical esquerda; o painel aparece à direita e recebe foco automaticamente.
 - Basta abrir o chat, digitar algo como *"Tenho médico amanhã às 15h"* e pressionar Enter.
 - A SX analisará seu texto e criará o evento no calendário automaticamente!
 - **Nota:** Você precisa fornecer a sua chave de API do Gemini no menu de Configurações (IA Gemini) para habilitar o processamento avançado.
@@ -156,6 +158,14 @@ O frontend desta aplicação foi desenhado para ser implantado diretamente via *
 **Correção Recente (Variáveis de Ambiente):**
 Inicialmente, as chaves do Supabase (URL e ANON_KEY) foram configuradas em um arquivo `.env.local` para testes, o que fazia com que o Git ignorasse o arquivo. Isso resultava em um erro onde o Easypanel compilava o código sem as credenciais do banco de dados. 
 Para resolver esse gargalo sem que o administrador precise preencher manualmente chaves no painel do servidor, foi adotado o arquivo `.env.production`, que é versionado nativamente. Isso garante que cada push (commit) na `main` construa perfeitamente a integração de dados no servidor SaaS.
+
+### Checklist de publicação
+
+- Confirmar `VITE_SUPABASE_URL` e `VITE_SUPABASE_ANON_KEY` no build.
+- Confirmar CORS do Supabase com o domínio publicado do frontend; wildcard não é compatível com credenciais.
+- Abrir o SevenChat e confirmar `aria-expanded=true`/painel visível.
+- Testar login, logout e uma operação CRUD real antes de considerar o deploy concluído.
+- Nunca colocar `SUPABASE_SERVICE_ROLE_KEY` no frontend ou em arquivos versionados; o script administrativo exige essa variável somente no ambiente local seguro.
 
 ---
 

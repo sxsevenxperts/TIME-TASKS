@@ -54,13 +54,18 @@ export function initNavigation() {
   // Chat Toggle
   if (btnToggleChat && aiSidebar) {
     btnToggleChat.addEventListener('click', () => {
-      const isVisible = window.getComputedStyle(aiSidebar).display !== 'none';
+      const isVisible = aiSidebar.classList.contains('ai-sidebar--open');
       if (isVisible) {
-        aiSidebar.style.display = 'none';
+        aiSidebar.classList.remove('ai-sidebar--open');
         btnToggleChat.classList.remove('active');
+        btnToggleChat.setAttribute('aria-expanded', 'false');
+        aiSidebar.setAttribute('aria-hidden', 'true');
       } else {
-        aiSidebar.style.display = 'flex';
+        aiSidebar.classList.add('ai-sidebar--open');
         btnToggleChat.classList.add('active');
+        btnToggleChat.setAttribute('aria-expanded', 'true');
+        aiSidebar.setAttribute('aria-hidden', 'false');
+        document.getElementById('ai-input')?.focus();
       }
     });
   }

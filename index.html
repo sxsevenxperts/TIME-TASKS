@@ -63,7 +63,7 @@
       <nav class="nav-strip">
         <div class="nav-strip__top">
           <!-- Toki Logo / Chat Toggle -->
-          <button class="nav-btn" id="btn-toggle-chat" title="Toki Chat">
+          <button class="nav-btn" id="btn-toggle-chat" type="button" title="Abrir SevenChat" aria-label="Abrir SevenChat" aria-controls="ai-sidebar" aria-expanded="false">
             <svg viewBox="0 0 32 32" fill="none" width="24" height="24">
               <rect width="32" height="32" rx="8" fill="var(--color-primary)"/>
               <path d="M8 12h16M8 16h10M8 20h13" stroke="#fff" stroke-width="2" stroke-linecap="round"/>
@@ -273,7 +273,7 @@
         </main>
 
         <!-- ========== AI CHAT (Right Sidebar) ========== -->
-        <aside id="ai-sidebar" class="ai-sidebar">
+        <aside id="ai-sidebar" class="ai-sidebar" aria-label="SevenChat" aria-hidden="true">
           <div class="ai-chat-header" style="display: flex; justify-content: center; align-items: center; padding: 16px;">
             <div class="ai-logo-pill" style="display: flex; align-items: center; gap: 8px; background: rgba(255,255,255,0.05); padding: 8px 16px; border-radius: 20px; font-weight: 500; font-size: 0.9rem;">
               <svg viewBox="0 0 32 32" fill="none" width="20" height="20">
