@@ -3,6 +3,9 @@
   "version": "1.0.0",
   "description": "Time Tasks — Aplicativo de calendário inteligente inspirado no Toki",
   "type": "module",
+  "engines": {
+    "node": ">=22.0.0"
+  },
   "scripts": {
     "dev": "vite",
     "build": "vite build",
@@ -13,9 +16,7 @@
     "vite": "^6.0.0"
   },
   "dependencies": {
-    "@google/genai": "^2.11.0",
     "@supabase/supabase-js": "^2.110.6",
-    "puppeteer": "^25.3.0",
     "serve": "^14.2.6"
   }
 }
