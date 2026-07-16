@@ -6,20 +6,23 @@
 /* ── CSS Custom Properties ─────────────────────────────────── */
 :root {
   /* Colors - Light Theme */
-  --bg-primary: #f6f7f8;
+  --bg-primary: #f5f8f1;
   --bg-secondary: #ffffff;
-  --bg-tertiary: #f0f0f2;
-  --bg-hover: rgba(0, 0, 0, 0.04);
+  --bg-tertiary: #edf3e7;
+  --bg-hover: rgba(67, 124, 0, 0.07);
 
   --text-primary: #1c1c1e;
   --text-secondary: #636366;
   --text-tertiary: #8e8e93;
   --text-inverse: #ffffff;
 
-  --color-primary: #5856D6;
-  --color-primary-hover: #4a48c4;
-  --color-primary-soft: rgba(88, 86, 214, 0.1);
-  --color-primary-subtle: rgba(88, 86, 214, 0.06);
+  --color-primary: #78c900;
+  --color-primary-hover: #5faa00;
+  --color-primary-soft: rgba(120, 201, 0, 0.14);
+  --color-primary-subtle: rgba(120, 201, 0, 0.07);
+  --color-accent: #dff700;
+  --color-secondary: #00b95f;
+  --brand-gradient: linear-gradient(135deg, #00bd5d 0%, #9ee600 52%, #efff00 100%);
 
   --color-danger: #FF3B30;
   --color-danger-hover: #e0342b;
@@ -28,8 +31,8 @@
   --color-success: #34C759;
   --color-success-soft: rgba(52, 199, 89, 0.1);
 
-  --border-color: #e5e5ea;
-  --border-color-strong: #d1d1d6;
+  --border-color: #dfe8d7;
+  --border-color-strong: #c5d4b8;
 
   --now-line-color: #FF3B30;
 
@@ -60,9 +63,9 @@
 
 /* ── Dark Theme ────────────────────────────────────────────── */
 [data-theme="dark"] {
-  --bg-primary: #1c1c1e;
-  --bg-secondary: #2c2c2e;
-  --bg-tertiary: #3a3a3c;
+  --bg-primary: #050705;
+  --bg-secondary: #0b100a;
+  --bg-tertiary: #131a11;
   --bg-hover: rgba(255, 255, 255, 0.06);
 
   --text-primary: #f5f5f7;
@@ -70,10 +73,12 @@
   --text-tertiary: #8e8e93;
   --text-inverse: #1c1c1e;
 
-  --color-primary: #7B7BFF;
-  --color-primary-hover: #6a6af0;
-  --color-primary-soft: rgba(123, 123, 255, 0.15);
-  --color-primary-subtle: rgba(123, 123, 255, 0.08);
+  --color-primary: #a6ed00;
+  --color-primary-hover: #c8ff2e;
+  --color-primary-soft: rgba(166, 237, 0, 0.14);
+  --color-primary-subtle: rgba(166, 237, 0, 0.08);
+  --color-accent: #efff00;
+  --color-secondary: #00d36f;
 
   --color-danger: #FF453A;
   --color-danger-hover: #ff6259;
@@ -82,8 +87,8 @@
   --color-success: #30D158;
   --color-success-soft: rgba(48, 209, 88, 0.15);
 
-  --border-color: #38383a;
-  --border-color-strong: #48484a;
+  --border-color: #25331f;
+  --border-color-strong: #3f562f;
 
   --now-line-color: #FF453A;
 
@@ -92,10 +97,10 @@
   --shadow-lg: 0 8px 30px rgba(0, 0, 0, 0.4);
   --shadow-xl: 0 16px 50px rgba(0, 0, 0, 0.5);
 
-  --glass-bg: rgba(44, 44, 46, 0.72);
-  --glass-border: rgba(255, 255, 255, 0.08);
-  --color-surface: #2c2c2e;
-  --color-border: #38383a;
+  --glass-bg: rgba(8, 12, 7, 0.88);
+  --glass-border: rgba(166, 237, 0, 0.1);
+  --color-surface: #0b100a;
+  --color-border: #25331f;
 }
 
 /* ── Base Reset ────────────────────────────────────────────── */
@@ -218,12 +223,19 @@ input, select, textarea {
   gap: 8px;
   padding: 10px 20px;
   background: var(--color-primary);
-  color: #fff;
+  color: #071000;
   border-radius: var(--radius-md);
   font-weight: 600;
   font-size: 0.875rem;
   transition: all var(--transition-fast);
   border: none;
+}
+
+.btn-primary:disabled,
+.btn-secondary:disabled {
+  cursor: not-allowed;
+  opacity: 0.55;
+  transform: none;
 }
 
 .btn-primary:hover {

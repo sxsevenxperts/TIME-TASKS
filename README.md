@@ -1,181 +1,115 @@
-# ⏰ Time Tasks / SevenChat
+# SX Time Tasks
 
-> Um calendário web moderno e elegante, inspirado no [Toki Calendar](https://toki.day), construído com HTML, CSS e JavaScript puro.
+Aplicativo privado de agenda, tarefas e reservas com a assistente SX, autenticação Supabase e deploy no EasyPanel.
 
-![Time Tasks Preview](./docs/screenshot.png)
+![Identidade visual do SX Time Tasks](./public/sx-time-tasks-logo.png)
 
----
+## Estado atual
 
-## 📋 Sobre o Projeto
+- Versão: `2.0.0`
+- Produção: [startups-timetasks.qfotry.easypanel.host](https://startups-timetasks.qfotry.easypanel.host/)
+- Runtime: Node.js 22 em Docker/EasyPanel
+- Dados: Supabase self-hosted com PostgreSQL, Auth e RLS
+- IA: SX via endpoint autenticado no servidor; a chave do provedor não chega ao navegador
+- Modo demonstração: removido
 
-**Time Tasks** é uma aplicação de calendário SaaS com autenticação por e-mail e senha, persistência de eventos no Supabase self-hosted e interface moderna com múltiplas visões, temas dark/light e SevenChat.
+## Funcionalidades entregues
 
-Ideal para quem busca uma ferramenta de organização pessoal leve, rápida e visualmente agradável.
+- Login e criação de conta por e-mail e senha.
+- Lista privada de membros do aplicativo (`time_tasks_members`).
+- Calendário em Dia, 3 Dias, Semana e Mês.
+- CRUD de eventos, cinco calendários e verificação de conflitos.
+- Tarefas/Sementes com prazo, lembrete, conclusão, edição e exclusão.
+- SX por texto e voz para criar eventos, tarefas e lembretes.
+- Páginas públicas de agendamento, horários, reservas e cancelamento.
+- Preferências persistentes: perfil, tema, fuso, calendários, IA e alertas.
+- Som no horário do lembrete enquanto o aplicativo estiver aberto.
+- Notificação do navegador quando a permissão estiver ativa.
+- Versículos pela manhã e à tarde, com histórico antirrepetição por usuário.
+- Identidade visual preta, verde e amarelo-neon baseada na marca SX.
+- Manifesto web e ícone do aplicativo.
 
----
+## Arquitetura
 
-## ✨ Funcionalidades
+```text
+Navegador
+  ├─ Supabase Auth + REST (anon key pública + JWT do usuário)
+  ├─ /api/sx (JWT + vínculo time_tasks_members + limite de requisições)
+  └─ /api/verse (JWT + vínculo time_tasks_members)
 
-- 📅 **Calendário Semanal** — Visualização principal com grade de horários
-- 🌓 **Modo Dark / Light** — Alternância de tema com detecção automática do sistema
-- 🗓️ **Mini-Calendário** — Navegação rápida pela sidebar
-- ✏️ **CRUD de Eventos** — Criar, visualizar, editar e excluir eventos
-- 👁️ **Múltiplas Visões** — Dia, 3 Dias, Semana e Mês
-- ⌨️ **Atalhos de Teclado** — Navegação rápida sem usar o mouse
-- 🔐 **Supabase Auth** — Acesso autenticado por e-mail e senha
-- ☁️ **Persistência PostgreSQL** — Eventos salvos no Supabase self-hosted
-- 🛡️ **RLS** — Cada usuário acessa somente os próprios eventos
-- 🎨 **5 Calendários Coloridos** — Pessoal, Trabalho, Saúde, Estudos e Social
-- 🔍 **Detecção de Conflitos** — Alerta visual para eventos sobrepostos
-- 🪟 **Glassmorphism UI** — Design moderno com efeitos de vidro e transparência
-- 📱 **Responsivo** — Adaptado para diferentes tamanhos de tela
-- 🔔 **Toast Notifications** — Feedback visual para todas as ações
+Servidor Node
+  ├─ arquivos de dist/
+  ├─ chave privada da IA somente no ambiente
+  └─ cabeçalhos CSP, Permissions-Policy e proteção de conteúdo
 
----
+Supabase
+  ├─ Auth
+  ├─ tabelas public.time_tasks_*
+  └─ RLS por auth.uid()
+```
 
-## 🛠️ Tech Stack
+As tabelas do Time Tasks usam o prefixo `time_tasks_*`. Isso evita colisões com o SevenChat e outros produtos existentes no mesmo PostgreSQL. A tabela legada `public.sx_messages` do SevenChat não é alterada.
 
-| Tecnologia | Descrição |
-|---|---|
-| **HTML5** | Estrutura semântica da aplicação |
-| **CSS3** | Estilização com Custom Properties, Glassmorphism, animações |
-| **JavaScript ES6+** | Lógica da aplicação com módulos nativos |
-| **Vite** | Build tool e dev server com Hot Module Replacement |
-| **Supabase** | Auth, PostgreSQL, API REST e Row Level Security |
-| **Docker / Easypanel** | Build e hospedagem do frontend em Node 22 Alpine |
+### Limite de isolamento atual
 
----
+Dados, APIs e acesso ao Time Tasks estão isolados por namespace, vínculo de membro e RLS. O serviço Supabase/Auth ainda é fisicamente compartilhado com outros produtos no servidor. Uma instância Supabase dedicada continua no roadmap caso seja exigido isolamento físico de banco, Auth, chaves e infraestrutura.
 
-## 🚀 Instalação e Execução
+## Banco de dados
 
-### Pré-requisitos
+O arquivo [`supabase/schema.sql`](./supabase/schema.sql) é idempotente e cria:
 
-- [Node.js](https://nodejs.org/) (v22 ou superior)
-- [npm](https://www.npmjs.com/) (incluído com Node.js)
+- `time_tasks_members`
+- `time_tasks_events`
+- `time_tasks_settings`
+- `time_tasks_seeds`
+- `time_tasks_booking_pages`
+- `time_tasks_bookings`
+- `time_tasks_sx_messages`
+- `time_tasks_verse_deliveries`
 
-### Passos
+Todas as oito tabelas têm RLS ativo. O schema também migra eventos da antiga `public.events` quando ela existir, sem apagar ou modificar a origem.
+
+## Desenvolvimento local
+
+Requisitos: Node.js 22+ e npm.
 
 ```bash
-# 1. Clone o repositório
-git clone https://github.com/seu-usuario/time-tasks.git
-
-# 2. Entre na pasta do projeto
-cd time-tasks
-
-# 3. Instale as dependências
 npm ci
-
-# 4. Inicie o servidor de desenvolvimento
 npm run dev
 ```
 
-O aplicativo estará disponível em `http://localhost:3000` (ou a porta indicada no terminal).
-
-### Build para Produção
+Para simular o runtime de produção:
 
 ```bash
-# Gerar build otimizado
 npm run build
-
-# Pré-visualizar a build
-npm run preview
+PORT=3000 \
+SUPABASE_URL="https://seu-supabase" \
+SUPABASE_ANON_KEY="sua-anon-key" \
+GEMINI_API_KEY="sua-chave-privada" \
+npm start
 ```
 
----
+O frontend usa `VITE_SUPABASE_URL` e `VITE_SUPABASE_ANON_KEY`. A anon key é pública por definição; service-role, senha do banco, token do EasyPanel, token do GitHub e chave da IA nunca devem ser colocados no frontend ou versionados.
 
-## ⌨️ Atalhos de Teclado
+## Validação
 
-| Atalho | Ação |
-|---|---|
-| `T` | Ir para **Hoje** |
-| `N` | Abrir formulário de **Novo Evento** |
-| `D` | Alternar para visão de **Dia** |
-| `W` | Alternar para visão de **Semana** |
-| `M` | Alternar para visão de **Mês** |
-| `←` | Navegar para o **período anterior** |
-| `→` | Navegar para o **próximo período** |
-| `Esc` | Fechar modal / popover aberto |
-
----
-
-## 📁 Estrutura do Projeto
-
-```
-time-tasks/
-├── index.html          # Página principal
-├── package.json        # Dependências e scripts
-├── vite.config.js      # Configuração do Vite
-├── js/                 # Módulos do front-end
-├── style.css           # Tokens e componentes visuais
-├── layout.css          # Layout, responsividade e SevenChat
-├── .env.production     # Configuração pública do build (URL/anon key)
-├── supabase/schema.sql  # Tabela events, RLS e permissões do SaaS
-├── README.md           # Este arquivo
-├── ROADMAP.md          # Roadmap do projeto
-└── MANUAL.md           # Manual do usuário
+```bash
+node --check server.js
+for file in js/*.js; do node --check "$file"; done
+npm run build
+npm audit --omit=dev
+git diff --check
 ```
 
----
+O gate funcional também inclui login real, RLS, eventos, tarefas, reservas públicas, SX, versículos, healthcheck e teste visual das abas.
 
-## 📄 Documentação
+## Documentação
 
-- 📖 [Manual do Usuário](./MANUAL.md) — Guia completo de uso, deploy e SevenChat
-- 🗺️ [Roadmap](./ROADMAP.md) — Fases de desenvolvimento e funcionalidades futuras
+- [Manual de uso](./MANUAL_DE_USO.md)
+- [Roadmap e falhas corrigidas](./ROADMAP.md)
 
-## Banco Supabase no Easypanel
+## Fontes externas usadas pelo produto
 
-O schema [`supabase/schema.sql`](./supabase/schema.sql) está aplicado no Supabase self-hosted. O script idempotente cria `public.events`, ativa RLS e restringe cada usuário aos próprios eventos; execute-o novamente apenas ao provisionar ou restaurar o banco.
-
-### Produção
-
-- Frontend: [startups-timetasks.qfotry.easypanel.host](https://startups-timetasks.qfotry.easypanel.host/)
-- Builder no Easypanel: `Dockerfile`
-- Runtime: Node 22 Alpine, servidor estático `serve` na porta interna `3000`
-
-### Isolamento obrigatório
-
-Cada conta acessa somente os próprios eventos por login e senha e pelas políticas RLS. O endpoint Supabase atualmente configurado também foi encontrado no Smart Stoma; portanto, os dados de `public.events` estão isolados, mas o namespace de Auth ainda é compartilhado. Para isolamento absoluto de cadastro, e-mail e senha entre aplicativos, provisionar um compose Supabase dedicado ao Time Tasks e substituir a URL e as chaves do build.
-
----
-
-## 📜 Licença
-
-Este projeto está licenciado sob a **MIT License**.
-
-```
-MIT License
-
-Copyright (c) 2025 Time Tasks
-
-Permission is hereby granted, free of charge, to any person obtaining a copy
-of this software and associated documentation files (the "Software"), to deal
-in the Software without restriction, including without limitation the rights
-to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
-copies of the Software, and to permit persons to whom the Software is
-furnished to do so, subject to the following conditions:
-
-The above copyright notice and this permission notice shall be included in all
-copies or substantial portions of the Software.
-
-THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
-AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
-OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
-SOFTWARE.
-```
-
----
-
-## 🙏 Créditos
-
-- Inspirado no [Toki Calendar](https://toki.day) — um calendário web minimalista e elegante
-- Tipografia: [Inter](https://fonts.google.com/specimen/Inter) por Rasmus Andersson
-- Ícones: SVG customizados
-
----
-
-<p align="center">
-  Feito com ❤️ e ☕ — <strong>Time Tasks</strong>
-</p>
+- IA: [Google Gemini API](https://ai.google.dev/api)
+- Versículos: [bible-api.com](https://bible-api.com/)
+- Tipografia: [Inter](https://fonts.google.com/specimen/Inter)

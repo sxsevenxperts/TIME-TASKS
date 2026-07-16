@@ -1,81 +1,70 @@
-// ============================================================
-// navigation.js — Controla a navegação principal (Nav Strip)
-// ============================================================
+let currentTarget = 'calendar';
+
+export function activateView(target) {
+  currentTarget = target;
+  const navButtons = document.querySelectorAll('.nav-strip .nav-btn[data-target]');
+  const sidebars = document.querySelectorAll('.sidebar-section');
+  const views = document.querySelectorAll('.view-container');
+
+  navButtons.forEach(button => button.classList.toggle('active', button.dataset.target === target));
+  sidebars.forEach(sidebar => {
+    const active = sidebar.id === `sidebar-${target}`;
+    sidebar.classList.toggle('active', active);
+    sidebar.style.display = active ? 'flex' : 'none';
+  });
+  views.forEach(view => {
+    const active = view.id === `view-${target}`;
+    view.classList.toggle('active', active);
+    view.style.display = active ? 'flex' : 'none';
+  });
+
+  if (target === 'settings') {
+    const activeItem = document.querySelector('.settings-nav [data-settings].active')
+      || document.querySelector('.settings-nav [data-settings="account"]');
+    document.dispatchEvent(new CustomEvent('timetasks:settings-section', {
+      detail: { section: activeItem?.dataset.settings || 'account' }
+    }));
+  }
+}
+
+export function getActiveView() {
+  return currentTarget;
+}
 
 export function initNavigation() {
-  const navBtns = document.querySelectorAll('.nav-strip .nav-btn');
-  const sidebarSections = document.querySelectorAll('.sidebar-section');
-  const viewContainers = document.querySelectorAll('.view-container');
-  const btnToggleChat = document.getElementById('btn-toggle-chat');
-  const aiSidebar = document.getElementById('ai-sidebar');
-
-  // Nav Strip Toggle
-  navBtns.forEach(btn => {
-    if(btn.id === 'btn-toggle-chat') return; // Skip chat toggle
-
-    btn.addEventListener('click', () => {
-      // Remover active de todos
-      navBtns.forEach(b => b.classList.remove('active'));
-      sidebarSections.forEach(s => s.classList.remove('active'));
-      viewContainers.forEach(v => v.classList.remove('active'));
-
-      // Adicionar active no clicado
-      btn.classList.add('active');
-      const target = btn.dataset.target;
-
-      // Ativar sidebar correspondente
-      const sidebarId = `sidebar-${target}`;
-      const sidebarTarget = document.getElementById(sidebarId);
-      if (sidebarTarget) {
-        sidebarTarget.classList.add('active');
-        sidebarTarget.style.display = 'flex'; // Certificar de mostrar
-      }
-      
-      // Esconder os outros sidebars via inline style (por causa do display flex original)
-      sidebarSections.forEach(s => {
-        if(s.id !== sidebarId) s.style.display = 'none';
-      });
-
-      // Ativar view correspondente
-      const viewId = `view-${target}`;
-      const viewTarget = document.getElementById(viewId);
-      if (viewTarget) {
-        viewTarget.classList.add('active');
-        viewTarget.style.display = 'flex';
-      }
-      
-      // Esconder os outros views via inline style
-      viewContainers.forEach(v => {
-        if(v.id !== viewId) v.style.display = 'none';
-      });
-    });
+  document.querySelectorAll('.nav-strip .nav-btn[data-target]').forEach(button => {
+    button.addEventListener('click', () => activateView(button.dataset.target));
   });
 
-  // Chat Toggle
-  if (btnToggleChat && aiSidebar) {
-    btnToggleChat.addEventListener('click', () => {
-      const isVisible = aiSidebar.classList.contains('ai-sidebar--open');
-      if (isVisible) {
-        aiSidebar.classList.remove('ai-sidebar--open');
-        btnToggleChat.classList.remove('active');
-        btnToggleChat.setAttribute('aria-expanded', 'false');
-        aiSidebar.setAttribute('aria-hidden', 'true');
-      } else {
-        aiSidebar.classList.add('ai-sidebar--open');
-        btnToggleChat.classList.add('active');
-        btnToggleChat.setAttribute('aria-expanded', 'true');
-        aiSidebar.setAttribute('aria-hidden', 'false');
-        document.getElementById('ai-input')?.focus();
-      }
-    });
-  }
+  const chatButton = document.getElementById('btn-toggle-chat');
+  const assistant = document.getElementById('ai-sidebar');
+  chatButton?.addEventListener('click', () => {
+    const open = !assistant.classList.contains('ai-sidebar--open');
+    assistant.classList.toggle('ai-sidebar--open', open);
+    chatButton.classList.toggle('active', open);
+    chatButton.setAttribute('aria-expanded', String(open));
+    assistant.setAttribute('aria-hidden', String(!open));
+    if (open) document.getElementById('ai-input')?.focus();
+  });
 
-  // Settings sub-navigation (fake)
-  const settingsItems = document.querySelectorAll('.settings-nav li');
-  settingsItems.forEach(item => {
-    item.addEventListener('click', () => {
-      settingsItems.forEach(i => i.classList.remove('active'));
+  document.querySelectorAll('.settings-nav [data-settings]').forEach(item => {
+    item.setAttribute('tabindex', '0');
+    item.setAttribute('role', 'button');
+    const openSection = () => {
+      document.querySelectorAll('.settings-nav [data-settings]').forEach(current => current.classList.remove('active'));
       item.classList.add('active');
+      document.dispatchEvent(new CustomEvent('timetasks:settings-section', {
+        detail: { section: item.dataset.settings }
+      }));
+    };
+    item.addEventListener('click', openSection);
+    item.addEventListener('keydown', event => {
+      if (event.key === 'Enter' || event.key === ' ') {
+        event.preventDefault();
+        openSection();
+      }
     });
   });
+
+  activateView('calendar');
 }

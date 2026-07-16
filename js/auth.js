@@ -23,6 +23,23 @@ export async function initAuth() {
   const submitBtn = document.getElementById('auth-submit');
   
   let isLoginMode = true;
+  let registering = false;
+
+  const ensureAppMembership = async (userId, createIfMissing = false) => {
+    const { data, error } = await supabase
+      .from('time_tasks_members')
+      .select('user_id')
+      .eq('user_id', userId)
+      .maybeSingle();
+    if (error) throw new Error('Não foi possível validar o acesso exclusivo do Time Tasks.');
+    if (data) return true;
+    if (!createIfMissing) return false;
+    const { error: insertError } = await supabase
+      .from('time_tasks_members')
+      .insert({ user_id: userId });
+    if (insertError && insertError.code !== '23505') throw insertError;
+    return true;
+  };
 
   const loadingOverlay = document.getElementById('loading-overlay');
 
@@ -69,6 +86,7 @@ export async function initAuth() {
       submitBtn.textContent = 'Aguarde...';
       
       if (isLoginMode) {
+        registering = false;
         const { error } = await withTimeout(
           supabase.auth.signInWithPassword({ email, password }),
           12000,
@@ -76,21 +94,27 @@ export async function initAuth() {
         );
         if (error) throw error;
       } else {
+        registering = true;
         const { data, error } = await withTimeout(
-          supabase.auth.signUp({ email, password }),
+          supabase.auth.signUp({ email, password, options: { data: { app: 'time-tasks' } } }),
           12000,
           'O serviço demorou para responder. Verifique o CORS e a disponibilidade do Supabase.'
         );
         if (error) throw error;
+        let registrationSession = data.session;
         
         if (data.user && data.user.identities && data.user.identities.length === 0) {
-            authError.textContent = 'Este e-mail já está em uso.';
-            submitBtn.disabled = false;
-            submitBtn.textContent = 'Criar Conta';
-            return;
+          const { data: existing, error: loginError } = await withTimeout(
+            supabase.auth.signInWithPassword({ email, password }),
+            12000,
+            'O serviço demorou para responder.'
+          );
+          if (loginError || !existing.user) throw new Error('Este e-mail já existe e a senha informada não corresponde.');
+          await ensureAppMembership(existing.user.id, true);
+          registrationSession = existing.session;
         }
 
-        if (data.session === null) {
+        if (registrationSession === null) {
           authError.style.color = 'var(--color-success)';
           authError.textContent = 'Conta criada! Verifique sua caixa de e-mail para confirmar.';
           submitBtn.disabled = false;
@@ -99,6 +123,7 @@ export async function initAuth() {
         }
       }
     } catch (err) {
+      registering = false;
       authError.style.color = 'var(--color-danger)';
       authError.textContent = err.message || 'Erro na autenticação.';
       submitBtn.disabled = false;
@@ -111,6 +136,22 @@ export async function initAuth() {
   const applySession = async (session) => {
     if (session && session.user) {
       if (lastSessionId === session.user.id) return;
+      let allowed = false;
+      try {
+        allowed = await ensureAppMembership(session.user.id, registering);
+      } catch (error) {
+        authError.style.color = 'var(--color-danger)';
+        authError.textContent = error.message || 'Não foi possível validar este acesso.';
+        await supabase.auth.signOut();
+        return;
+      }
+      if (!allowed) {
+        authError.style.color = 'var(--color-danger)';
+        authError.textContent = 'Esta conta não possui acesso ao Time Tasks. Use “Criar conta” para cadastrar este acesso.';
+        await supabase.auth.signOut();
+        return;
+      }
+      registering = false;
       lastSessionId = session.user.id;
       currentUser = session.user;
       
@@ -125,6 +166,9 @@ export async function initAuth() {
       // Carregar os eventos do servidor
       await loadEventsFromServer();
       refreshCalendar();
+      document.dispatchEvent(new CustomEvent('timetasks:session', {
+        detail: { user: session.user, session }
+      }));
     } else {
       lastSessionId = null;
       currentUser = null;
@@ -135,6 +179,9 @@ export async function initAuth() {
       submitBtn.disabled = false;
       submitBtn.textContent = isLoginMode ? 'Entrar' : 'Criar Conta';
       finishLoading();
+      document.dispatchEvent(new CustomEvent('timetasks:session', {
+        detail: { user: null, session: null }
+      }));
     }
   };
 

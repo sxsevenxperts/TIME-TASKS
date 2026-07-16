@@ -36,14 +36,24 @@ export function initTheme() {
 /**
  * Aplica o tema ao documento
  */
-function applyTheme(theme) {
+export function applyTheme(theme) {
   document.documentElement.setAttribute('data-theme', theme);
 
   // Atualiza meta theme-color
   const meta = document.querySelector('meta[name="theme-color"]');
   if (meta) {
-    meta.setAttribute('content', theme === 'dark' ? '#1c1c1e' : '#5856D6');
+    meta.setAttribute('content', theme === 'dark' ? '#050705' : '#78c900');
   }
+}
+
+export function setThemePreference(preference = 'system') {
+  if (preference === 'system') {
+    localStorage.removeItem(THEME_KEY);
+    applyTheme(window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light');
+    return;
+  }
+  localStorage.setItem(THEME_KEY, preference);
+  applyTheme(preference);
 }
 
 /**

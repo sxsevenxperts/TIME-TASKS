@@ -91,7 +91,7 @@ function renderMiniCalendar() {
 /**
  * Renderiza a lista de calendários
  */
-function renderCalendarList() {
+export function renderCalendarList() {
   const container = document.getElementById('calendar-list');
   if (!container) return;
 

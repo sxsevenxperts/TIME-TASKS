@@ -1,181 +1,242 @@
-// ============================================================
-// ai.js — Integração com SX IA (Gemini Mock/Real)
-// ============================================================
+import { supabase } from './supabase.js';
+import { getCurrentUser } from './auth.js';
+import { createEvent, detectConflicts } from './events.js';
+import { createSeed } from './seeds.js';
+import { getSettings } from './settings.js';
+import { showToast } from './modal.js';
 
-import { createEvent } from './events.js';
+let initialized = false;
+let sending = false;
+let recognition = null;
 
-let geminiApiKey = localStorage.getItem('sx_gemini_key') || '';
+function historyElement() {
+  return document.getElementById('ai-chat-history');
+}
+
+function scrollToBottom() {
+  const history = historyElement();
+  if (history) history.scrollTop = history.scrollHeight;
+}
+
+function messageElement(content, role, customClass = '') {
+  const element = document.createElement('div');
+  element.className = `ai-msg ai-msg--${role === 'user' ? 'user' : 'system'} ${customClass}`.trim();
+  element.textContent = content;
+  return element;
+}
+
+function addMessage(content, role, customClass = '') {
+  const history = historyElement();
+  if (!history) return null;
+  const element = messageElement(content, role, customClass);
+  history.appendChild(element);
+  scrollToBottom();
+  return element;
+}
+
+function renderWelcome() {
+  const history = historyElement();
+  if (!history || history.children.length) return;
+  addMessage('Olá! Eu sou a SX. Diga ou fale o que deseja agendar.', 'assistant');
+}
+
+async function persistMessage(role, content, action = null) {
+  const user = getCurrentUser();
+  if (!user || !supabase || !String(content).trim()) return;
+  const { error } = await supabase.from('time_tasks_sx_messages').insert({
+    user_id: user.id,
+    role,
+    content: String(content).trim().slice(0, 4000),
+    action
+  });
+  if (error) console.error('Erro ao salvar histórico da SX:', error);
+}
+
+async function loadHistory() {
+  const user = getCurrentUser();
+  const history = historyElement();
+  if (!history) return;
+  history.innerHTML = '';
+  if (!user || !supabase) return renderWelcome();
+  const { data, error } = await supabase
+    .from('time_tasks_sx_messages')
+    .select('role,content,action,created_at')
+    .eq('user_id', user.id)
+    .order('created_at', { ascending: false })
+    .limit(40);
+  if (error) {
+    console.error('Erro ao carregar histórico da SX:', error);
+    return renderWelcome();
+  }
+  data.reverse().forEach(message => addMessage(message.content, message.role));
+  renderWelcome();
+}
+
+async function sessionToken() {
+  if (!supabase) return null;
+  const { data } = await supabase.auth.getSession();
+  return data.session?.access_token || null;
+}
+
+function errorMessage(code) {
+  const errors = {
+    UNAUTHORIZED: 'Sua sessão expirou. Entre novamente para usar a SX.',
+    SX_NOT_CONFIGURED: 'A SX ainda não está configurada no servidor.',
+    RATE_LIMITED: 'Muitos pedidos em pouco tempo. Aguarde um minuto e tente novamente.',
+    INVALID_TEXT: 'O pedido precisa ser mais curto e objetivo.',
+    SX_PROVIDER_ERROR: 'A SX está temporariamente indisponível. Tente novamente em instantes.',
+    SX_EMPTY_RESPONSE: 'A SX não retornou uma resposta utilizável.',
+    SX_INVALID_RESPONSE: 'A SX não conseguiu interpretar esse pedido com segurança.'
+  };
+  return errors[code] || 'Não foi possível concluir o pedido agora.';
+}
+
+async function askSx(text) {
+  const token = await sessionToken();
+  if (!token) throw new Error('UNAUTHORIZED');
+  const settings = getSettings();
+  const response = await fetch('/api/sx', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      Authorization: `Bearer ${token}`
+    },
+    body: JSON.stringify({
+      text,
+      now: new Date().toISOString(),
+      timezone: settings.timezone,
+      language: settings.language,
+      defaults: {
+        defaultCalendar: settings.defaultCalendar,
+        defaultDuration: settings.defaultDuration,
+        defaultReminder: settings.defaultReminder
+      }
+    })
+  });
+  const payload = await response.json().catch(() => ({}));
+  if (!response.ok) throw new Error(payload.error || 'SX_REQUEST_FAILED');
+  return payload;
+}
+
+async function applyAction(result, callbacks) {
+  if (result.action === 'CREATE_EVENT' && result.event) {
+    const settings = getSettings();
+    if (settings.conflictCheck && !result.event.allDay) {
+      const conflicts = detectConflicts(result.event.date, result.event.startTime, result.event.endTime);
+      if (conflicts.length) {
+        return `Encontrei conflito com “${conflicts[0].title}”. O evento não foi criado; escolha outro horário.`;
+      }
+    }
+    const saved = await createEvent(result.event);
+    if (!saved) throw new Error('EVENT_SAVE_FAILED');
+    callbacks.onEventCreated?.(saved);
+    const time = saved.allDay ? 'dia inteiro' : `${saved.startTime}`;
+    return `Pronto! Criei “${saved.title}” em ${saved.date}, ${time}, com o lembrete configurado.`;
+  }
+  if (result.action === 'CREATE_SEED' && result.seed) {
+    const saved = await createSeed(result.seed);
+    if (!saved) throw new Error('SEED_SAVE_FAILED');
+    callbacks.onSeedCreated?.(saved);
+    return `Pronto! A tarefa “${saved.title}” foi criada${saved.reminderAt ? ' com lembrete' : ''}.`;
+  }
+  return result.message || 'Posso criar eventos, tarefas e lembretes para você.';
+}
+
+function setupVoice(input, sendMessage) {
+  const button = document.getElementById('btn-ai-voice');
+  const Recognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+  if (!button) return;
+  if (!Recognition) {
+    button.disabled = true;
+    button.title = 'Entrada por voz não disponível neste navegador';
+    return;
+  }
+  recognition = new Recognition();
+  recognition.lang = 'pt-BR';
+  recognition.interimResults = false;
+  recognition.continuous = false;
+  recognition.onstart = () => {
+    button.classList.add('is-listening');
+    button.setAttribute('aria-pressed', 'true');
+    input.placeholder = 'Ouvindo…';
+  };
+  recognition.onend = () => {
+    button.classList.remove('is-listening');
+    button.setAttribute('aria-pressed', 'false');
+    input.placeholder = 'Pergunte à SX sobre seu calendário...';
+  };
+  recognition.onerror = event => {
+    if (event.error !== 'no-speech') showToast('Não foi possível captar a voz. Verifique a permissão do microfone.', 'error');
+  };
+  recognition.onresult = event => {
+    const transcript = event.results?.[0]?.[0]?.transcript?.trim();
+    if (!transcript) return;
+    input.value = transcript;
+    void sendMessage();
+  };
+  button.addEventListener('click', () => {
+    if (!getSettings().voiceInput) return showToast('Ative a entrada por voz em Configurações > IA', 'error');
+    try {
+      recognition.lang = getSettings().language === 'pt-BR' ? 'pt-BR' : getSettings().language;
+      recognition.start();
+    } catch {
+      recognition.stop();
+    }
+  });
+}
 
 export function initAI(callbacks = {}) {
+  if (initialized) return;
+  initialized = true;
   const input = document.getElementById('ai-input');
-  const btnSubmit = document.getElementById('btn-ai-submit');
-  const chatHistory = document.getElementById('ai-chat-history');
-  
-  // Modal de API Key
-  const btnConfig = document.getElementById('btn-ai-config');
-  const modal = document.getElementById('apikey-modal');
-  const closeBtn = document.getElementById('apikey-close');
-  const saveBtn = document.getElementById('apikey-save');
-  const inputKey = document.getElementById('apikey-input');
+  const submit = document.getElementById('btn-ai-submit');
+  if (!input || !submit) return;
 
-  // Event Listeners para o Modal
-  if (btnConfig) {
-    btnConfig.addEventListener('click', () => {
-      inputKey.value = geminiApiKey;
-      modal.setAttribute('aria-hidden', 'false');
-      inputKey.focus();
-    });
-  }
-  
-  if (closeBtn) {
-    closeBtn.addEventListener('click', () => modal.setAttribute('aria-hidden', 'true'));
-  }
-  
-  if (saveBtn) {
-    saveBtn.addEventListener('click', () => {
-      geminiApiKey = inputKey.value.trim();
-      localStorage.setItem('sx_gemini_key', geminiApiKey);
-      modal.setAttribute('aria-hidden', 'true');
-      addSystemMessage('Chave API salva! SX está pronta para ajudar.');
-    });
-  }
-
-  // Envio de Mensagem
   const sendMessage = async () => {
     const text = input.value.trim();
-    if (!text) return;
-    
-    // UI: Adicionar mensagem do usuário
-    addUserMessage(text);
+    if (!text || sending || !getCurrentUser()) return;
+    sending = true;
+    submit.disabled = true;
+    input.disabled = true;
+    addMessage(text, 'user');
+    void persistMessage('user', text);
     input.value = '';
-    
-    // Lógica de resposta (Mock básico ou Gemini Real)
-    if (!geminiApiKey) {
-      setTimeout(() => {
-        addSystemMessage('Eu entendi o seu comando, mas preciso que você configure sua Chave de API do Google Gemini em **Configurações > IA (Gemini)** para criar o evento de verdade.');
-      }, 800);
-      return;
-    }
-
-    // Usar a API do Gemini
-    addSystemMessage('Processando...', 'ai-loading');
-    
+    const loading = addMessage('Processando seu pedido…', 'assistant', 'ai-loading');
     try {
-      const result = await processWithGemini(text);
-      document.querySelector('.ai-loading')?.remove();
-      
-      if (result.action === 'CREATE_EVENT' && result.event) {
-        // Salvar evento no DB local
-        const savedEvent = await createEvent(result.event);
-        if (!savedEvent) throw new Error('Não foi possível salvar o evento no Supabase.');
-        addSystemMessage(`Pronto! Criei o evento **${result.event.title}** para você no dia ${result.event.date}.`);
-        if (callbacks.onEventCreated) callbacks.onEventCreated();
-      } else {
-        addSystemMessage(result.message || 'Desculpe, não entendi o que você quis dizer.');
-      }
-    } catch (err) {
-      document.querySelector('.ai-loading')?.remove();
-      addSystemMessage('Erro de conexão com a API do Gemini. Verifique sua chave.');
-      console.error(err);
+      const result = await askSx(text);
+      const response = await applyAction(result, callbacks);
+      loading?.remove();
+      addMessage(response, 'assistant');
+      void persistMessage('assistant', response, result.action || 'CHAT');
+    } catch (error) {
+      loading?.remove();
+      const message = ['EVENT_SAVE_FAILED', 'SEED_SAVE_FAILED'].includes(error.message)
+        ? 'A SX entendeu o pedido, mas o Supabase não conseguiu salvar. Tente novamente.'
+        : errorMessage(error.message);
+      addMessage(message, 'assistant');
+      void persistMessage('assistant', message, 'ERROR');
+      console.error('Erro na SX:', error);
+    } finally {
+      sending = false;
+      submit.disabled = false;
+      input.disabled = false;
+      input.focus();
     }
   };
 
-  btnSubmit.addEventListener('click', sendMessage);
-  input.addEventListener('keypress', (e) => {
-    if (e.key === 'Enter') sendMessage();
+  submit.addEventListener('click', () => void sendMessage());
+  input.addEventListener('keydown', event => {
+    if (event.key === 'Enter' && !event.shiftKey) {
+      event.preventDefault();
+      void sendMessage();
+    }
   });
-
-  // Funções UI
-  function addUserMessage(text) {
-    const div = document.createElement('div');
-    div.className = 'ai-msg ai-msg--user';
-    div.textContent = text;
-    chatHistory.appendChild(div);
-    scrollToBottom();
-  }
-
-  function addSystemMessage(htmlText, customClass = '') {
-    const div = document.createElement('div');
-    div.className = `ai-msg ai-msg--system ${customClass}`;
-
-    // Renderiza apenas texto e negrito, sem interpretar HTML vindo da API.
-    const parts = String(htmlText).split(/(\*\*.*?\*\*)/g);
-    parts.forEach(part => {
-      if (part.startsWith('**') && part.endsWith('**')) {
-        const strong = document.createElement('strong');
-        strong.textContent = part.slice(2, -2);
-        div.appendChild(strong);
-      } else {
-        div.appendChild(document.createTextNode(part));
-      }
-    });
-    
-    chatHistory.appendChild(div);
-    scrollToBottom();
-  }
-
-  function scrollToBottom() {
-    chatHistory.scrollTop = chatHistory.scrollHeight;
-  }
-}
-
-// ── Gemini API Integration ──────────────────────────────────────────────
-async function processWithGemini(userText) {
-  const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${geminiApiKey}`;
-  
-  // Data atual para dar contexto temporal à IA
-  const today = new Date();
-  const dateString = today.toISOString().split('T')[0];
-  const timeString = today.toTimeString().split(' ')[0].substring(0, 5);
-
-  const prompt = `
-Você é a SX, a assistente virtual inteligente do aplicativo de calendário Time Tasks.
-O usuário digitou o seguinte comando: "${userText}"
-Hoje é ${dateString} e são ${timeString}.
-
-Seu objetivo é extrair as informações e retornar APENAS um objeto JSON válido, sem markdown, sem código extra, estritamente no seguinte formato:
-{
-  "action": "CREATE_EVENT",
-  "event": {
-    "title": "Título do Evento",
-    "date": "YYYY-MM-DD",
-    "start": "HH:MM",
-    "end": "HH:MM",
-    "allDay": false,
-    "calendarId": "pessoal",
-    "description": ""
-  }
-}
-Se não for possível identificar data/hora, use a data de hoje e adicione 1 hora ao horário atual. Se não for um comando de criar evento, retorne {"action": "CHAT", "message": "Sua resposta amigável aqui."}.
-  `;
-
-  const payload = {
-    contents: [{
-      parts: [{ text: prompt }]
-    }]
-  };
-
-  const response = await fetch(url, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(payload)
+  setupVoice(input, sendMessage);
+  document.addEventListener('timetasks:session', event => {
+    if (event.detail?.user) void loadHistory();
+    else {
+      historyElement().innerHTML = '';
+      renderWelcome();
+    }
   });
-
-  if (!response.ok) {
-    throw new Error('API Error');
-  }
-
-  const data = await response.json();
-  const responseText = data?.candidates?.[0]?.content?.parts?.[0]?.text;
-  if (!responseText) throw new Error('Resposta inválida da API do Gemini.');
-  
-  // Limpar possível markdown do JSON (ex: \`\`\`json ... \`\`\`)
-  let cleanJson = responseText.replace(/```json/g, '').replace(/```/g, '').trim();
-  
-  try {
-    return JSON.parse(cleanJson);
-  } catch (e) {
-    console.error("Failed to parse Gemini response:", responseText);
-    return { action: 'CHAT', message: 'Entendi o comando, mas houve um erro interno ao processar a data/hora.' };
-  }
 }

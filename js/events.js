@@ -2,7 +2,7 @@
 // events.js — Gerenciamento de eventos no Supabase
 // ============================================================
 
-import { generateId, toDateKey, timeToMinutes } from './utils.js';
+import { toDateKey, timeToMinutes } from './utils.js';
 import { supabase } from './supabase.js';
 import { getCurrentUser } from './auth.js';
 
@@ -47,7 +47,34 @@ export function toggleCalendarVisibility(calKey) {
   if (CALENDARS[calKey]) {
     CALENDARS[calKey].visible = !CALENDARS[calKey].visible;
     saveCalendarVisibility();
+    document.dispatchEvent(new CustomEvent('timetasks:calendar-visibility', {
+      detail: { calendar: calKey, visible: CALENDARS[calKey].visible }
+    }));
   }
+}
+
+export function setCalendarVisibility(visibility = {}) {
+  Object.keys(CALENDARS).forEach(key => {
+    CALENDARS[key].visible = visibility[key] !== false;
+  });
+  saveCalendarVisibility();
+}
+
+function mapEvent(dbEvent) {
+  return {
+    id: dbEvent.id,
+    title: dbEvent.title,
+    date: dbEvent.date,
+    startTime: dbEvent.start_time ? String(dbEvent.start_time).slice(0, 5) : null,
+    endTime: dbEvent.end_time ? String(dbEvent.end_time).slice(0, 5) : null,
+    allDay: dbEvent.all_day,
+    calendar: dbEvent.calendar,
+    description: dbEvent.description,
+    reminderMinutes: Number(dbEvent.reminder_minutes ?? 0),
+    notifiedAt: dbEvent.notified_at,
+    createdAt: dbEvent.created_at,
+    updatedAt: dbEvent.updated_at
+  };
 }
 
 /**
@@ -61,31 +88,23 @@ export async function loadEventsFromServer() {
   }
 
   const { data, error } = await supabase
-    .from('events')
+    .from('time_tasks_events')
     .select('*')
-    .eq('user_id', user.id);
+    .eq('user_id', user.id)
+    .order('date', { ascending: true })
+    .order('start_time', { ascending: true, nullsFirst: true });
 
   if (error) {
     console.error('Erro ao buscar eventos do Supabase:', error);
     if (error.code === 'PGRST205') {
-      console.error('A tabela public.events não existe. Execute supabase/schema.sql no banco do Easypanel.');
+      console.error('A tabela public.time_tasks_events não existe. Execute supabase/schema.sql no banco do EasyPanel.');
     }
     localEvents = [];
     return [];
   }
 
   // Converter snake_case para camelCase para o frontend não quebrar
-  localEvents = data.map(dbEvent => ({
-    id: dbEvent.id,
-    title: dbEvent.title,
-    date: dbEvent.date,
-    startTime: dbEvent.start_time,
-    endTime: dbEvent.end_time,
-    allDay: dbEvent.all_day,
-    calendar: dbEvent.calendar,
-    description: dbEvent.description,
-    createdAt: dbEvent.created_at
-  }));
+  localEvents = data.map(mapEvent);
 
   return localEvents;
 }
@@ -101,19 +120,28 @@ export async function createEvent(eventData) {
   const user = getCurrentUser();
   if (!user || !supabase) return null;
 
+  const title = String(eventData.title || '').trim();
+  if (!title || !eventData.date) return null;
+  if (!eventData.allDay && (!eventData.startTime || !eventData.endTime || timeToMinutes(eventData.endTime) <= timeToMinutes(eventData.startTime))) {
+    return null;
+  }
+
   const newEvent = {
     user_id: user.id,
-    title: eventData.title,
+    title,
     date: eventData.date,        // "YYYY-MM-DD"
     start_time: eventData.startTime, // "HH:MM" ou null se allDay
     end_time: eventData.endTime,     // "HH:MM" ou null se allDay
     all_day: eventData.allDay || false,
     calendar: eventData.calendar || 'pessoal',
-    description: eventData.description || ''
+    description: eventData.description || '',
+    reminder_minutes: Math.max(0, Number(eventData.reminderMinutes ?? 0)),
+    notified_at: null,
+    updated_at: new Date().toISOString()
   };
 
   const { data, error } = await supabase
-    .from('events')
+    .from('time_tasks_events')
     .insert([newEvent])
     .select();
 
@@ -123,19 +151,9 @@ export async function createEvent(eventData) {
   }
 
   if (data && data.length > 0) {
-    const dbEvent = data[0];
-    const savedEvent = {
-      id: dbEvent.id,
-      title: dbEvent.title,
-      date: dbEvent.date,
-      startTime: dbEvent.start_time,
-      endTime: dbEvent.end_time,
-      allDay: dbEvent.all_day,
-      calendar: dbEvent.calendar,
-      description: dbEvent.description,
-      createdAt: dbEvent.created_at
-    };
+    const savedEvent = mapEvent(data[0]);
     localEvents.push(savedEvent);
+    document.dispatchEvent(new Event('timetasks:data'));
     return savedEvent;
   }
   return null;
@@ -149,28 +167,55 @@ export async function updateEvent(id, eventData) {
   const idx = localEvents.findIndex(e => e.id === id);
   if (idx === -1) return null;
 
+  const title = String(eventData.title || '').trim();
+  if (!title || !eventData.date) return null;
+  if (!eventData.allDay && (!eventData.startTime || !eventData.endTime || timeToMinutes(eventData.endTime) <= timeToMinutes(eventData.startTime))) {
+    return null;
+  }
+
   const updatePayload = {
-    title: eventData.title,
+    title,
     date: eventData.date,
     start_time: eventData.startTime,
     end_time: eventData.endTime,
     all_day: eventData.allDay,
     calendar: eventData.calendar,
-    description: eventData.description
+    description: eventData.description,
+    reminder_minutes: Math.max(0, Number(eventData.reminderMinutes ?? 0)),
+    notified_at: null,
+    updated_at: new Date().toISOString()
   };
 
-  const { error } = await supabase
-    .from('events')
+  const { data, error } = await supabase
+    .from('time_tasks_events')
     .update(updatePayload)
-    .eq('id', id);
+    .eq('id', id)
+    .select()
+    .single();
 
   if (error) {
     console.error('Erro ao atualizar evento:', error);
     return null;
   }
 
-  localEvents[idx] = { ...localEvents[idx], ...eventData };
+  localEvents[idx] = mapEvent(data);
+  document.dispatchEvent(new Event('timetasks:data'));
   return localEvents[idx];
+}
+
+export async function markEventNotified(id) {
+  if (!supabase || !getCurrentUser()) return false;
+  const notifiedAt = new Date().toISOString();
+  const { data, error } = await supabase
+    .from('time_tasks_events')
+    .update({ notified_at: notifiedAt, updated_at: notifiedAt })
+    .eq('id', id)
+    .is('notified_at', null)
+    .select('id');
+  if (error || !data?.length) return false;
+  const event = localEvents.find(item => item.id === id);
+  if (event) event.notifiedAt = notifiedAt;
+  return true;
 }
 
 /**
@@ -179,7 +224,7 @@ export async function updateEvent(id, eventData) {
 export async function deleteEvent(id) {
   if (!supabase || !getCurrentUser()) return false;
   const { error } = await supabase
-    .from('events')
+    .from('time_tasks_events')
     .delete()
     .eq('id', id);
 
@@ -189,6 +234,7 @@ export async function deleteEvent(id) {
   }
 
   localEvents = localEvents.filter(e => e.id !== id);
+  document.dispatchEvent(new Event('timetasks:data'));
   return true;
 }
 

@@ -1,0 +1,17 @@
+{
+  "name": "SX Time Tasks",
+  "short_name": "Time Tasks",
+  "description": "Agenda, tarefas e lembretes inteligentes com a assistente SX.",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#050705",
+  "theme_color": "#9be800",
+  "icons": [
+    {
+      "src": "/sx-time-tasks-logo.png",
+      "sizes": "1536x1536",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ]
+}

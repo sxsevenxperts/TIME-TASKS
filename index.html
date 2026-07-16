@@ -3,9 +3,12 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Time Tasks — Calendário Inteligente</title>
-    <meta name="description" content="Time Tasks é um aplicativo de calendário inteligente com visão semanal, gerenciamento de eventos e interface premium." />
-    <meta name="theme-color" content="#5856D6" />
+    <title>SX Time Tasks — Agenda Inteligente</title>
+    <meta name="description" content="SX Time Tasks organiza eventos, tarefas, lembretes e agendamentos com inteligência artificial." />
+    <meta name="theme-color" content="#9be800" />
+    <link rel="icon" type="image/png" href="/sx-time-tasks-logo.png" />
+    <link rel="apple-touch-icon" href="/sx-time-tasks-logo.png" />
+    <link rel="manifest" href="/manifest.webmanifest" />
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet" />
@@ -32,11 +35,8 @@
     <div id="auth-overlay" class="auth-overlay">
       <div class="auth-card">
         <div class="auth-logo">
-          <svg viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg">
-            <rect width="32" height="32" rx="8" fill="var(--color-primary)"/>
-            <path d="M8 12h16M8 16h10M8 20h13" stroke="#fff" stroke-width="2" stroke-linecap="round"/>
-          </svg>
-          Time Tasks
+          <img class="brand-logo brand-logo--auth" src="/sx-time-tasks-logo.png" alt="SX Time Tasks" />
+          <span>SX Time Tasks</span>
         </div>
         <p class="auth-subtitle">Faça login para acessar seus eventos isolados no Supabase.</p>
         
@@ -62,14 +62,9 @@
       <!-- ========== NAV STRIP (Far Left) ========== -->
       <nav class="nav-strip">
         <div class="nav-strip__top">
-          <!-- Toki Logo / Chat Toggle -->
-          <button class="nav-btn" id="btn-toggle-chat" type="button" title="Abrir SevenChat" aria-label="Abrir SevenChat" aria-controls="ai-sidebar" aria-expanded="false">
-            <svg viewBox="0 0 32 32" fill="none" width="24" height="24">
-              <rect width="32" height="32" rx="8" fill="var(--color-primary)"/>
-              <path d="M8 12h16M8 16h10M8 20h13" stroke="#fff" stroke-width="2" stroke-linecap="round"/>
-              <circle cx="24" cy="20" r="4" fill="#fff" opacity="0.9"/>
-              <path d="M24 18.5v1.5l1 1" stroke="var(--color-primary)" stroke-width="1.2" stroke-linecap="round"/>
-            </svg>
+          <!-- SX Logo / Chat Toggle -->
+          <button class="nav-btn nav-btn--brand" id="btn-toggle-chat" type="button" title="Abrir a SX" aria-label="Abrir a assistente SX" aria-controls="ai-sidebar" aria-expanded="false">
+            <img class="brand-logo brand-logo--nav" src="/sx-time-tasks-logo.png" alt="" />
           </button>
           
           <button class="nav-btn active" data-target="calendar" title="Calendário">
@@ -126,27 +121,29 @@
               <h3 class="sidebar__section-title">Meus Calendários</h3>
               <div id="calendar-list" class="calendar-list"></div>
             </div>
+            <div id="daily-verse-card" class="daily-verse-card" hidden>
+              <span class="daily-verse-card__eyebrow">Mensagem bíblica</span>
+              <p id="daily-verse-text"></p>
+              <strong id="daily-verse-reference"></strong>
+            </div>
           </div>
 
           <!-- Seeds Sidebar -->
           <div id="sidebar-seeds" class="sidebar-section" style="display:none;">
-            <div class="sidebar__header-simple">
-              <h3 class="sidebar__section-title">PRÓXIMOS 8</h3>
+            <div class="sidebar__header-simple sidebar__header-action">
+              <h3 class="sidebar__section-title">PRÓXIMAS TAREFAS</h3>
+              <button id="btn-new-seed-sidebar" class="btn-icon btn-icon--sm" type="button" aria-label="Nova tarefa">+</button>
             </div>
-            <div class="seeds-list">
-              <label class="seed-item"><input type="checkbox"> <span>Ver com o CREA...</span></label>
-              <label class="seed-item"><input type="checkbox"> <span>Ver a questão...</span></label>
-              <label class="seed-item"><input type="checkbox"> <span>Criar um an...</span></label>
-              <label class="seed-item"><input type="checkbox"> <span>Visitar a Ca...</span></label>
-            </div>
+            <div id="seeds-sidebar-list" class="seeds-list"></div>
           </div>
 
           <!-- Booking Sidebar -->
           <div id="sidebar-booking" class="sidebar-section" style="display:none;">
-            <div class="sidebar__header-simple">
-              <h3 class="sidebar__section-title">Páginas de agendamento <span class="plus-icon">+</span></h3>
+            <div class="sidebar__header-simple sidebar__header-action">
+              <h3 class="sidebar__section-title">PÁGINAS DE AGENDAMENTO</h3>
+              <button id="btn-new-booking-sidebar" class="btn-icon btn-icon--sm" type="button" aria-label="Nova página">+</button>
             </div>
-            <p class="sidebar__empty-text">Ainda não há páginas de agendamento<br><span style="font-size:0.8rem;color:var(--color-text-light);">Suas páginas aparecerão aqui depois que você criá-las.</span></p>
+            <div id="booking-sidebar-list" class="booking-sidebar-list"></div>
           </div>
 
           <!-- Settings Sidebar -->
@@ -155,14 +152,14 @@
               <h3 class="sidebar__section-title">CONFIGURAÇÕES</h3>
             </div>
             <ul class="settings-nav">
-              <li>Meu Plano <span class="badge">GRÁTIS</span></li>
-              <li class="active">Conta</li>
-              <li>Geral</li>
-              <li>Calendários</li>
-              <li>Notificações</li>
-              <li id="btn-ai-config">IA (Gemini)</li>
-              <li>Novos Eventos</li>
-              <li>Sobre</li>
+              <li data-settings="plan">Meu Plano <span class="badge">PRIVADO</span></li>
+              <li class="active" data-settings="account">Conta</li>
+              <li data-settings="general">Geral</li>
+              <li data-settings="calendars">Calendários</li>
+              <li data-settings="notifications">Notificações</li>
+              <li data-settings="ai">IA</li>
+              <li data-settings="new-events">Novos Eventos</li>
+              <li data-settings="about">Sobre</li>
               <li id="btn-logout" style="color: #ff3b30; font-weight: 500;">Sair</li>
             </ul>
           </div>
@@ -229,57 +226,55 @@
 
           <!-- Seeds View -->
           <div id="view-seeds" class="view-container" style="display:none;">
-             <header class="main-header"><h1 class="main-header__title">Sementes (Histórico)</h1></header>
-            <div class="empty-state">
-              <h2>Sementes (Tarefas)</h2>
-              <p>Funcionalidade em desenvolvimento.</p>
+            <header class="main-header">
+              <h1 class="main-header__title">Sementes — Tarefas</h1>
+              <button id="btn-new-seed" class="btn-primary" type="button">+ Nova tarefa</button>
+            </header>
+            <div class="feature-page">
+              <div id="seeds-main-list" class="feature-list"></div>
+              <div id="seeds-empty" class="feature-empty">
+                <h2>Nenhuma tarefa pendente</h2>
+                <p>Crie uma tarefa com data e lembrete ou peça para a SX.</p>
+              </div>
             </div>
           </div>
 
           <!-- Booking View -->
           <div id="view-booking" class="view-container" style="display:none;">
-            <header class="main-header"><h1 class="main-header__title">Todas as reservas</h1></header>
-            <div class="booking-empty-state">
-              <div class="booking-icon">
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="48" height="48"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/><path d="M12 15l-2 2-2-2"/><path d="M12 15v-4"/></svg>
-              </div>
-              <h2>Crie sua primeira página de agendamento</h2>
-              <p>Compartilhe um link público para que as pessoas possam marcar horários com<br> você com base na sua disponibilidade.</p>
-              <button class="btn-primary" style="margin-top:20px; border-radius: 20px;">+ Criar página de agendamento</button>
+            <header class="main-header">
+              <h1 class="main-header__title">Agendamentos</h1>
+              <button id="btn-new-booking" class="btn-primary" type="button">+ Criar página</button>
+            </header>
+            <div class="feature-page booking-page">
+              <section>
+                <div class="section-heading">
+                  <div><span class="eyebrow">Páginas públicas</span><h2>Disponibilidade para clientes</h2></div>
+                </div>
+                <div id="booking-pages-list" class="feature-list"></div>
+                <div id="booking-pages-empty" class="feature-empty">
+                  <h2>Crie sua primeira página de agendamento</h2>
+                  <p>Compartilhe um link público para receber reservas.</p>
+                </div>
+              </section>
+              <section>
+                <div class="section-heading"><div><span class="eyebrow">Reservas</span><h2>Próximos horários</h2></div></div>
+                <div id="bookings-list" class="feature-list"></div>
+                <div id="bookings-empty" class="feature-empty feature-empty--compact"><p>Nenhuma reserva recebida.</p></div>
+              </section>
             </div>
           </div>
 
           <!-- Settings View -->
           <div id="view-settings" class="view-container" style="display:none;">
-            <div class="settings-content">
-              <h2 style="padding: 24px; border-bottom: 1px solid var(--color-border); font-size: 1.2rem; font-weight: 500;">Geral</h2>
-              <div class="settings-card" style="padding: 24px;">
-                <div class="setting-item" style="display:flex; justify-content:space-between; align-items:center; margin-bottom:20px;">
-                  <div>
-                    <strong style="display:block; font-weight:500;">Idioma da interface web</strong>
-                    <span style="font-size:0.85rem; color:var(--color-text-light);">Isso afeta o idioma de todos os textos da interface, como menus e botões.</span>
-                  </div>
-                  <select class="form-select" style="width: auto;"><option>pt-BR</option></select>
-                </div>
-                <div class="setting-item" style="display:flex; justify-content:space-between; align-items:center; margin-bottom:20px;">
-                  <div>
-                    <strong style="display:block; font-weight:500;">Tema de cores</strong>
-                  </div>
-                  <select class="form-select" style="width: auto;"><option>Seguir Sistema</option></select>
-                </div>
-              </div>
-            </div>
+            <div id="settings-content" class="settings-content" aria-live="polite"></div>
           </div>
         </main>
 
         <!-- ========== AI CHAT (Right Sidebar) ========== -->
-        <aside id="ai-sidebar" class="ai-sidebar" aria-label="SevenChat" aria-hidden="true">
+        <aside id="ai-sidebar" class="ai-sidebar" aria-label="Assistente SX" aria-hidden="true">
           <div class="ai-chat-header" style="display: flex; justify-content: center; align-items: center; padding: 16px;">
             <div class="ai-logo-pill" style="display: flex; align-items: center; gap: 8px; background: rgba(255,255,255,0.05); padding: 8px 16px; border-radius: 20px; font-weight: 500; font-size: 0.9rem;">
-              <svg viewBox="0 0 32 32" fill="none" width="20" height="20">
-                <rect width="32" height="32" rx="8" fill="var(--color-primary)"/>
-                <path d="M8 12h16M8 16h10M8 20h13" stroke="#fff" stroke-width="2" stroke-linecap="round"/>
-              </svg>
+              <img class="brand-logo brand-logo--chat" src="/sx-time-tasks-logo.png" alt="" />
               SX
             </div>
           </div>
@@ -287,40 +282,20 @@
           <div id="ai-chat-history" class="ai-chat-history">
             <!-- Messages go here -->
             <div class="ai-msg ai-msg--system">
-              Olá! Como posso ajudar com seu calendário hoje?
+              Olá! Eu sou a SX. Diga ou fale o que deseja agendar.
             </div>
           </div>
 
           <div class="ai-chat-input-area">
             <div class="ai-input-wrapper">
-              <button class="btn-icon ai-attach-btn"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="20" height="20"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg></button>
               <input type="text" id="ai-input" placeholder="Pergunte à SX sobre seu calendário..." autocomplete="off"/>
+              <button id="btn-ai-voice" class="btn-icon" type="button" title="Falar com a SX" aria-label="Falar com a SX">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="18" height="18"><rect x="9" y="2" width="6" height="12" rx="3"/><path d="M5 10a7 7 0 0 0 14 0M12 17v5M8 22h8"/></svg>
+              </button>
               <button id="btn-ai-submit" class="btn-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="18" height="18"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg></button>
             </div>
           </div>
         </aside>
-      </div>
-    </div>
-
-    <!-- API Key Modal -->
-    <div id="apikey-modal" class="modal-overlay" aria-hidden="true">
-      <div class="modal" role="dialog">
-        <div class="modal__header">
-          <h2 class="modal__title">Configurar IA (Gemini)</h2>
-          <button id="apikey-close" class="btn-icon" aria-label="Fechar"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" width="20" height="20"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>
-        </div>
-        <div class="modal__form" style="padding: 16px;">
-          <p style="margin-bottom: 1rem; color: var(--color-text-light); font-size: 0.9rem; line-height: 1.5;">Para a SX entender seus comandos de texto e criar eventos inteligentemente, precisamos da chave de API gratuita do Google Gemini.</p>
-          <div class="form-group">
-            <label class="form-label">Gemini API Key</label>
-            <input type="password" id="apikey-input" class="form-input" placeholder="AIzaSy..." />
-          </div>
-          <div class="modal__actions" style="margin-top: 1.5rem;">
-            <div class="modal__actions-right">
-              <button type="button" id="apikey-save" class="btn-primary">Salvar Chave</button>
-            </div>
-          </div>
-        </div>
       </div>
     </div>
 
@@ -342,6 +317,7 @@
             <div class="form-group"><label class="form-label">Fim</label><input type="time" id="event-end" class="form-input" value="10:00" /></div>
           </div>
           <div class="form-group"><label class="form-label">Calendário</label><select id="event-calendar" class="form-select"><option value="pessoal">Pessoal</option><option value="trabalho">Trabalho</option><option value="saude">Saúde</option><option value="estudos">Estudos</option><option value="social">Social</option></select></div>
+          <div class="form-group"><label class="form-label">Lembrete</label><select id="event-reminder" class="form-select"><option value="0">No horário</option><option value="5">5 minutos antes</option><option value="15">15 minutos antes</option><option value="30">30 minutos antes</option><option value="60">1 hora antes</option><option value="1440">1 dia antes</option></select></div>
           <div class="form-group"><label class="form-label">Descrição</label><textarea id="event-description" class="form-input form-textarea" rows="3" placeholder="Adicionar descrição..."></textarea></div>
           <input type="hidden" id="event-id" />
           <div class="modal__actions">
@@ -352,6 +328,68 @@
             </div>
           </div>
         </form>
+      </div>
+    </div>
+
+    <!-- Seed Modal -->
+    <div id="seed-modal" class="modal-overlay" aria-hidden="true">
+      <div class="modal" role="dialog" aria-labelledby="seed-modal-title">
+        <div class="modal__header">
+          <h2 id="seed-modal-title" class="modal__title">Nova tarefa</h2>
+          <button id="seed-modal-close" class="btn-icon" type="button" aria-label="Fechar">×</button>
+        </div>
+        <form id="seed-form" class="modal__form">
+          <div class="form-group"><label class="form-label" for="seed-title">Tarefa</label><input id="seed-title" class="form-input form-input--title" required maxlength="180" placeholder="O que precisa ser feito?" /></div>
+          <div class="form-group"><label class="form-label" for="seed-due">Data e horário</label><input id="seed-due" type="datetime-local" class="form-input" /></div>
+          <div class="form-group"><label class="form-label" for="seed-reminder">Lembrar em</label><input id="seed-reminder" type="datetime-local" class="form-input" /></div>
+          <div class="form-group"><label class="form-label" for="seed-notes">Observações</label><textarea id="seed-notes" class="form-input form-textarea" rows="3"></textarea></div>
+          <input id="seed-id" type="hidden" />
+          <div class="modal__actions">
+            <button id="btn-delete-seed" class="btn-danger" type="button" hidden>Excluir</button>
+            <div class="modal__actions-right"><button id="seed-cancel" class="btn-secondary" type="button">Cancelar</button><button class="btn-primary" type="submit">Salvar</button></div>
+          </div>
+        </form>
+      </div>
+    </div>
+
+    <!-- Booking Page Modal -->
+    <div id="booking-modal" class="modal-overlay" aria-hidden="true">
+      <div class="modal" role="dialog" aria-labelledby="booking-modal-title">
+        <div class="modal__header">
+          <h2 id="booking-modal-title" class="modal__title">Nova página de agendamento</h2>
+          <button id="booking-modal-close" class="btn-icon" type="button" aria-label="Fechar">×</button>
+        </div>
+        <form id="booking-form" class="modal__form">
+          <div class="form-group"><label class="form-label" for="booking-title">Título</label><input id="booking-title" class="form-input form-input--title" required maxlength="180" placeholder="Reunião de 30 minutos" /></div>
+          <div class="form-row"><div class="form-group"><label class="form-label" for="booking-slug">Identificador do link</label><input id="booking-slug" class="form-input" required pattern="[a-z0-9]+(?:-[a-z0-9]+)*" placeholder="reuniao-30-min" /></div><div class="form-group"><label class="form-label" for="booking-duration">Duração</label><select id="booking-duration" class="form-select"><option value="15">15 minutos</option><option value="30" selected>30 minutos</option><option value="45">45 minutos</option><option value="60">60 minutos</option><option value="90">90 minutos</option></select></div></div>
+          <div class="form-row"><div class="form-group"><label class="form-label" for="booking-start">Disponível a partir de</label><input id="booking-start" type="time" class="form-input" value="09:00" required /></div><div class="form-group"><label class="form-label" for="booking-end">Até</label><input id="booking-end" type="time" class="form-input" value="17:00" required /></div></div>
+          <fieldset class="weekday-fieldset"><legend class="form-label">Dias disponíveis</legend><div class="weekday-options"><label><input type="checkbox" name="booking-weekday" value="1" checked /> Seg</label><label><input type="checkbox" name="booking-weekday" value="2" checked /> Ter</label><label><input type="checkbox" name="booking-weekday" value="3" checked /> Qua</label><label><input type="checkbox" name="booking-weekday" value="4" checked /> Qui</label><label><input type="checkbox" name="booking-weekday" value="5" checked /> Sex</label></div></fieldset>
+          <div class="form-group"><label class="form-label" for="booking-description">Descrição</label><textarea id="booking-description" class="form-input form-textarea" rows="3"></textarea></div>
+          <input id="booking-id" type="hidden" />
+          <div class="modal__actions"><button id="btn-delete-booking-page" class="btn-danger" type="button" hidden>Excluir</button><div class="modal__actions-right"><button id="booking-cancel" class="btn-secondary" type="button">Cancelar</button><button class="btn-primary" type="submit">Salvar página</button></div></div>
+        </form>
+      </div>
+    </div>
+
+    <!-- Public booking experience -->
+    <div id="public-booking-overlay" class="public-booking-overlay" hidden>
+      <div class="public-booking-card">
+        <a class="public-booking-brand" href="/" aria-label="SX Time Tasks"><img class="brand-logo brand-logo--booking" src="/sx-time-tasks-logo.png" alt="SX Time Tasks" /></a>
+        <div id="public-booking-loading">Carregando página de agendamento…</div>
+        <div id="public-booking-content" hidden>
+          <span class="eyebrow">Agendamento online</span>
+          <h1 id="public-booking-title"></h1>
+          <p id="public-booking-description"></p>
+          <p id="public-booking-meta" class="public-booking-meta"></p>
+          <form id="public-booking-form" class="public-booking-form">
+            <div class="form-group"><label class="form-label" for="guest-name">Seu nome</label><input id="guest-name" class="form-input" required maxlength="120" /></div>
+            <div class="form-group"><label class="form-label" for="guest-email">Seu e-mail</label><input id="guest-email" type="email" class="form-input" required maxlength="180" /></div>
+            <div class="form-row"><div class="form-group"><label class="form-label" for="guest-date">Data</label><select id="guest-date" class="form-select" required></select></div><div class="form-group"><label class="form-label" for="guest-time">Horário</label><select id="guest-time" class="form-select" required></select></div></div>
+            <div class="form-group"><label class="form-label" for="guest-notes">Mensagem opcional</label><textarea id="guest-notes" class="form-input form-textarea" rows="3"></textarea></div>
+            <button class="btn-primary public-booking-submit" type="submit">Confirmar agendamento</button>
+            <p id="public-booking-feedback" class="form-feedback" aria-live="polite"></p>
+          </form>
+        </div>
       </div>
     </div>
 

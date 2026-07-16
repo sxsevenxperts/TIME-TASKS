@@ -2,8 +2,9 @@
 // modal.js — Modal de criação/edição e popover de preview
 // ============================================================
 
-import { createEvent, updateEvent, deleteEvent, getEventById, getCalendarColor } from './events.js';
+import { createEvent, updateEvent, deleteEvent, getEventById, getCalendarColor, detectConflicts } from './events.js';
 import { formatDateFull, formatTime, toDateKey } from './utils.js';
+import { getSettings } from './settings.js';
 
 let onEventChange = null;
 
@@ -124,6 +125,7 @@ export function openModal(eventId = null, prefill = {}) {
     document.getElementById('event-start').value = event.startTime || '09:00';
     document.getElementById('event-end').value = event.endTime || '10:00';
     document.getElementById('event-calendar').value = event.calendar;
+    document.getElementById('event-reminder').value = String(event.reminderMinutes ?? 0);
     document.getElementById('event-description').value = event.description || '';
 
     if (event.allDay) {
@@ -134,6 +136,9 @@ export function openModal(eventId = null, prefill = {}) {
     title.textContent = 'Novo Evento';
     deleteBtn.style.display = 'none';
     document.getElementById('event-id').value = '';
+    const settings = getSettings();
+    document.getElementById('event-calendar').value = settings.defaultCalendar || 'pessoal';
+    document.getElementById('event-reminder').value = String(settings.defaultReminder ?? 0);
 
     // Prefill de data/hora se fornecido
     if (prefill.date) {
@@ -142,13 +147,11 @@ export function openModal(eventId = null, prefill = {}) {
       document.getElementById('event-date').value = toDateKey(new Date());
     }
 
-    if (prefill.startTime) {
-      document.getElementById('event-start').value = prefill.startTime;
-      // Auto-set end time 1 hour later
-      const [h, m] = prefill.startTime.split(':').map(Number);
-      const endH = Math.min(h + 1, 23);
-      document.getElementById('event-end').value = formatTime(endH, m);
-    }
+    const startTime = prefill.startTime || '09:00';
+    document.getElementById('event-start').value = startTime;
+    const [hours, minutes] = startTime.split(':').map(Number);
+    const total = Math.min(hours * 60 + minutes + Number(settings.defaultDuration || 60), 1439);
+    document.getElementById('event-end').value = formatTime(Math.floor(total / 60), total % 60);
   }
 
   overlay.classList.add('modal-overlay--visible');
@@ -184,9 +187,17 @@ async function handleSubmit() {
     endTime: document.getElementById('event-allday')?.checked ? null : document.getElementById('event-end')?.value,
     calendar: document.getElementById('event-calendar')?.value,
     description: document.getElementById('event-description')?.value?.trim(),
+    reminderMinutes: Number(document.getElementById('event-reminder')?.value || 0),
   };
 
-  if (!eventData.title) return;
+  if (!eventData.title) return showToast('Informe um título para o evento', 'error');
+  if (!eventData.allDay && (!eventData.startTime || !eventData.endTime || eventData.endTime <= eventData.startTime)) {
+    return showToast('O horário final precisa ser posterior ao horário inicial', 'error');
+  }
+  if (getSettings().conflictCheck && !eventData.allDay) {
+    const conflicts = detectConflicts(eventData.date, eventData.startTime, eventData.endTime, id || null);
+    if (conflicts.length) return showToast(`Conflito com “${conflicts[0].title}”`, 'error');
+  }
 
   if (id) {
     const saved = await updateEvent(id, eventData);

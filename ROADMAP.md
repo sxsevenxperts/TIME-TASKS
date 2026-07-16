@@ -1,181 +1,111 @@
-# 🗺️ Roadmap — Time Tasks
+# Roadmap — SX Time Tasks
 
-> Planejamento completo de desenvolvimento do projeto Time Tasks.
-> Cada fase representa um marco na construção da aplicação.
+Última revisão técnica: **16/07/2026**.
 
----
+## Versão 2.0 — entregue
 
-## Fase 1 ✅ Fundação
+### Produto e identidade
 
-> Configuração inicial do projeto e infraestrutura de desenvolvimento.
+- [x] Remoção do modo demonstração e de dados simulados.
+- [x] Identidade visual baseada na marca circular SX.
+- [x] Nome da assistente padronizado como **SX** e menu exibido apenas como **IA**.
+- [x] Layout responsivo com calendário, tarefas, agendamentos e configurações.
+- [x] Manifesto web e ícone do aplicativo.
 
-- Inicialização do projeto com **Vite** como build tool
-- Configuração do `package.json` com scripts de desenvolvimento e build
-- Definição da estrutura de diretórios (`src/`, `public/`, `styles/`, `modules/`)
-- Criação do `index.html` com estrutura semântica HTML5
-- Configuração do `vite.config.js` para desenvolvimento local
-- Setup do servidor de desenvolvimento com Hot Module Replacement (HMR)
-- Organização modular do JavaScript com ES Modules
+### Acesso e dados
 
----
+- [x] Login e criação de conta por e-mail e senha.
+- [x] Vínculo exclusivo de acesso em `time_tasks_members`.
+- [x] Oito tabelas com prefixo `time_tasks_*` para evitar colisão com SevenChat.
+- [x] RLS ativo em todas as tabelas e 28 políticas aplicadas.
+- [x] Migração idempotente de eventos legados.
+- [x] Conta operacional vinculada ao Time Tasks.
+- [x] APIs privadas recusam usuários autenticados que não sejam membros do app.
 
-## Fase 2 ✅ Design System
+### Agenda e tarefas
 
-> Criação do sistema visual completo da aplicação.
+- [x] CRUD completo de eventos.
+- [x] Visões Dia, 3 Dias, Semana e Mês.
+- [x] Categorias Pessoal, Trabalho, Saúde, Estudos e Social.
+- [x] Duração, evento de dia inteiro, lembrete e verificação de conflitos.
+- [x] Tarefas/Sementes com prazo, lembrete, conclusão, edição e exclusão.
+- [x] Correção do estado vazio que permanecia visível após criar uma tarefa.
+- [x] Normalização visual de horários para `HH:MM`.
 
-- Implementação de **CSS Custom Properties** (variáveis CSS) para tokens de design
-- Criação da paleta de cores completa com variantes para tema claro e escuro
-- Sistema de **tema Dark / Light** com alternância dinâmica
-- Detecção automática da preferência de tema do sistema operacional (`prefers-color-scheme`)
-- Tipografia com fonte **Inter** (Google Fonts) em múltiplos pesos
-- Escala tipográfica consistente (headings, body, captions)
-- Efeitos de **Glassmorphism** (backdrop-filter, transparência, blur)
-- Sistema de espaçamento e border-radius padronizados
-- Sombras e elevações por camada (surface, raised, overlay)
-- Transições e animações CSS suaves para interações
-- Reset CSS e estilos base normalizados
+### SX
 
----
+- [x] Chave da IA somente no servidor EasyPanel.
+- [x] Endpoint `/api/sx` autenticado, com validação de membro e rate limit.
+- [x] Interpretação de linguagem natural em português.
+- [x] Criação real de evento, tarefa e lembrete.
+- [x] Entrada por voz nos navegadores que oferecem Web Speech API.
+- [x] Histórico privado de mensagens da SX.
+- [x] Testes reais: `CREATE_EVENT` e `CREATE_SEED` persistidos no Supabase.
 
-## Fase 3 ✅ Layout Principal
+### Agendamento público
 
-> Construção da estrutura visual e componentes de interface.
+- [x] Criação, edição, ativação/pausa e exclusão de páginas.
+- [x] Link público por slug.
+- [x] Disponibilidade por dias, intervalo e duração.
+- [x] Reserva anônima protegida por política específica.
+- [x] Bloqueio de reserva duplicada no mesmo horário.
+- [x] Lista e cancelamento pelo proprietário.
+- [x] Correção da confirmação pública após operação assíncrona.
 
-- **Sidebar** lateral com mini-calendário e lista de calendários
-- **Header** com título do período, navegação (anterior/próximo/hoje) e seletor de visão
-- **Grid do Calendário** com coluna de horários e colunas por dia
-- **Mini-Calendário** navegável na sidebar com destaque do dia atual
-- Botão de criação de novo evento ("+") na sidebar
-- Botão de alternância de tema (ícone sol/lua)
-- Layout responsivo com CSS Grid e Flexbox
-- Indicadores visuais de dia atual na grade
-- Separação visual entre dias da semana e fins de semana
+### Notificações e versículos
 
----
+- [x] Som de dois tons no momento do lembrete.
+- [x] Toast interno e Notification API quando permitida.
+- [x] Versículo da manhã e da tarde.
+- [x] Unicidade por usuário, data/período e versículo.
+- [x] Botão para testar o som.
+- [x] Horários configuráveis.
 
-## Fase 4 ✅ Motor do Calendário
+### Infraestrutura e segurança
 
-> Lógica central de navegação temporal e renderização das visões.
+- [x] Servidor Node próprio para `dist/`, `/api/health`, `/api/sx` e `/api/verse`.
+- [x] Dockerfile Node 22 Alpine com healthcheck.
+- [x] CSP, Permissions-Policy, X-Frame-Options e nosniff.
+- [x] Git remoto sem token embutido na URL.
+- [x] Script administrativo de usuário demo removido.
+- [x] `npm audit --omit=dev`: zero vulnerabilidades.
+- [x] Build Vite e sintaxe de todos os módulos aprovados.
 
-- **Visão Semanal** — Grade de 7 dias com slots de horário (00h-23h)
-- **Visão Diária** — Foco em um único dia com slots de horário expandidos
-- **Visão 3 Dias** — Visualização compacta de 3 dias consecutivos
-- **Visão Mensal** — Grade de calendário tradicional com dias do mês
-- Navegação temporal com botões anterior/próximo por período
-- Botão "Hoje" para retorno rápido à data atual
-- Cálculo correto de semanas, meses e limites de período
-- **Indicador "agora"** — Linha vermelha que marca o horário atual em tempo real
-- Atualização automática do indicador de hora atual
-- Sincronização entre mini-calendário e visão principal
-- Transições suaves entre visões e períodos
+## Falhas encontradas e corrigidas nesta revisão
 
----
+| Falha | Correção | Evidência |
+|---|---|---|
+| Tabelas genéricas colidiam com SevenChat | Prefixo `time_tasks_*` | `sx_messages` do SevenChat permaneceu intacta |
+| APIs aceitavam qualquer usuário do Auth compartilhado | Checagem obrigatória em `time_tasks_members` | conta temporária de outro app recebeu HTTP 401 |
+| Estado vazio de tarefas ficava visível | regra `[hidden]` específica | teste visual após criação |
+| Confirmação de reserva quebrava após `await` | referência do formulário preservada antes da operação | mensagem de sucesso exibida no link público |
+| Horários apareciam com segundos | normalização no mapeamento do evento | exibição `HH:MM` |
+| Chave da IA poderia ir ao cliente | proxy autenticado no servidor | frontend não contém chave privada |
+| Documentação descrevia demo/SevenChat/`public.events` | manual, README e roadmap reescritos | documentação 2.0 |
 
-## Fase 5 ✅ Gestão de Eventos (Migração SaaS - Supabase)
+## Próximas fases
 
-> Sistema completo de criação, edição e exclusão de eventos armazenados no Supabase.
+### P1 — infraestrutura
 
-- **CRUD Completo** — Criar, Ler, Atualizar e Deletar eventos (PostgreSQL via Supabase)
-- **Persistência em Nuvem** — Eventos salvos e carregados diretamente do banco de dados (SaaS)
-- **Formulário Modal** para criação e edição de eventos
-- **Popover de Preview** — Ao clicar em um evento, exibe resumo com opções de editar/excluir
-- **Detecção de Conflitos** — Identificação visual de eventos com horários sobrepostos
-- **Cores por Calendário** — 5 categorias (Pessoal, Trabalho, Saúde, Estudos, Social)
-- Renderização de eventos na grade com posicionamento por horário
-- Criação rápida de evento ao clicar em um slot de horário
+- [ ] Provisionar uma instância Supabase dedicada se o requisito evoluir de isolamento lógico para isolamento físico de Auth, banco, chaves e recursos.
+- [ ] Web Push + service worker + fila de entrega para notificações com navegador totalmente fechado.
+- [ ] Monitoramento de erros, disponibilidade da API de versículos e métricas da SX.
+- [ ] Rotação periódica de todas as credenciais operacionais.
 
----
+### P2 — integrações
 
-## Fase 6 ✅ Experiência do Usuário
+- [ ] Google Calendar bidirecional com OAuth.
+- [ ] Canais WhatsApp e Telegram.
+- [ ] Eventos recorrentes e edição em série.
+- [ ] Sugestão automática de reagendamento em conflitos.
 
-> Polimento da interface e interações avançadas.
+### P3 — evolução do produto
 
-- **Atalhos de Teclado** para navegação rápida (T, N, D, W, M, setas, Esc)
-- **Micro-animações** em botões, cards e transições de visão
-- **Toast Notifications** — Feedback visual para ações
-- **Responsividade** — Adaptação para tablets e telas menores
-- Estados de loading e empty states
-- Scroll suave para o horário atual ao abrir
+- [ ] Drag-and-drop e redimensionamento de eventos.
+- [ ] Modo offline com sincronização posterior.
+- [ ] Resumo semanal e indicadores de produtividade pela SX.
+- [ ] Aplicativos móveis/lojas, caso o uso web valide a demanda.
 
----
+## Critério permanente de pronto
 
-## Fase 7 ⚠️ IA (SX), Autenticação e SevenChat
-
-> Segurança, isolamento de dados e assistente de inteligência artificial.
-
-- **Autenticação Segura** — Tela de login e registro via Supabase Auth
-- **Row Level Security (RLS)** — Isolamento completo dos dados; cada usuário só acessa os seus próprios eventos
-- **SX IA (Integração Gemini)** — Chat inteligente embutido na interface
-- **Criação de Eventos por Linguagem Natural** — A IA interpreta frases ("reunião amanhã às 14h") e salva automaticamente no calendário
-- **Deploy no Servidor Easypanel** — Banco de dados hospedado em servidor Cloud
-- **SevenChat no front-end** — Sidebar com toggle, foco automático, estado acessível e layout responsivo
-- **Tratamento de inicialização** — Configuração Supabase inválida não derruba o shell; sessão inicial é restaurada explicitamente
-- **Persistência confirmada** — Criação, edição, exclusão e criação por IA aguardam o retorno do Supabase antes de exibir sucesso
-- **Runtime validado** — Login real, sessão e calendário carregados no domínio publicado do Easypanel em 16/07/2026
-
----
-
-## Fase 8 ✅ Documentação
-
-> Documentação completa do projeto.
-
-
----
-
-### Fase 8 ⚠️ Infraestrutura e Deploy (Easypanel + Supabase)
-- **Hospedagem Frontend**: Build pelo `Dockerfile` com Node 22 Alpine, Vite e `serve` estático na porta interna `3000`.
-- **Banco de Dados com RLS**: Eventos isolados por `auth.uid()` no Supabase self-hosted do Easypanel.
-- **Segurança de Variáveis (Correção de Falha)**: 
-  - *Falha Apontada*: O arquivo `.env.local` é bloqueado pelo `.gitignore`. Logo, quando o Easypanel puxava o código do GitHub para fazer o build, as chaves do Supabase não existiam lá, quebrando a conexão. 
-  - *Caminho de Resolução*: Para aplicações Frontend (onde a chave `ANON_KEY` é pública por design), a melhor prática para deploys automatizados sem precisar configurar o painel do servidor é utilizar um arquivo `.env.production` commitado no repositório.
-  - *Ação Tomada*: O arquivo `.env.production` foi criado e enviado ao GitHub, garantindo que o build do Easypanel agora tenha acesso nativo às chaves do Supabase (URL e ANON_KEY) automaticamente, sem intervenção manual.
-- **Autenticação Segura**: Melhorias na UX de login, loading overlay para evitar flicker e feedback visual de exigência de confirmação de e-mail.
-- **Falha de deploy corrigida**: O serviço ainda usava Nixpacks e falhava durante `npm ci`/download do Nix. O builder do Easypanel foi alterado para `Dockerfile`, com Node 22 e dependências sem Puppeteer.
-- **Roteamento corrigido**: O domínio apontava para a porta `80`; agora direciona corretamente para `startups_timetasks:3000`.
-- **Banco operacional**: O schema idempotente `supabase/schema.sql` foi aplicado ao Postgres self-hosted; `public.events`, RLS, índices e grants estão ativos.
-- **Validação real**: Login aprovado e evento criado/excluído no banco pelo frontend publicado em 16/07/2026.
-- **Falha crítica de isolamento identificada**: O mesmo endpoint Supabase está configurado no Smart Stoma. O RLS protege os eventos, mas cadastro de e-mail, senha e sessão pertencem ao mesmo namespace Auth. Isolamento absoluto exige compose, domínio, chaves e banco Supabase dedicados ao Time Tasks.
-- **Segurança corrigida no repositório**: scripts administrativos não carregam mais service-role key hardcoded; usar `SUPABASE_URL` e `SUPABASE_SERVICE_ROLE_KEY` somente no ambiente seguro.
-
-### Fase 8.1 ✅ Gate de publicação concluído
-
-1. Domínio publicado: `https://startups-timetasks.qfotry.easypanel.host/`.
-2. Build e deploy concluídos com Dockerfile em 16/07/2026 às 15:31 UTC (12:31 em America/Fortaleza).
-3. Login e carregamento do calendário validados no navegador.
-4. Criação e exclusão de evento validadas com retorno real do Supabase.
-5. Commit publicado no deploy: `c48b234a5ed10198880ad325125195df78d63143`.
-
-### Fase 8.2 🚨 Isolamento absoluto de Auth — obrigatório
-
-1. Provisionar `supabase-timetasks` como compose independente no Easypanel.
-2. Gerar novos `JWT_SECRET`, anon key, service-role key e senha do Postgres; não reutilizar os segredos do stack atual.
-3. Publicar domínio exclusivo do Supabase e atualizar `VITE_SUPABASE_URL`/`VITE_SUPABASE_ANON_KEY`.
-4. Aplicar `supabase/schema.sql` no novo Postgres.
-5. Criar ou migrar a conta autorizada e repetir login, restauração de sessão e CRUD real.
-
-## Fase 9 🔮 Futuro
-
-> Funcionalidades planejadas para versões futuras.
-
-### 🖱️ Interações Avançadas
-- **Drag-and-Drop** para mover eventos entre horários e dias
-- **Resize de Eventos** — Arrastar bordas para alterar duração
-
-### 🔄 Recorrência de Eventos
-- Eventos recorrentes (diário, semanal, mensal) e edições em série
-
-### 🌐 Integrações & Notificações
-- **Google Calendar API** — Sincronização bidirecional
-- **Push Notifications** (PWA)
-
-### 🤖 Evolução da Inteligência Artificial (SX)
-- Agendamento automático para descobrir o melhor horário (AI Scheduling)
-- Resumos da semana / Análise de produtividade
-- Detecção inteligente de conflitos com sugestões de reagendamento sugeridas pela IA
-
----
-
-<p align="center">
-  <em>Roadmap atualizado em Julho de 2026 (Migração SaaS)</em><br>
-  <strong>⏰ Time Tasks</strong>
-</p>
+Uma entrega só é considerada concluída quando passa por build, banco/RLS, autenticação, CRUD real, teste visual, healthcheck, deploy público e paridade `HEAD == origin/main`.

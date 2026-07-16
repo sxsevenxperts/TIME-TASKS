@@ -10,21 +10,22 @@ import { initCalendar, refreshCalendar, navigateToDate } from './calendar.js';
 import { initNavigation } from './navigation.js';
 import { initAI } from './ai.js';
 import { initAuth } from './auth.js';
+import { initSettings } from './settings.js';
+import { initSeeds } from './seeds.js';
+import { initBooking, isPublicBookingRoute } from './booking.js';
+import { initReminders } from './reminders.js';
 
 /**
  * Inicializa toda a aplicação
  */
 function init() {
-  // 1. Autenticação (Supabase)
-  initAuth();
-
-  // 2. Tema
+  // A página pública de agendamento funciona sem sessão.
   initTheme();
+  initBooking();
+  if (isPublicBookingRoute()) return;
 
-  // 3. Dados
+  // Registre todos os consumidores da sessão antes de restaurar a autenticação.
   loadCalendarVisibility();
-
-  // 3. Sidebar
   initSidebar({
     onDateSelected: (date) => {
       navigateToDate(date);
@@ -34,26 +35,22 @@ function init() {
     }
   });
 
-  // 4. Modal
   initModal({
     onEventChanged: () => {
       refreshCalendar();
     }
   });
 
-  // 5. Calendário
   initCalendar();
-
-  // 6. Navegação
+  initSettings();
+  initSeeds();
+  initReminders();
   initNavigation();
-
-  // 7. IA (SX)
   initAI({
     onEventCreated: () => refreshCalendar()
   });
-
-  // 8. Atalhos de teclado
   setupKeyboardShortcuts();
+  void initAuth();
 
   console.log('🕐 Time Tasks inicializado com sucesso!');
 }
