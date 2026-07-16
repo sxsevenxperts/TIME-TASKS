@@ -3,19 +3,29 @@
  * Um versículo diferente do histórico de notificações (que usa um versículo por período do dia).
  */
 
+import { supabase } from './supabase.js';
+
+let shownForSession = false;
+
 export async function initVerseAccess() {
   document.addEventListener('timetasks:session', async (event) => {
-    if (!event.detail?.user) return;
+    if (!event.detail?.user) {
+      shownForSession = false;
+      return;
+    }
+    if (shownForSession) return;
+    shownForSession = true;
     try {
+      const { data } = await supabase.auth.getSession();
+      const token = data.session?.access_token;
+      if (!token) return;
       const response = await fetch('/api/verse', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ type: 'access' })
+        headers: { Authorization: `Bearer ${token}` }
       });
       if (!response.ok) return;
-      const { verse, reference } = await response.json();
-      if (verse && reference) {
-        showVerseAccessBalloon(verse, reference);
+      const { text, reference } = await response.json();
+      if (text && reference) {
+        showVerseAccessBalloon(text, reference);
       }
     } catch (err) {
       console.warn('Versículo por acesso indisponível:', err.message);

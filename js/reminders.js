@@ -119,7 +119,7 @@ async function checkEvents(now) {
   const settings = getSettings();
   if (!settings.eventNotifications) return;
   for (const event of loadEvents()) {
-    if (event.notifiedAt) continue;
+    if (event.completed || event.notifiedAt) continue;
     const { target, occurrence } = eventTimes(event, settings);
     if (now >= target && now.getTime() - occurrence.getTime() < 86_400_000) {
       const claimed = await markEventNotified(event.id);

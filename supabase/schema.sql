@@ -56,6 +56,7 @@ create table if not exists public.time_tasks_events (
   calendar text not null default 'pessoal' check (calendar in ('pessoal', 'trabalho', 'saude', 'estudos', 'social')),
   description text not null default '',
   reminder_minutes integer not null default 0 check (reminder_minutes between 0 and 10080),
+  completed boolean not null default false,
   notified_at timestamptz,
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now(),
@@ -65,6 +66,7 @@ create table if not exists public.time_tasks_events (
 );
 
 alter table public.time_tasks_events add column if not exists reminder_minutes integer not null default 0;
+alter table public.time_tasks_events add column if not exists completed boolean not null default false;
 alter table public.time_tasks_events add column if not exists notified_at timestamptz;
 
 -- Preserva os eventos do primeiro lançamento sem alterar a tabela legada.

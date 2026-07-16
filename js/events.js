@@ -71,6 +71,7 @@ function mapEvent(dbEvent) {
     calendar: dbEvent.calendar,
     description: dbEvent.description,
     reminderMinutes: Number(dbEvent.reminder_minutes ?? 0),
+    completed: Boolean(dbEvent.completed),
     notifiedAt: dbEvent.notified_at,
     createdAt: dbEvent.created_at,
     updatedAt: dbEvent.updated_at
@@ -136,6 +137,7 @@ export async function createEvent(eventData) {
     calendar: eventData.calendar || 'pessoal',
     description: eventData.description || '',
     reminder_minutes: Math.max(0, Number(eventData.reminderMinutes ?? 0)),
+    completed: Boolean(eventData.completed),
     notified_at: null,
     updated_at: new Date().toISOString()
   };
@@ -182,6 +184,7 @@ export async function updateEvent(id, eventData) {
     calendar: eventData.calendar,
     description: eventData.description,
     reminder_minutes: Math.max(0, Number(eventData.reminderMinutes ?? 0)),
+    completed: Boolean(eventData.completed),
     notified_at: null,
     updated_at: new Date().toISOString()
   };
@@ -201,6 +204,65 @@ export async function updateEvent(id, eventData) {
   localEvents[idx] = mapEvent(data);
   document.dispatchEvent(new Event('timetasks:data'));
   return localEvents[idx];
+}
+
+/**
+ * Atualiza parcialmente um evento (reedição, adiamento ou baixa pela SX/popover).
+ * Apenas os campos presentes em `patch` são alterados; o restante é preservado.
+ */
+export async function patchEvent(id, patch = {}) {
+  if (!supabase || !getCurrentUser()) return null;
+  const current = getEventById(id);
+  if (!current) return null;
+
+  const merged = { ...current, ...patch };
+  const title = String(merged.title || '').trim();
+  if (!title || !merged.date) return null;
+  if (merged.allDay) {
+    merged.startTime = null;
+    merged.endTime = null;
+  } else if (!merged.startTime || !merged.endTime || timeToMinutes(merged.endTime) <= timeToMinutes(merged.startTime)) {
+    return null;
+  }
+
+  const payload = {
+    title,
+    date: merged.date,
+    start_time: merged.startTime,
+    end_time: merged.endTime,
+    all_day: Boolean(merged.allDay),
+    calendar: CALENDARS[merged.calendar] ? merged.calendar : current.calendar,
+    description: String(merged.description || ''),
+    reminder_minutes: Math.max(0, Number(merged.reminderMinutes ?? 0)),
+    completed: Boolean(merged.completed),
+    // Adiar ou reabrir um evento reativa o lembrete; dar baixa mantém o estado.
+    notified_at: merged.completed ? current.notifiedAt : null,
+    updated_at: new Date().toISOString()
+  };
+
+  const { data, error } = await supabase
+    .from('time_tasks_events')
+    .update(payload)
+    .eq('id', id)
+    .select()
+    .single();
+
+  if (error) {
+    console.error('Erro ao atualizar evento:', error);
+    return null;
+  }
+
+  const idx = localEvents.findIndex(e => e.id === id);
+  if (idx >= 0) localEvents[idx] = mapEvent(data);
+  document.dispatchEvent(new Event('timetasks:data'));
+  return idx >= 0 ? localEvents[idx] : mapEvent(data);
+}
+
+/**
+ * Dá baixa (SIM) ou reabre (NÃO) um evento.
+ */
+export async function setEventCompleted(id, completed) {
+  return patchEvent(id, { completed: Boolean(completed) });
 }
 
 export async function markEventNotified(id) {

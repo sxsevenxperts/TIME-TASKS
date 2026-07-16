@@ -324,6 +324,7 @@ function renderEventsInColumn(container, events) {
 
     const block = document.createElement('div');
     block.className = 'event-block';
+    if (event.completed) block.classList.add('event-block--done');
     block.dataset.eventId = event.id;
     block.style.cssText = `
       top: ${top}px;
@@ -433,6 +434,7 @@ function renderAllDayEvents(days) {
     allDayEvents.forEach(event => {
       const chip = document.createElement('div');
       chip.className = 'allday-chip';
+      if (event.completed) chip.classList.add('event-done');
       chip.style.setProperty('--event-color', getCalendarColor(event.calendar));
       chip.textContent = event.title;
       chip.dataset.eventId = event.id;
@@ -487,6 +489,7 @@ function renderMonthView() {
     dayEvents.slice(0, 3).forEach(event => {
       const eventDot = document.createElement('div');
       eventDot.className = 'month-grid__event';
+      if (event.completed) eventDot.classList.add('event-done');
       eventDot.style.setProperty('--event-color', getCalendarColor(event.calendar));
       eventDot.textContent = event.title;
 

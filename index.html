@@ -401,6 +401,7 @@
           </div>
           <div class="form-group"><label class="form-label">Calendário</label><select id="event-calendar" class="form-select"><option value="pessoal">Pessoal</option><option value="trabalho">Trabalho</option><option value="saude">Saúde</option><option value="estudos">Estudos</option><option value="social">Social</option></select></div>
           <div class="form-group"><label class="form-label">Lembrete</label><select id="event-reminder" class="form-select"><option value="0">No horário</option><option value="5">5 minutos antes</option><option value="15">15 minutos antes</option><option value="30">30 minutos antes</option><option value="60">1 hora antes</option><option value="1440">1 dia antes</option></select></div>
+          <div class="form-group"><label class="form-label" id="event-completed-label">Dar baixa (concluído)</label><div class="status-toggle" role="group" aria-labelledby="event-completed-label"><button type="button" id="event-completed-yes" class="status-toggle__btn" aria-pressed="false">Sim</button><button type="button" id="event-completed-no" class="status-toggle__btn status-toggle__btn--active" aria-pressed="true">Não</button></div><input type="hidden" id="event-completed" value="nao" /></div>
           <div class="form-group"><label class="form-label">Descrição</label><textarea id="event-description" class="form-input form-textarea" rows="3" placeholder="Adicionar descrição..."></textarea></div>
           <input type="hidden" id="event-id" />
           <div class="modal__actions">
@@ -488,6 +489,7 @@
         <div id="popover-desc-row" class="event-popover__row"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="16" height="16"><line x1="17" y1="10" x2="3" y2="10"/><line x1="21" y1="6" x2="3" y2="6"/><line x1="21" y1="14" x2="3" y2="14"/><line x1="17" y1="18" x2="3" y2="18"/></svg><span id="popover-description"></span></div>
       </div>
       <div class="event-popover__actions">
+        <button id="popover-complete" class="btn-secondary btn-secondary--sm">Dar baixa</button>
         <button id="popover-edit" class="btn-secondary btn-secondary--sm">Editar</button>
         <button id="popover-delete" class="btn-danger btn-danger--sm">Excluir</button>
       </div>
