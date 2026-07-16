@@ -141,7 +141,30 @@ Clique em **Falar com a SX**, permita o microfone e dite o pedido. A função de
 
 ## 8. Trigger
 
-Acesse **Trigger** na barra de navegação. Esta seção está em desenvolvimento e permitirá criar automações — verificações de clima, resumos de agenda e, futuramente, notificações baseadas em condições externas.
+Acesse **Trigger** na barra de navegação para criar automações — verificações de clima, resumos de agenda e notificações baseadas em condições.
+
+### Criar um Trigger
+
+1. Clique em **Criar um Trigger**.
+2. Escolha o tipo:
+   - **🌤️ Clima** — notificar quando temperatura/umidade atinge condição.
+   - **📋 Resumo** — resumo semanal/diário da agenda.
+   - **🔔 Lembrete** — lembretes customizados.
+3. Nomeie o trigger (ex: "Alerta calor > 30°").
+4. Configure a condição (ex: `temp > 30` para clima).
+5. Escolha o cronograma: Diariamente, Semanalmente, Mensalmente, ou Manual.
+6. Salve.
+
+O trigger aparecerá na lista com toggle **ativado por padrão**. Use os botões **Editar** e **Deletar** para gerenciar.
+
+### Central de Notificações
+
+Abra a aba **Notif.** na SX (mobile) ou verifique a central de notificações para ver:
+- Notificações de triggers disparados
+- Lembretes de eventos e tarefas
+- Versículos e alertas do sistema
+
+Clique no **X** de cada notificação para marcar como lida. Notificações expiram após 30 dias.
 
 ## 9. Páginas de agendamento
 

@@ -73,7 +73,7 @@
 
 ---
 
-## Planner Mestre — Fases 1–5 (concluídas em 16/07/2026)
+## Planner Mestre — Fases 1–5 (concluídas), Fase 6 (em andamento) em 16/07/2026
 
 ### Fase 1 — Fundação responsiva
 
@@ -130,6 +130,27 @@
 - [x] Prompt com botões "Ativar geolocalização" e "Buscar manualmente" quando localização negada.
 - [x] Integração em `app.js` — `initWeather()` chamado após `initVerseAccess()`.
 
+### Fase 6 — Trigger & Central de Notificações (Parcial — 6.1)
+
+**6.1 — Schema e UI base (concluído):**
+
+- [x] Schema `time_tasks_triggers`: name, type (weather/summary/reminder), enabled, condition/action JSONB, schedule, next_run_at
+- [x] Schema `time_tasks_notifications`: trigger_id, type, title, message, icon, read, expires_at (30 dias)
+- [x] RLS em ambas as tabelas por user_id
+- [x] `js/triggers.js`: módulo frontend para CRUD de triggers e exibição de notificações
+- [x] `renderTriggers()`: lista com toggle enable/disable, editar, deletar
+- [x] `renderNotifications()`: lista com ícone, título, mensagem, tempo relativo, marcar lido
+- [x] `fetchNotifications()`: GET 50 itens ordenados por created_at
+- [x] CSS `.trigger-card`, `.badge--weather/summary/reminder`, `.toggle-switch`, `.feature-empty`
+- [x] Integração em `app.js` — `initTriggers()` após `initWeather()`
+
+**6.2 — Executor Node.js (pendente):**
+
+- [ ] Worker Node.js para polling/cronograma de triggers
+- [ ] Lógica de disparo de notificações baseada em tipo (weather, summary, reminder)
+- [ ] Modal de criação/edição de triggers
+- [ ] Testes no backend
+
 ---
 
 ## Falhas encontradas e corrigidas (histórico consolidado)
@@ -149,6 +170,15 @@
 | Navegação desktop não funcionava na tab bar mobile | seletor unificado `[data-target]` em navigation.js | ambas as barras sincronizadas |
 | Múltiplos controles da SX sem estado central | `setChatOpen()` exportada e usada em todos os pontos | toggle consistente |
 | `.ai-input-wrapper` definido duas vezes em layout.css | regras merged em uma única declaração | sem override inesperado |
+
+## Falhas & Limitações Fase 6
+
+| # | Falha/Limitação | Estado | Impacto |
+|---|---|---|---|
+| 6.1 | Modal de criação/edição é placeholder (alert) | ⏳ Pendente | Usuários não conseguem criar triggers ainda |
+| 6.2 | Executor Node.js não implementado | ⏳ Pendente | Triggers não disparam notificações automaticamente |
+| 6.3 | Aba "Notif." não chama renderNotifications() ao abrir | ⏳ Pendente (verificar navigation.js `setAiTab`) | Notificações não recarregam ao trocar de aba |
+| 6.4 | Botão historico (relógio) não sincroniza estado de notificações lidas | ⏳ Não implementado | Ponto vermelho de notificações pode não desaparecer |
 
 ---
 
