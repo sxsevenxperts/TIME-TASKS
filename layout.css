@@ -713,35 +713,6 @@
   font-size: 0.8rem;
 }
 
-.daily-verse-card {
-  margin-top: auto;
-  padding: 14px;
-  border-radius: var(--radius-lg);
-  color: #f7ffe8;
-  background: linear-gradient(150deg, #071207 0%, #14220b 72%, #243509 100%);
-  border: 1px solid rgba(166, 237, 0, 0.28);
-  box-shadow: inset 0 0 28px rgba(166, 237, 0, 0.05);
-}
-
-.daily-verse-card__eyebrow {
-  color: var(--color-accent);
-  font-size: 0.65rem;
-  font-weight: 750;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
-}
-
-.daily-verse-card p {
-  font-size: 0.78rem;
-  line-height: 1.45;
-  margin: 8px 0;
-}
-
-.daily-verse-card strong {
-  color: #bdf337;
-  font-size: 0.72rem;
-}
-
 /* Balão de versículo por acesso */
 .verse-access-balloon {
   position: fixed;

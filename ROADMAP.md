@@ -134,6 +134,8 @@
 | Versículo por acesso (Fase 4) nunca aparecia | `POST` sem token e formato `{verse}` trocados por `GET` autenticado com `{text, reference}` | balão funcional após login |
 | Fase 4 entregue sem atualização do roadmap | fase marcada como concluída com as correções registradas | este documento |
 | Formulário de login retinha credenciais após logout | campos limpos ao encerrar sessão | cadastro de múltiplas contas em sequência |
+| Duas mensagens bíblicas concorrentes (manhã/tarde + acesso) | canal único: versículo por acesso em balão fechável | seção 9 do manual atualizada |
+| Banco de produção sem a coluna `completed` (salvar evento falharia após deploy) | `schema.sql` executado via postgres-meta com verificação antes/depois | `42703` → coluna presente, evento "CÉLULA" intacto |
 
 ---
 
@@ -170,6 +172,17 @@
 - [x] Botão **Dar baixa**/**Reabrir** no popover de resumo do evento.
 - [x] Evento com baixa aparece riscado/esmaecido nas visões Semana/Dia/3 Dias, Dia inteiro e Mês.
 - [x] Evento com baixa não dispara lembrete; reabrir reativa o lembrete.
+- [x] Migração aplicada e verificada no banco de produção do EasyPanel em 16/07/2026 (coluna `completed` confirmada via `information_schema`, dados preservados).
+
+### Mensagem bíblica unificada
+
+- [x] Apenas um canal de mensagem bíblica: **um versículo por acesso**, em balão com botão X para fechar.
+- [x] Removidos: entregas por período (manhã/tarde), cartão fixo da sidebar e configurações de horário de versículo.
+- [x] `time_tasks_verse_deliveries` e colunas `verse_*` de settings mantidas no banco por preservação de histórico (limpeza futura opcional).
+
+### Diário de bordo
+
+- [x] `MANUAL_DE_BORDO.md` criado com etiquetas do AGENTS.md, linha do tempo, falhas/correções, validações, pendências, riscos e próximos passos.
 
 ---
 
@@ -198,7 +211,7 @@
 
 ### Fase 9 — Documentação
 
-- [ ] Criar `MANUAL_DE_BORDO.md` consolidando todo o histórico, decisões e anti-padrões.
+- [x] Criar `MANUAL_DE_BORDO.md` consolidando todo o histórico, decisões e anti-padrões (criado em 16/07/2026; manter atualizado a cada fase).
 - [ ] Atualizar `README.md` com as fases concluídas e instruções de deploy atualizadas.
 - [ ] Revisar `AGENTS.md` para refletir o estado atual dos módulos.
 

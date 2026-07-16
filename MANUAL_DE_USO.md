@@ -157,15 +157,11 @@ Abra **Configurações > Notificações**.
 
 O alerta atual funciona enquanto o aplicativo está aberto. Com o navegador totalmente fechado, a entrega exige Web Push/service worker, item registrado no roadmap.
 
-## 9. Versículos diários
+## 9. Versículo por acesso
 
-Em **Configurações > Notificações**:
+A cada login, uma única mensagem bíblica é exibida em um balão no canto da tela, com botão **X** para fechar quando quiser. O balão permanece visível até ser fechado.
 
-1. Ative **Versículos diários**.
-2. Escolha o horário da manhã e da tarde.
-3. Mantenha o app aberto no horário para receber o som, toast e, se permitido, a notificação do navegador.
-
-O histórico impede repetição do mesmo versículo para a conta e limita uma entrega por período em cada dia.
+Não há configuração: o versículo é sorteado automaticamente a cada acesso. Este é o único canal de mensagem bíblica do aplicativo — as entregas por período (manhã/tarde) foram descontinuadas para evitar mensagens duplicadas.
 
 ## 10. Configurações
 
@@ -173,7 +169,7 @@ O histórico impede repetição do mesmo versículo para a conta e limita uma en
 - **Conta** — nome de exibição, e-mail e sessão.
 - **Geral** — idioma, tema, fuso, formato de hora e início da semana.
 - **Calendários** — visibilidade e calendário padrão.
-- **Notificações** — alertas, som e versículos.
+- **Notificações** — alertas e som.
 - **IA** — resposta inteligente e entrada por voz.
 - **Novos Eventos** — duração, lembrete e conflitos.
 - **Sobre** — versão, privacidade e documentação.

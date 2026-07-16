@@ -1,4 +1,3 @@
-import { supabase } from './supabase.js';
 import { getCurrentUser } from './auth.js';
 import { loadEvents, markEventNotified } from './events.js';
 import { getSeeds, markSeedNotified } from './seeds.js';
@@ -27,29 +26,6 @@ function zonedDateTimeToDate(dateKey, time, timezone) {
     Number(parts.hour), Number(parts.minute), Number(parts.second)
   );
   return new Date(assumed - (represented - assumed));
-}
-
-function dateKeyInZone(timezone, date = new Date()) {
-  const parts = new Intl.DateTimeFormat('en-CA', {
-    timeZone: timezone,
-    year: 'numeric', month: '2-digit', day: '2-digit'
-  }).formatToParts(date);
-  const values = Object.fromEntries(parts.filter(part => part.type !== 'literal').map(part => [part.type, part.value]));
-  return `${values.year}-${values.month}-${values.day}`;
-}
-
-function minutesInZone(timezone, date = new Date()) {
-  const parts = new Intl.DateTimeFormat('en-US', {
-    timeZone: timezone,
-    hour: '2-digit', minute: '2-digit', hourCycle: 'h23'
-  }).formatToParts(date);
-  const values = Object.fromEntries(parts.filter(part => part.type !== 'literal').map(part => [part.type, part.value]));
-  return Number(values.hour) * 60 + Number(values.minute);
-}
-
-function timeToMinutes(value) {
-  const [hour, minute] = String(value || '00:00').split(':').map(Number);
-  return hour * 60 + minute;
 }
 
 export async function playNotificationSound(force = false) {
@@ -142,109 +118,8 @@ async function checkSeeds(now) {
   }
 }
 
-function renderVerse(verse) {
-  const card = document.getElementById('daily-verse-card');
-  if (!card || !verse) return;
-  document.getElementById('daily-verse-text').textContent = `“${verse.verse_text || verse.text}”`;
-  document.getElementById('daily-verse-reference').textContent = verse.reference;
-  card.hidden = false;
-}
-
-async function existingVerse(dateKey, period) {
-  const user = getCurrentUser();
-  if (!user || !supabase) return null;
-  const { data, error } = await supabase
-    .from('time_tasks_verse_deliveries')
-    .select('*')
-    .eq('user_id', user.id)
-    .eq('delivery_date', dateKey)
-    .eq('period', period)
-    .maybeSingle();
-  if (error) console.error('Erro ao consultar versículo:', error);
-  return data || null;
-}
-
-async function apiToken() {
-  const { data } = await supabase.auth.getSession();
-  return data.session?.access_token || null;
-}
-
-async function deliverVerse(dateKey, period) {
-  const user = getCurrentUser();
-  if (!user || !supabase) return;
-  const delivered = await existingVerse(dateKey, period);
-  if (delivered) {
-    renderVerse(delivered);
-    return;
-  }
-  const token = await apiToken();
-  if (!token) return;
-
-  for (let attempt = 0; attempt < 12; attempt += 1) {
-    const response = await fetch('/api/verse', {
-      headers: { Authorization: `Bearer ${token}` }
-    });
-    if (!response.ok) {
-      console.error('Não foi possível obter o versículo:', response.status);
-      return;
-    }
-    const verse = await response.json();
-    const { data, error } = await supabase
-      .from('time_tasks_verse_deliveries')
-      .insert({
-        user_id: user.id,
-        verse_key: verse.key,
-        reference: verse.reference,
-        verse_text: verse.text,
-        period,
-        delivery_date: dateKey
-      })
-      .select()
-      .single();
-    if (!error && data) {
-      renderVerse(data);
-      const label = period === 'morning' ? 'Versículo da manhã' : 'Versículo da tarde';
-      await notify(label, `${data.reference} — ${data.verse_text}`, `verse-${dateKey}-${period}`);
-      return;
-    }
-    if (error?.code !== '23505') {
-      console.error('Erro ao registrar versículo:', error);
-      return;
-    }
-    const nowDelivered = await existingVerse(dateKey, period);
-    if (nowDelivered) {
-      renderVerse(nowDelivered);
-      return;
-    }
-  }
-  console.warn('Não foi encontrado um versículo ainda não entregue após várias tentativas.');
-}
-
-async function loadLatestVerse() {
-  const user = getCurrentUser();
-  if (!user || !supabase) return;
-  const { data } = await supabase
-    .from('time_tasks_verse_deliveries')
-    .select('*')
-    .eq('user_id', user.id)
-    .order('delivered_at', { ascending: false })
-    .limit(1)
-    .maybeSingle();
-  if (data) renderVerse(data);
-}
-
-async function checkVerses(now) {
-  const settings = getSettings();
-  if (!settings.verseNotifications) return;
-  const dateKey = dateKeyInZone(settings.timezone, now);
-  const currentMinutes = minutesInZone(settings.timezone, now);
-  if (currentMinutes >= timeToMinutes(settings.verseMorningTime)) {
-    await deliverVerse(dateKey, 'morning');
-  }
-  if (currentMinutes >= timeToMinutes(settings.verseAfternoonTime)) {
-    await deliverVerse(dateKey, 'afternoon');
-  }
-}
+// A mensagem bíblica é única: um versículo por acesso, exibido no balão de
+// verse-access.js com botão de fechar. Não há mais entregas por período.
 
 async function runChecks() {
   if (running || !getCurrentUser() || document.hidden) return;
@@ -253,7 +128,6 @@ async function runChecks() {
     const now = new Date();
     await checkEvents(now);
     await checkSeeds(now);
-    await checkVerses(now);
   } finally {
     running = false;
   }
@@ -261,7 +135,6 @@ async function runChecks() {
 
 function start() {
   clearInterval(timer);
-  void loadLatestVerse();
   void runChecks();
   timer = setInterval(() => void runChecks(), 15_000);
 }
@@ -269,8 +142,6 @@ function start() {
 function stop() {
   clearInterval(timer);
   timer = null;
-  const card = document.getElementById('daily-verse-card');
-  if (card) card.hidden = true;
 }
 
 export function initReminders() {
