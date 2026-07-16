@@ -73,7 +73,7 @@
 
 ---
 
-## Planner Mestre — Fases 1–4 (concluídas em 16/07/2026)
+## Planner Mestre — Fases 1–5 (concluídas em 16/07/2026)
 
 ### Fase 1 — Fundação responsiva
 
@@ -117,6 +117,19 @@
 - [x] CSS para `.verse-access-balloon` com entrada/saída suave, backdrop blur, z-index 2000.
 - [x] Integração em `app.js` — `initVerseAccess()` chamado após `initReminders()`.
 
+### Fase 5 — Previsão climática
+
+- [x] `weather.js`: novo módulo com geolocalização automática via `navigator.geolocation`.
+- [x] Integração Open-Meteo API (pública, sem chave necessária) para dados de clima em tempo real.
+- [x] `getLocation()`: armazena coordenadas em localStorage, fallback manual por entrada de cidade.
+- [x] `fetchWeather()`: obtém temperatura, umidade, código climático WMO.
+- [x] `searchCity()`: geocodificação reversa com Open-Meteo para entrada manual de cidade.
+- [x] Mapeamento WMO Weather Codes → emoji + descrição em português (☀️ Limpo, 🌧️ Chuva, etc).
+- [x] Cache local de 30 min para reduzir carga na API.
+- [x] Widget compacto no header do calendário: temperatura + descrição em desktop, apenas emoji em mobile.
+- [x] Prompt com botões "Ativar geolocalização" e "Buscar manualmente" quando localização negada.
+- [x] Integração em `app.js` — `initWeather()` chamado após `initVerseAccess()`.
+
 ---
 
 ## Falhas encontradas e corrigidas (histórico consolidado)
@@ -140,12 +153,6 @@
 ---
 
 ## Próximas fases
-
-### Fase 5 — Previsão climática
-
-- [ ] Widget de clima via Open-Meteo (sem chave de API).
-- [ ] Exibição compacta no header ou sidebar do calendário.
-- [ ] Geolocalização via `navigator.geolocation` com fallback manual de cidade.
 
 ### Fase 6 — Trigger e central de notificações
 
