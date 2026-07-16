@@ -163,6 +163,10 @@ Para resolver esse gargalo sem que o administrador precise preencher manualmente
 
 Antes do primeiro uso do calendário, execute `supabase/schema.sql` no SQL Editor/Postgres do Supabase no Easypanel. Sem `public.events`, o Auth pode funcionar, mas o calendário retornará `PGRST205` e não salvará eventos.
 
+### Isolamento de acesso
+
+O Time Tasks/SevenChat possui Supabase e autenticação próprios, separados dos demais aplicativos. O login e a senha pertencem exclusivamente a este projeto; as sessões não devem ser reutilizadas entre aplicações. O RLS garante que cada usuário consulte, crie, edite ou exclua apenas os próprios eventos.
+
 ### Checklist de publicação
 
 - Confirmar `VITE_SUPABASE_URL` e `VITE_SUPABASE_ANON_KEY` no build.

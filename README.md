@@ -122,6 +122,10 @@ time-tasks/
 
 Execute [`supabase/schema.sql`](./supabase/schema.sql) no SQL Editor/Postgres do Supabase self-hosted antes de testar o calendário. O script cria `public.events`, ativa RLS e restringe cada usuário aos próprios eventos.
 
+### Isolamento obrigatório
+
+Este aplicativo usa exclusivamente o projeto Supabase próprio provisionado no Easypanel. Não compartilhar URL, banco, tabela, sessão, usuário ou credencial com outros aplicativos. Cada conta acessa somente os próprios eventos por login e senha e pelas políticas RLS.
+
 ---
 
 ## 📜 Licença

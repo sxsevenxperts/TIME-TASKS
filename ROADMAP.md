@@ -132,6 +132,7 @@
 - **Autenticação Segura**: Melhorias na UX de Login (Loading overlay para evitar flicker) and feedback visual de exigência de confirmação de e-mail.
 - **Falha atual identificada**: O endpoint remoto responde `200` via `curl`, mas o navegador bloqueia a autenticação por CORS incompatível. Corrigir no gateway/Supabase com `Access-Control-Allow-Origin` igual ao domínio publicado do frontend e `Access-Control-Allow-Credentials: true`; não usar `*` nesse cenário.
 - **Falha de banco identificada**: O endpoint REST remoto retornou `PGRST205` porque `public.events` não existe. O schema idempotente foi adicionado em `supabase/schema.sql` e precisa ser executado no Postgres do Supabase self-hosted.
+- **Regra de arquitetura**: Supabase, Auth, sessões, credenciais e tabela `events` são exclusivos deste aplicativo; não compartilhar recursos com outros projetos. O isolamento entre usuários é garantido pelas políticas RLS baseadas em `auth.uid()`.
 - **Segurança corrigida no repositório**: scripts administrativos não carregam mais service-role key hardcoded; usar `SUPABASE_URL` e `SUPABASE_SERVICE_ROLE_KEY` somente no ambiente seguro.
 
 ### Fase 8.1 🔧 Gate de publicação — próximo passo obrigatório
