@@ -159,6 +159,10 @@ O frontend desta aplicação foi desenhado para ser implantado diretamente via *
 Inicialmente, as chaves do Supabase (URL e ANON_KEY) foram configuradas em um arquivo `.env.local` para testes, o que fazia com que o Git ignorasse o arquivo. Isso resultava em um erro onde o Easypanel compilava o código sem as credenciais do banco de dados. 
 Para resolver esse gargalo sem que o administrador precise preencher manualmente chaves no painel do servidor, foi adotado o arquivo `.env.production`, que é versionado nativamente. Isso garante que cada push (commit) na `main` construa perfeitamente a integração de dados no servidor SaaS.
 
+### Preparação do banco self-hosted
+
+Antes do primeiro uso do calendário, execute `supabase/schema.sql` no SQL Editor/Postgres do Supabase no Easypanel. Sem `public.events`, o Auth pode funcionar, mas o calendário retornará `PGRST205` e não salvará eventos.
+
 ### Checklist de publicação
 
 - Confirmar `VITE_SUPABASE_URL` e `VITE_SUPABASE_ANON_KEY` no build.

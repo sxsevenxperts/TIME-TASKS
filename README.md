@@ -105,6 +105,7 @@ time-tasks/
 ├── style.css           # Tokens e componentes visuais
 ├── layout.css          # Layout, responsividade e SevenChat
 ├── .env.production     # Configuração pública do build (URL/anon key)
+├── supabase/schema.sql  # Tabela events, RLS e permissões do SaaS
 ├── README.md           # Este arquivo
 ├── ROADMAP.md          # Roadmap do projeto
 └── MANUAL.md           # Manual do usuário
@@ -116,6 +117,10 @@ time-tasks/
 
 - 📖 [Manual do Usuário](./MANUAL.md) — Guia completo de uso, deploy e SevenChat
 - 🗺️ [Roadmap](./ROADMAP.md) — Fases de desenvolvimento e funcionalidades futuras
+
+## Banco Supabase no Easypanel
+
+Execute [`supabase/schema.sql`](./supabase/schema.sql) no SQL Editor/Postgres do Supabase self-hosted antes de testar o calendário. O script cria `public.events`, ativa RLS e restringe cada usuário aos próprios eventos.
 
 ---
 

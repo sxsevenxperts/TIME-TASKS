@@ -131,6 +131,7 @@
   - *Ação Tomada*: O arquivo `.env.production` foi criado e enviado ao GitHub, garantindo que o build do Easypanel agora tenha acesso nativo às chaves do Supabase (URL e ANON_KEY) automaticamente, sem intervenção manual.
 - **Autenticação Segura**: Melhorias na UX de Login (Loading overlay para evitar flicker) and feedback visual de exigência de confirmação de e-mail.
 - **Falha atual identificada**: O endpoint remoto responde `200` via `curl`, mas o navegador bloqueia a autenticação por CORS incompatível. Corrigir no gateway/Supabase com `Access-Control-Allow-Origin` igual ao domínio publicado do frontend e `Access-Control-Allow-Credentials: true`; não usar `*` nesse cenário.
+- **Falha de banco identificada**: O endpoint REST remoto retornou `PGRST205` porque `public.events` não existe. O schema idempotente foi adicionado em `supabase/schema.sql` e precisa ser executado no Postgres do Supabase self-hosted.
 - **Segurança corrigida no repositório**: scripts administrativos não carregam mais service-role key hardcoded; usar `SUPABASE_URL` e `SUPABASE_SERVICE_ROLE_KEY` somente no ambiente seguro.
 
 ### Fase 8.1 🔧 Gate de publicação — próximo passo obrigatório

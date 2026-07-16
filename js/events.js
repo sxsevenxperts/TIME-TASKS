@@ -67,6 +67,9 @@ export async function loadEventsFromServer() {
 
   if (error) {
     console.error('Erro ao buscar eventos do Supabase:', error);
+    if (error.code === 'PGRST205') {
+      console.error('A tabela public.events não existe. Execute supabase/schema.sql no banco do Easypanel.');
+    }
     localEvents = [];
     return [];
   }
