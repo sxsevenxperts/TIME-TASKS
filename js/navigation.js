@@ -75,7 +75,7 @@ export function isChatOpen() {
   return document.getElementById('ai-sidebar')?.classList.contains('ai-sidebar--open') ?? false;
 }
 
-function setAiTab(tab) {
+async function setAiTab(tab) {
   document.querySelectorAll('.ai-header-tab[data-ai-tab]').forEach(button => {
     const active = button.dataset.aiTab === tab;
     button.classList.toggle('active', active);
@@ -94,6 +94,12 @@ function setAiTab(tab) {
   }
   if (inputArea) inputArea.style.display = tab === 'chat' ? 'flex' : 'none';
   if (tab === 'notifications') {
+    try {
+      const { renderNotifications } = await import('./triggers.js');
+      await renderNotifications();
+    } catch (err) {
+      console.warn('Notificações indisponíveis:', err.message);
+    }
     document.dispatchEvent(new Event('timetasks:notifications-viewed'));
   }
 }
