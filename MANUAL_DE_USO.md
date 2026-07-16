@@ -7,8 +7,10 @@ Abra [o SX Time Tasks em produção](https://startups-timetasks.qfotry.easypanel
 ### Entrar
 
 1. Informe seu e-mail e senha.
-2. Clique em **Entrar**.
-3. O calendário e os dados da conta serão carregados do Supabase.
+2. Clique no ícone de olho ao lado da senha para mostrar/ocultar o texto digitado.
+3. Clique em **Entrar**.
+4. O calendário e os dados da conta serão carregados do Supabase.
+5. Um versículo bíblico aparecerá em um balão no topo — clique em **X** para fechar ou deixe desaparecer automaticamente.
 
 ### Criar conta
 
@@ -23,7 +25,17 @@ Uma conta do Auth só acessa o Time Tasks quando também está vinculada a `time
 
 Abra **Configurações** e clique em **Sair** no fim do menu.
 
-## 2. Navegação principal
+## 2. Versículo de boas-vindas
+
+Ao entrar na conta, um versículo bíblico aparece em um balão animado no topo da tela. Este é um versículo **por acesso** — único a cada vez que você faz login, diferente do histórico de notificações que usa períodos (manhã/tarde).
+
+Você pode:
+- Clicar em **X** para fechar o balão imediatamente.
+- Deixar o balão desaparecer automaticamente.
+
+O versículo fica armazenado apenas para referência pessoal durante a sessão.
+
+## 3. Navegação principal
 
 ### Desktop (≥ 901 px)
 
@@ -53,7 +65,7 @@ No mobile, a SX ocupa a tela inteira. Para fechar, use o botão X ou o botão de
 
 No calendário, use **Hoje**, **Anterior**, **Próximo** e as visões **Dia**, **3 Dias**, **Semana** e **Mês**.
 
-## 3. Eventos
+## 4. Eventos
 
 ### Criar manualmente
 
@@ -72,14 +84,14 @@ Clique no evento para abrir o resumo. Use **Editar** ou **Excluir**.
 
 Os calendários disponíveis são Pessoal, Trabalho, Saúde, Estudos e Social. As caixas na lateral ocultam/exibem categorias sem apagar os dados.
 
-## 4. Tarefas/Sementes
+## 5. Tarefas/Sementes
 
 1. Abra **Sementes** (aba Seed no mobile, botão na barra lateral no desktop).
 2. Clique em **Nova tarefa**.
 3. Informe tarefa, prazo, horário do lembrete e observações.
 4. Use **Concluir**, **Editar**, **Reabrir** ou **Excluir** no cartão.
 
-## 5. Assistente SX
+## 6. Assistente SX
 
 Clique no botão SX (barra lateral no desktop ou aba SX no mobile) para abrir a assistente.
 
@@ -108,11 +120,11 @@ O botão de relógio ao lado do campo de texto fecha a SX e abre a view Sementes
 
 Clique em **Falar com a SX**, permita o microfone e dite o pedido. A função depende do suporte do navegador à Web Speech API; quando indisponível, use o campo de texto.
 
-## 6. Trigger
+## 7. Trigger
 
 Acesse **Trigger** na barra de navegação. Esta seção está em desenvolvimento e permitirá criar automações — verificações de clima, resumos de agenda e, futuramente, notificações baseadas em condições externas.
 
-## 7. Páginas de agendamento
+## 8. Páginas de agendamento
 
 1. Abra **Páginas de Agendamento**.
 2. Clique em **Criar página**.
@@ -121,7 +133,7 @@ Acesse **Trigger** na barra de navegação. Esta seção está em desenvolviment
 
 O visitante informa nome, e-mail, data e horário. A reserva aparece em **Próximos horários**, onde pode ser cancelada. O banco impede duas reservas confirmadas para a mesma página e horário.
 
-## 8. Notificações e som
+## 9. Notificações e som
 
 Abra **Configurações > Notificações**.
 
@@ -132,7 +144,7 @@ Abra **Configurações > Notificações**.
 
 O alerta atual funciona enquanto o aplicativo está aberto. Com o navegador totalmente fechado, a entrega exige Web Push/service worker, item registrado no roadmap.
 
-## 9. Versículos diários
+## 10. Versículos diários
 
 Em **Configurações > Notificações**:
 
@@ -142,7 +154,7 @@ Em **Configurações > Notificações**:
 
 O histórico impede repetição do mesmo versículo para a conta e limita uma entrega por período em cada dia.
 
-## 10. Configurações
+## 11. Configurações
 
 - **Meu Plano** — estado do ambiente privado.
 - **Conta** — nome de exibição, e-mail e sessão.
@@ -155,7 +167,7 @@ O histórico impede repetição do mesmo versículo para a conta e limita uma en
 
 WhatsApp, Telegram e Google Calendar são exibidos como indisponíveis até que as integrações reais sejam implementadas.
 
-## 11. Atalhos
+## 12. Atalhos
 
 | Tecla | Ação |
 |---|---|
@@ -168,7 +180,7 @@ WhatsApp, Telegram e Google Calendar são exibidos como indisponíveis até que 
 
 Os atalhos não são executados enquanto o foco estiver em campo de texto, seleção ou área de digitação.
 
-## 12. Segurança e privacidade
+## 13. Segurança e privacidade
 
 - Todas as tabelas do aplicativo começam com `time_tasks_`.
 - RLS usa `auth.uid()` para separar as contas.
@@ -176,7 +188,7 @@ Os atalhos não são executados enquanto o foco estiver em campo de texto, sele�
 - A anon key do Supabase é pública; service-role, senha do banco, tokens operacionais e chave da IA são privados.
 - O Supabase atual é compartilhado fisicamente, mas o Time Tasks possui isolamento lógico de dados e acesso. Uma instância dedicada está prevista se for necessário isolamento físico.
 
-## 13. Solução de problemas
+## 14. Solução de problemas
 
 ### A SX não responde
 

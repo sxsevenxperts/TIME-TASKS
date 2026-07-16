@@ -73,7 +73,7 @@
 
 ---
 
-## Planner Mestre — Fases 1–3 (concluídas em 16/07/2026)
+## Planner Mestre — Fases 1–4 (concluídas em 16/07/2026)
 
 ### Fase 1 — Fundação responsiva
 
@@ -107,6 +107,16 @@
 - [x] Layout de 3 colunas (sub-sidebar + main-content + ai-sidebar) entregue pelo flexbox existente sem CSS extra.
 - [x] Correção de `.ai-input-wrapper` duplicado em `layout.css` (merged em única regra).
 
+### Fase 4 — Login e versículo por acesso
+
+- [x] Toggle mostrar/ocultar senha no formulário de login: botão com ícone de olho ao lado do campo.
+- [x] `auth.js`: event listener do toggle que alterna `type='password'` e `type='text'`, marca botão com classe `.active`.
+- [x] `verse-access.js`: novo módulo que escuta evento `timetasks:session` (dispara após login bem-sucedido).
+- [x] Chamada a `/api/verse` com `type: 'access'` para obter versículo único por acesso.
+- [x] Balão animado (bounce effect) exibindo versículo + referência, com botão X para fechar.
+- [x] CSS para `.verse-access-balloon` com entrada/saída suave, backdrop blur, z-index 2000.
+- [x] Integração em `app.js` — `initVerseAccess()` chamado após `initReminders()`.
+
 ---
 
 ## Falhas encontradas e corrigidas (histórico consolidado)
@@ -130,12 +140,6 @@
 ---
 
 ## Próximas fases
-
-### Fase 4 — Login e versículo por acesso
-
-- [ ] Toggle mostrar/ocultar senha no formulário de login.
-- [ ] Versículo bíblico exibido em balão ao abrir o app, com botão X para fechar.
-- [ ] Um versículo por acesso (não por período do dia como nas notificações).
 
 ### Fase 5 — Previsão climática
 
