@@ -47,7 +47,7 @@ Para garantir que ninguém tenha acesso aos seus eventos, o sistema agora exige 
 2. Clique em **Entrar**.
 3. Seus eventos serão baixados instantaneamente do servidor (Supabase) para o calendário.
 
-> Se o botão ficar em “Aguarde...” ou aparecer “Failed to fetch”, o problema não é a senha: o domínio do frontend ainda não está autorizado no CORS do Supabase. No EasyPanel, adicione o domínio publicado como origem permitida e mantenha `Access-Control-Allow-Credentials: true` sem usar `*` como origem.
+> Se o botão ficar em “Aguarde...” ou aparecer “Failed to fetch”, confirme a disponibilidade do Supabase e a configuração pública do build. O domínio oficial já foi validado com login real em produção.
 
 ### Como Sair (Logout)
 - Na barra lateral esquerda, expanda o menu de **Configurações**.
@@ -153,7 +153,7 @@ Todos os seus eventos não ficam mais no cache local do navegador. Eles são tra
 Sua conta possui **Row Level Security (RLS)**. Isso significa que o servidor Easypanel bloqueia rigidamente no nível do banco de dados qualquer tentativa de um usuário carregar eventos de outro, isolando 100% as contas e acessos. Seu UUID único (Authentication ID) é exigido em qualquer transação (Criação, Edição, Deleção).
 
 ### Deploy e Integração Contínua (Easypanel)
-O frontend desta aplicação foi desenhado para ser implantado diretamente via **GitHub para o Easypanel** (utilizando Nixpacks e o servidor estático `serve`). 
+O frontend é implantado diretamente do **GitHub para o Easypanel** usando o `Dockerfile` do repositório. O container usa Node 22 Alpine, gera o build com Vite e publica os arquivos por `serve` na porta interna `3000`.
 
 **Correção Recente (Variáveis de Ambiente):**
 Inicialmente, as chaves do Supabase (URL e ANON_KEY) foram configuradas em um arquivo `.env.local` para testes, o que fazia com que o Git ignorasse o arquivo. Isso resultava em um erro onde o Easypanel compilava o código sem as credenciais do banco de dados. 
@@ -161,7 +161,7 @@ Para resolver esse gargalo sem que o administrador precise preencher manualmente
 
 ### Preparação do banco self-hosted
 
-Antes do primeiro uso do calendário, execute `supabase/schema.sql` no SQL Editor/Postgres do Supabase no Easypanel. Sem `public.events`, o Auth pode funcionar, mas o calendário retornará `PGRST205` e não salvará eventos.
+O schema `supabase/schema.sql` foi aplicado ao Postgres do Supabase no Easypanel em 16/07/2026. Ele é idempotente e deve ser executado novamente somente ao provisionar ou restaurar o banco. Sem `public.events`, o Auth funciona, mas o calendário retorna `PGRST205` e não salva eventos.
 
 ### Isolamento de acesso
 
@@ -170,10 +170,19 @@ O Time Tasks/SevenChat possui Supabase e autenticação próprios, separados dos
 ### Checklist de publicação
 
 - Confirmar `VITE_SUPABASE_URL` e `VITE_SUPABASE_ANON_KEY` no build.
-- Confirmar CORS do Supabase com o domínio publicado do frontend; wildcard não é compatível com credenciais.
+- Manter o domínio do Easypanel apontando para a porta interna `3000`.
+- Manter o builder como `Dockerfile`; não retornar a Nixpacks.
 - Abrir o SevenChat e confirmar `aria-expanded=true`/painel visível.
-- Testar login, logout e uma operação CRUD real antes de considerar o deploy concluído.
+- Testar login e uma operação CRUD real antes de considerar o deploy concluído.
 - Nunca colocar `SUPABASE_SERVICE_ROLE_KEY` no frontend ou em arquivos versionados; o script administrativo exige essa variável somente no ambiente local seguro.
+
+### Estado validado em produção — 16/07/2026
+
+- URL: `https://startups-timetasks.qfotry.easypanel.host/`
+- Login por e-mail e senha: aprovado.
+- Criação e exclusão de evento no Supabase: aprovadas.
+- RLS: ativo para `select`, `insert`, `update` e `delete` por `auth.uid()`.
+- Evento técnico de validação: removido após o teste.
 
 ---
 

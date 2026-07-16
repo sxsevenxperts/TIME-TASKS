@@ -111,7 +111,7 @@
 - **SevenChat no front-end** — Sidebar com toggle, foco automático, estado acessível e layout responsivo
 - **Tratamento de inicialização** — Configuração Supabase inválida não derruba o shell; sessão inicial é restaurada explicitamente
 - **Persistência confirmada** — Criação, edição, exclusão e criação por IA aguardam o retorno do Supabase antes de exibir sucesso
-- **Pendente de ambiente** — O Supabase remoto ainda precisa permitir o domínio real do frontend no CORS; `Access-Control-Allow-Origin: *` com credenciais causa `Failed to fetch` no navegador e mantém o login bloqueado
+- **Runtime validado** — Login real, sessão e calendário carregados no domínio publicado do Easypanel em 16/07/2026
 
 ---
 
@@ -122,26 +122,28 @@
 
 ---
 
-### Fase 8 ⚠️ Infraestrutura e Deploy (Easypanel + Supabase)
-- **Hospedagem Frontend**: Configurado build via Nixpacks (Vite + `serve` estático) no servidor Easypanel.
+### Fase 8 ✅ Infraestrutura e Deploy (Easypanel + Supabase)
+- **Hospedagem Frontend**: Build pelo `Dockerfile` com Node 22 Alpine, Vite e `serve` estático na porta interna `3000`.
 - **Banco de Dados Isolado**: Deploy do backend Supabase via container no Easypanel (SaaS 100% isolado).
 - **Segurança de Variáveis (Correção de Falha)**: 
   - *Falha Apontada*: O arquivo `.env.local` é bloqueado pelo `.gitignore`. Logo, quando o Easypanel puxava o código do GitHub para fazer o build, as chaves do Supabase não existiam lá, quebrando a conexão. 
   - *Caminho de Resolução*: Para aplicações Frontend (onde a chave `ANON_KEY` é pública por design), a melhor prática para deploys automatizados sem precisar configurar o painel do servidor é utilizar um arquivo `.env.production` commitado no repositório.
   - *Ação Tomada*: O arquivo `.env.production` foi criado e enviado ao GitHub, garantindo que o build do Easypanel agora tenha acesso nativo às chaves do Supabase (URL e ANON_KEY) automaticamente, sem intervenção manual.
-- **Autenticação Segura**: Melhorias na UX de Login (Loading overlay para evitar flicker) and feedback visual de exigência de confirmação de e-mail.
-- **Falha atual identificada**: O endpoint remoto responde `200` via `curl`, mas o navegador bloqueia a autenticação por CORS incompatível. Corrigir no gateway/Supabase com `Access-Control-Allow-Origin` igual ao domínio publicado do frontend e `Access-Control-Allow-Credentials: true`; não usar `*` nesse cenário.
-- **Falha de banco identificada**: O endpoint REST remoto retornou `PGRST205` porque `public.events` não existe. O schema idempotente foi adicionado em `supabase/schema.sql` e precisa ser executado no Postgres do Supabase self-hosted.
+- **Autenticação Segura**: Melhorias na UX de login, loading overlay para evitar flicker e feedback visual de exigência de confirmação de e-mail.
+- **Falha de deploy corrigida**: O serviço ainda usava Nixpacks e falhava durante `npm ci`/download do Nix. O builder do Easypanel foi alterado para `Dockerfile`, com Node 22 e dependências sem Puppeteer.
+- **Roteamento corrigido**: O domínio apontava para a porta `80`; agora direciona corretamente para `startups_timetasks:3000`.
+- **Banco operacional**: O schema idempotente `supabase/schema.sql` foi aplicado ao Postgres self-hosted; `public.events`, RLS, índices e grants estão ativos.
+- **Validação real**: Login aprovado e evento criado/excluído no banco pelo frontend publicado em 16/07/2026.
 - **Regra de arquitetura**: Supabase, Auth, sessões, credenciais e tabela `events` são exclusivos deste aplicativo; não compartilhar recursos com outros projetos. O isolamento entre usuários é garantido pelas políticas RLS baseadas em `auth.uid()`.
 - **Segurança corrigida no repositório**: scripts administrativos não carregam mais service-role key hardcoded; usar `SUPABASE_URL` e `SUPABASE_SERVICE_ROLE_KEY` somente no ambiente seguro.
 
-### Fase 8.1 🔧 Gate de publicação — próximo passo obrigatório
+### Fase 8.1 ✅ Gate de publicação concluído
 
-1. Configurar o domínio final do frontend na lista de origens permitidas do Supabase/EasyPanel.
-2. Rebuild e redeploy do frontend.
-3. Validar login, restauração de sessão, logout e abertura do SevenChat no navegador.
-4. Validar criação, edição e exclusão de evento com retorno real do banco.
-5. Registrar URL, horário do deploy e `HEAD` publicado no handoff.
+1. Domínio publicado: `https://startups-timetasks.qfotry.easypanel.host/`.
+2. Build e deploy concluídos com Dockerfile em 16/07/2026 às 15:31 UTC (12:31 em America/Fortaleza).
+3. Login e carregamento do calendário validados no navegador.
+4. Criação e exclusão de evento validadas com retorno real do Supabase.
+5. Commit publicado no deploy: `c48b234a5ed10198880ad325125195df78d63143`.
 
 ## Fase 9 🔮 Futuro
 

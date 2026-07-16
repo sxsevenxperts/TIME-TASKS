@@ -8,7 +8,7 @@
 
 ## 📋 Sobre o Projeto
 
-**Time Tasks** é uma aplicação de calendário completa que roda diretamente no navegador. Com uma interface limpa e moderna, oferece múltiplas visões de calendário, gestão de eventos com CRUD completo, temas dark/light, e persistência local — tudo sem necessidade de backend ou conta de usuário.
+**Time Tasks** é uma aplicação de calendário SaaS com autenticação por e-mail e senha, persistência de eventos no Supabase self-hosted e interface moderna com múltiplas visões, temas dark/light e SevenChat.
 
 Ideal para quem busca uma ferramenta de organização pessoal leve, rápida e visualmente agradável.
 
@@ -22,7 +22,9 @@ Ideal para quem busca uma ferramenta de organização pessoal leve, rápida e vi
 - ✏️ **CRUD de Eventos** — Criar, visualizar, editar e excluir eventos
 - 👁️ **Múltiplas Visões** — Dia, 3 Dias, Semana e Mês
 - ⌨️ **Atalhos de Teclado** — Navegação rápida sem usar o mouse
-- 💾 **Persistência localStorage** — Seus dados salvos automaticamente no navegador
+- 🔐 **Supabase Auth** — Acesso autenticado por e-mail e senha
+- ☁️ **Persistência PostgreSQL** — Eventos salvos no Supabase self-hosted
+- 🛡️ **RLS** — Cada usuário acessa somente os próprios eventos
 - 🎨 **5 Calendários Coloridos** — Pessoal, Trabalho, Saúde, Estudos e Social
 - 🔍 **Detecção de Conflitos** — Alerta visual para eventos sobrepostos
 - 🪟 **Glassmorphism UI** — Design moderno com efeitos de vidro e transparência
@@ -39,6 +41,8 @@ Ideal para quem busca uma ferramenta de organização pessoal leve, rápida e vi
 | **CSS3** | Estilização com Custom Properties, Glassmorphism, animações |
 | **JavaScript ES6+** | Lógica da aplicação com módulos nativos |
 | **Vite** | Build tool e dev server com Hot Module Replacement |
+| **Supabase** | Auth, PostgreSQL, API REST e Row Level Security |
+| **Docker / Easypanel** | Build e hospedagem do frontend em Node 22 Alpine |
 
 ---
 
@@ -46,7 +50,7 @@ Ideal para quem busca uma ferramenta de organização pessoal leve, rápida e vi
 
 ### Pré-requisitos
 
-- [Node.js](https://nodejs.org/) (v18 ou superior)
+- [Node.js](https://nodejs.org/) (v22 ou superior)
 - [npm](https://www.npmjs.com/) (incluído com Node.js)
 
 ### Passos
@@ -59,13 +63,13 @@ git clone https://github.com/seu-usuario/time-tasks.git
 cd time-tasks
 
 # 3. Instale as dependências
-npm install
+npm ci
 
 # 4. Inicie o servidor de desenvolvimento
 npm run dev
 ```
 
-O aplicativo estará disponível em `http://localhost:5173` (ou a porta indicada no terminal).
+O aplicativo estará disponível em `http://localhost:3000` (ou a porta indicada no terminal).
 
 ### Build para Produção
 
@@ -120,7 +124,13 @@ time-tasks/
 
 ## Banco Supabase no Easypanel
 
-Execute [`supabase/schema.sql`](./supabase/schema.sql) no SQL Editor/Postgres do Supabase self-hosted antes de testar o calendário. O script cria `public.events`, ativa RLS e restringe cada usuário aos próprios eventos.
+O schema [`supabase/schema.sql`](./supabase/schema.sql) está aplicado no Supabase self-hosted. O script idempotente cria `public.events`, ativa RLS e restringe cada usuário aos próprios eventos; execute-o novamente apenas ao provisionar ou restaurar o banco.
+
+### Produção
+
+- Frontend: [startups-timetasks.qfotry.easypanel.host](https://startups-timetasks.qfotry.easypanel.host/)
+- Builder no Easypanel: `Dockerfile`
+- Runtime: Node 22 Alpine, servidor estático `serve` na porta interna `3000`
 
 ### Isolamento obrigatório
 
