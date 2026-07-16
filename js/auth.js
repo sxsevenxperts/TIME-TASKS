@@ -25,6 +25,16 @@ export async function initAuth() {
   let isLoginMode = true;
   let registering = false;
 
+  const togglePasswordVisibility = document.getElementById('auth-toggle-password');
+  if (togglePasswordVisibility) {
+    togglePasswordVisibility.addEventListener('click', (e) => {
+      e.preventDefault();
+      const type = passwordInput.type === 'password' ? 'text' : 'password';
+      passwordInput.type = type;
+      togglePasswordVisibility.classList.toggle('active', type === 'text');
+    });
+  }
+
   const ensureAppMembership = async (userId, createIfMissing = false) => {
     const { data, error } = await supabase
       .from('time_tasks_members')

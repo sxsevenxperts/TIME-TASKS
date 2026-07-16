@@ -47,7 +47,12 @@
           </div>
           <div class="form-group">
             <label class="form-label">Senha</label>
-            <input type="password" id="auth-password" class="form-input" required placeholder="********" />
+            <div class="password-input-wrapper">
+              <input type="password" id="auth-password" class="form-input" required placeholder="********" />
+              <button type="button" id="auth-toggle-password" class="btn-icon password-toggle" aria-label="Mostrar/ocultar senha" title="Mostrar/ocultar senha">
+                <svg class="eye-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="20" height="20"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+              </button>
+            </div>
           </div>
           <p id="auth-error" class="auth-error"></p>
           <button type="submit" id="auth-submit" class="btn-primary" style="width: 100%; margin-top: 10px;">Entrar</button>
