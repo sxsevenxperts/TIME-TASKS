@@ -177,3 +177,179 @@ self.addEventListener('message', (event) => {
     }
   }
 });
+
+// Handle push notifications
+self.addEventListener('push', (event) => {
+  if (!event.data) {
+    console.warn('Push recebido sem dados');
+    return;
+  }
+
+  try {
+    const data = event.data.json();
+    const options = {
+      body: data.body || '',
+      icon: data.icon || '/icon-192.png',
+      badge: data.badge || '/icon-192.png',
+      tag: data.tag || 'notification',
+      data: data.data || {},
+      ...data.options
+    };
+
+    event.waitUntil(
+      self.registration.showNotification(data.title || 'Time Tasks', options)
+    );
+  } catch (error) {
+    console.error('Erro ao processar push:', error);
+  }
+});
+
+// Handle notification clicks
+self.addEventListener('notificationclick', (event) => {
+  event.notification.close();
+
+  const data = event.notification.data || {};
+  let url = '/';
+
+  if (data.eventId) {
+    url = `/?action=view-event&id=${data.eventId}`;
+  } else if (data.taskId) {
+    url = `/?action=view-task&id=${data.taskId}`;
+  }
+
+  event.waitUntil(
+    clients.matchAll({ type: 'window' }).then((clientList) => {
+      // Procurar por window aberta
+      for (const client of clientList) {
+        if (client.url === url && 'focus' in client) {
+          return client.focus();
+        }
+      }
+      // Abrir nova window
+      if (clients.openWindow) {
+        return clients.openWindow(url);
+      }
+    })
+  );
+});
+
+// Handle background sync
+self.addEventListener('sync', (event) => {
+  if (event.tag === 'sync-events') {
+    event.waitUntil(
+      (async () => {
+        try {
+          const authData = localStorage.getItem('timetasks_auth_persistent');
+          if (!authData) {
+            console.warn('Sem autenticação para background sync');
+            return;
+          }
+
+          const { accessToken } = JSON.parse(authData);
+
+          // Sincronizar eventos
+          const response = await fetch('/api/events/sync', {
+            method: 'POST',
+            headers: {
+              'Authorization': `Bearer ${accessToken}`,
+              'Content-Type': 'application/json'
+            }
+          });
+
+          if (!response.ok) throw new Error('Sync falhou');
+
+          const result = await response.json();
+          console.log('✅ Background sync concluído:', result);
+
+          // Notificar sucesso
+          self.registration?.showNotification('✅ Eventos sincronizados', {
+            body: 'Seus dados foram atualizados',
+            icon: '/icon-192.png',
+            badge: '/icon-192.png',
+            tag: 'sync-complete',
+            silent: true
+          });
+        } catch (error) {
+          console.error('Erro em background sync:', error);
+
+          // Retry automático (vai disparar novamente em ~5min)
+          throw error;
+        }
+      })()
+    );
+  }
+});
+
+// Handle periodic sync (calendários 24h, lembretes 12h)
+self.addEventListener('periodicsync', (event) => {
+  if (event.tag === 'sync-calendars-24h') {
+    event.waitUntil(
+      (async () => {
+        try {
+          const authData = localStorage.getItem('timetasks_auth_persistent');
+          if (!authData) {
+            console.warn('Sem autenticação para periodic sync');
+            return;
+          }
+
+          const { accessToken } = JSON.parse(authData);
+
+          const response = await fetch('/api/calendar/sync', {
+            method: 'POST',
+            headers: {
+              'Authorization': `Bearer ${accessToken}`,
+              'Content-Type': 'application/json'
+            },
+            signal: AbortSignal.timeout(60_000)
+          });
+
+          if (!response.ok) throw new Error('Calendar sync falhou');
+
+          const result = await response.json();
+          console.log('✅ Calendários sincronizados (periodic):', result);
+
+          // Notificar apenas se houver mudanças
+          if (result.events_synced > 0) {
+            self.registration?.showNotification('✅ Calendários atualizados', {
+              body: `${result.events_synced} eventos sincronizados`,
+              icon: '/icon-192.png',
+              badge: '/icon-192.png',
+              tag: 'calendar-sync',
+              silent: true
+            });
+          }
+        } catch (error) {
+          console.error('Erro em periodic sync (calendários):', error);
+        }
+      })()
+    );
+  } else if (event.tag === 'sync-reminders-daily') {
+    event.waitUntil(
+      (async () => {
+        try {
+          const authData = localStorage.getItem('timetasks_auth_persistent');
+          if (!authData) return;
+
+          const { accessToken } = JSON.parse(authData);
+
+          const response = await fetch('/api/reminders?days=1', {
+            headers: {
+              'Authorization': `Bearer ${accessToken}`,
+              'Content-Type': 'application/json'
+            },
+            signal: AbortSignal.timeout(30_000)
+          });
+
+          if (!response.ok) return;
+
+          const reminders = await response.json();
+          if (reminders.length > 0) {
+            console.log(`🔔 ${reminders.length} lembretes verificados (periodic)`);
+          }
+        } catch (error) {
+          console.error('Erro em periodic sync (lembretes):', error);
+        }
+      })()
+    );
+  }
+});

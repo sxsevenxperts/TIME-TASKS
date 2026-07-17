@@ -77,7 +77,94 @@
 
   // Push notification permission
   if ('Notification' in window && Notification.permission === 'default') {
-    Notification.requestPermission();
+    Notification.requestPermission().then((permission) => {
+      if (permission === 'granted') {
+        console.log('✅ Notificações ativadas');
+        // Registrar push subscription
+        if (registration && 'pushManager' in registration) {
+          subscribeToPush(registration);
+        }
+      }
+    });
+  } else if ('Notification' in window && Notification.permission === 'granted') {
+    // Já tem permissão, registrar se necessário
+    if (registration && 'pushManager' in registration) {
+      subscribeToPush(registration);
+    }
+  }
+
+  // Background sync
+  if ('sync' in registration) {
+    registration.sync.register('sync-events').catch((err) => {
+      console.warn('Background sync não disponível:', err.message);
+    });
+  }
+
+  // Periodic sync (24h)
+  if ('periodicSync' in registration) {
+    registration.periodicSync
+      .register('sync-calendars-24h', {
+        minInterval: 24 * 60 * 60 * 1000
+      })
+      .catch((err) => {
+        console.warn('Periodic sync não disponível:', err.message);
+      });
+  }
+
+  /**
+   * Registra push subscription
+   */
+  async function subscribeToPush(registration) {
+    if (!registration || !('pushManager' in registration)) {
+      console.warn('Push não suportado');
+      return null;
+    }
+
+    try {
+      const subscription = await registration.pushManager.subscribe({
+        userVisibleOnly: true,
+        applicationServerKey: urlBase64ToUint8Array(window.__VAPID_PUBLIC_KEY__ || '')
+      });
+
+      // Salvar subscription no servidor
+      const user = (await supabase.auth.getUser()).data.user;
+      if (user && subscription) {
+        await fetch('/api/push/subscribe', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${(await supabase.auth.getSession()).data.session?.access_token}`
+          },
+          body: JSON.stringify({
+            subscription: subscription.toJSON()
+          })
+        });
+      }
+
+      console.log('✅ Push subscription registrada');
+      return subscription;
+    } catch (error) {
+      console.error('Erro ao registrar push:', error);
+      return null;
+    }
+  }
+
+  /**
+   * Converter VAPID public key
+   */
+  function urlBase64ToUint8Array(base64String) {
+    if (!base64String) return new Uint8Array();
+
+    const padding = '='.repeat((4 - (base64String.length % 4)) % 4);
+    const base64 = (base64String + padding).replace(/\-/g, '+').replace(/_/g, '/');
+
+    const rawData = window.atob(base64);
+    const outputArray = new Uint8Array(rawData.length);
+
+    for (let i = 0; i < rawData.length; ++i) {
+      outputArray[i] = rawData.charCodeAt(i);
+    }
+    return outputArray;
   }
 
   // Export PWA utilities
@@ -103,6 +190,15 @@
           icon: '/icon-512.png',
           ...options
         });
+      }
+    },
+    subscribeToPush: async () => {
+      const registration = await navigator.serviceWorker.ready;
+      return await subscribeToPush(registration);
+    },
+    forceSync: async () => {
+      if (navigator.serviceWorker.controller) {
+        navigator.serviceWorker.controller.postMessage({ type: 'FORCE_SYNC' });
       }
     }
   };
