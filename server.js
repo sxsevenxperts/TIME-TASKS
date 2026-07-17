@@ -360,6 +360,42 @@ async function handleGoogleCallback(request, response) {
   }
 }
 
+async function handleCalendarStatus(response, user) {
+  // Retornar status das integrações de calendário do usuário
+  try {
+    // TODO: Buscar do Supabase tabela time_tasks_calendar_integrations
+    // Por enquanto retornar structure básica
+    const status = {
+      google: null,
+      apple: null
+    };
+    return sendJson(response, 200, status);
+  } catch (error) {
+    console.error('Calendar status error:', error);
+    return sendJson(response, 500, { error: 'STATUS_ERROR' });
+  }
+}
+
+async function handleGoogleDisconnect(response, user) {
+  try {
+    // TODO: Deletar integração Google do usuário em Supabase
+    return sendJson(response, 200, { success: true });
+  } catch (error) {
+    console.error('Google disconnect error:', error);
+    return sendJson(response, 500, { error: 'DISCONNECT_ERROR' });
+  }
+}
+
+async function handleAppleDisconnect(response, user) {
+  try {
+    // TODO: Deletar integração Apple do usuário em Supabase
+    return sendJson(response, 200, { success: true });
+  } catch (error) {
+    console.error('Apple disconnect error:', error);
+    return sendJson(response, 500, { error: 'DISCONNECT_ERROR' });
+  }
+}
+
 async function handleSx(request, response, user) {
   if (!geminiApiKey) return sendJson(response, 503, { error: 'SX_NOT_CONFIGURED' });
   if (!allowRequest(user.id)) return sendJson(response, 429, { error: 'RATE_LIMITED' });
@@ -539,7 +575,11 @@ const server = createServer(async (request, response) => {
             if (url.pathname === '/api/auth/google/connect' && request.method === 'GET') return handleGoogleConnect(response, user);
 
       if (url.pathname === '/api/auth/apple/connect' && request.method === 'GET') return handleAppleConnect(response, user);
-      if (url.pathname === '/api/auth/apple/setup' && request.method === 'POST') return handleAppleSetup(request, response, user);      if (url.pathname === '/api/sx' && request.method === 'POST') return handleSx(request, response, user);
+      if (url.pathname === '/api/auth/apple/setup' && request.method === 'POST') return handleAppleSetup(request, response, user);
+      if (url.pathname === '/api/calendar/status' && request.method === 'GET') return handleCalendarStatus(response, user);
+      if (url.pathname === '/api/auth/google/disconnect' && request.method === 'POST') return handleGoogleDisconnect(response, user);
+      if (url.pathname === '/api/auth/apple/disconnect' && request.method === 'POST') return handleAppleDisconnect(response, user);
+      if (url.pathname === '/api/sx' && request.method === 'POST') return handleSx(request, response, user);
       if (url.pathname === '/api/verse' && request.method === 'GET') return handleVerse(response, user);
       return sendJson(response, 404, { error: 'NOT_FOUND' });
     }
