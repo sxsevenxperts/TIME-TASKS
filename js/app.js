@@ -17,6 +17,7 @@ import { initReminders } from './reminders.js';
 import { initVerseAccess } from './verse-access.js';
 import { initWeather } from './weather.js';
 import { initTriggers, renderNotifications } from './triggers.js';
+import { initPWASXInitial, setupSXModeToggle } from './pwa-sx-initial.js';
 
 /**
  * Inicializa toda a aplicação
@@ -58,6 +59,10 @@ function init() {
   });
   setupKeyboardShortcuts();
   void initAuth();
+
+  // Inicializar PWA SX (após auth)
+  setupSXModeToggle();
+  initPWASXInitial();
 
   console.log('🕐 Time Tasks inicializado com sucesso!');
 }
