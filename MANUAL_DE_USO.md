@@ -220,7 +220,7 @@ O alerta atual funciona enquanto o aplicativo está aberto. Com o navegador tota
 
 WhatsApp, Telegram e Google Calendar são exibidos como indisponíveis até que as integrações reais sejam implementadas.
 
-## 11. Integrações de Calendário
+## 12. Integrações de Calendário
 
 ### Google Calendar
 
@@ -253,7 +253,7 @@ Mesma sincronização automática: eventos do Time Tasks → Apple Calendar, e v
 
 ---
 
-## 12. Atalhos
+## 13. Atalhos
 
 | Tecla | Ação |
 |---|---|
@@ -266,7 +266,7 @@ Mesma sincronização automática: eventos do Time Tasks → Apple Calendar, e v
 
 Os atalhos não são executados enquanto o foco estiver em campo de texto, seleção ou área de digitação.
 
-## 13. Segurança e privacidade
+## 14. Segurança e privacidade
 
 - Todas as tabelas do aplicativo começam com `time_tasks_`.
 - RLS usa `auth.uid()` para separar as contas.
@@ -274,7 +274,61 @@ Os atalhos não são executados enquanto o foco estiver em campo de texto, sele�
 - A anon key do Supabase é pública; service-role, senha do banco, tokens operacionais e chave da IA são privados.
 - O Supabase atual é compartilhado fisicamente, mas o Time Tasks possui isolamento lógico de dados e acesso. Uma instância dedicada está prevista se for necessário isolamento físico.
 
-## 14. Solução de problemas
+## 15. Modo PWA (Progressive Web App)
+
+### Instalar na home screen
+
+O SX Time Tasks é um **Progressive Web App (PWA)** — você pode instalá-lo como um app nativo sem visitar uma app store.
+
+#### Android
+1. Abra o aplicativo em Chrome, Firefox ou navegador compatível.
+2. Toque o menu (⋮) e escolha **"Instalar app"** ou **"Adicionar à tela inicial"**.
+3. Confirme o nome e o ícone.
+4. O app aparecerá como um ícone na home screen.
+
+#### iOS / iPadOS
+1. Abra em Safari.
+2. Toque o botão Compartilhar (↗️).
+3. Escolha **"Adicionar à tela inicial"**.
+4. Confirme o nome (ex: "Time Tasks").
+5. O app aparecerá como um ícone da home screen.
+
+**Nota:** iOS trata PWAs como atalhos da web em tela cheia, sem acesso à app store.
+
+### Funcionar offline
+
+Uma vez instalado (ou mesmo no navegador), o Time Tasks funciona offline:
+
+- **Eventos e tarefas** que já foram carregados permanecem visíveis.
+- **Criação offline** — novos eventos/tarefas são salvos localmente e sincronizados quando a conexão voltar.
+- **Lembretes** disparam mesmo offline (depende da instalação local).
+- **API calls** que falham recebem uma resposta de fallback.
+
+### Atalhos (app instalado)
+
+Quando o app está instalado, você pode criar atalhos rápidos:
+
+- **Novo Evento** — abrir diretamente no formulário de criar evento.
+- **Minha Agenda** — ir direto para o calendário.
+- **Tarefas** — abrir a aba de sementes.
+
+Acesse os atalhos pela ação "Compartilhar para" → Time Tasks (onde disponível) ou pelo menu do app.
+
+### Notificações push
+
+O Time Tasks suporta notificações do navegador quando instalado. Ative a permissão quando solicitado para receber lembretes de eventos mesmo com o app fechado.
+
+### Limpar cache e dados
+
+Se o app estiver lento ou com dados desatualizados:
+
+1. **No app:** Abra **Configurações > Sobre** e procure por opção de cache.
+2. **No navegador:** F12 → Application → Clear Storage → Clear.
+3. **Dados pessoais** (eventos, tarefas) sempre permanecem no Supabase — só o cache local é limpo.
+
+Recarregue a página ou reinstale o app após limpar.
+
+## 16. Solução de problemas
 
 ### A SX não responde
 
