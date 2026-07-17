@@ -683,6 +683,70 @@ CREATE TABLE time_tasks_push_subscriptions (
 
 **Commit:** `fe305f5` — feat: Web Push + Background Sync + Periodic Sync
 
+### 11.4 — Voice Commands (Desktop + Mobile) (✅ 16/07/2026)
+
+**PEDIDO**
+- App reconheca fala em português
+- Agenda eventos/tarefas por voz
+- Funcione em desktop E mobile
+- Confirme com áudio (TTS)
+
+**Arquivos criados:**
+1. **`js/voice-assistant.js`** (300+ linhas)
+   - `initVoiceAssistant()` — inicializa Web Speech API
+   - `startListening() / stopListening()` — controla microfone
+   - `speakText()` — Text-to-Speech confirmação
+   - `speakSuccess()` — feedback de sucesso
+   - `setupVoiceShortcut()` — atalho Ctrl+Shift+V
+
+2. **Integração com PWA SX Initial**
+   - Voice ativo por padrão (mobile + desktop)
+   - Placeholder contextual
+   - Atalho de teclado global
+
+3. **Integração com app.js**
+   - Voice Assistant inicializa globalmente
+   - Atalho Ctrl+Shift+V em desktop
+
+**Estilos CSS adicionados**
+- `@keyframes pulse` — animação ao ouvir
+- `@keyframes listening-glow` — brilho no botão
+- Estilos responsive (mobile vs desktop)
+- Estados: listening, processing, error, idle
+
+**Features:**
+✓ Reconhece fala em português-BR
+✓ Transcreve para texto real-time
+✓ Envia para SX (processa comando)
+✓ SX cria evento/tarefa
+✓ Confirma com áudio (TTS)
+✓ Funciona offline (reconhecimento local)
+✓ Fallback para texto se voice falhar
+
+**Desktop UI:**
+- Botão: "[🎤 (Ctrl+Shift+V)]"
+- Estados visuais: listening (brilha), processing (opaco), error (vermelho)
+- Animação pulse ao ouvir
+- Tooltip com atalho
+
+**Mobile UI:**
+- Botão compacto: "[🎤]"
+- Toque para ativar
+- Animação pulse ao ouvir
+- Feedback visual completo
+
+**Suporte Navegador:**
+✅ Chrome, Edge, Firefox
+⚠️ Safari (parcial)
+
+**Exemplos Funcionais:**
+- "Agende reunião amanhã às 14h"
+- "Marca médico segunda 10 horas"
+- "Tarefa comprar leite amanhã"
+- "Lembrete enviar relatório sexta"
+
+**Commit:** `3ebf3f8` + `1e0030e` — feat: Voice Commands (mobile + desktop)
+
 ---
 
 **Status das fases (até Fase 11):**
