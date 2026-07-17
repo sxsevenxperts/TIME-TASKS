@@ -2,6 +2,7 @@ import { createServer } from 'node:http';
 import { readFile, stat } from 'node:fs/promises';
 import { extname, join, normalize } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { buildGoogleAuthUrl, exchangeGoogleCode, refreshGoogleToken, fetchGoogleCalendars } from './js/google-calendar-handler.js';
 
 const port = Number(process.env.PORT || 3000);
 const distDir = fileURLToPath(new URL('./dist/', import.meta.url));
@@ -9,6 +10,10 @@ const supabaseUrl = (process.env.SUPABASE_URL || process.env.VITE_SUPABASE_URL |
 const supabaseAnonKey = process.env.SUPABASE_ANON_KEY || process.env.VITE_SUPABASE_ANON_KEY || '';
 const geminiApiKey = process.env.GEMINI_API_KEY || '';
 const geminiModel = process.env.GEMINI_MODEL || 'gemini-2.5-flash';
+
+const googleClientId = process.env.GOOGLE_CLIENT_ID || '';
+const googleClientSecret = process.env.GOOGLE_CLIENT_SECRET || '';
+const googleRedirectUri = process.env.GOOGLE_REDIRECT_URI || '';
 const requestCounters = new Map();
 const supabaseOrigin = (() => {
   try {
@@ -263,6 +268,55 @@ function normalizeSxResult(result, defaults, agenda = []) {
   };
 }
 
+
+async function handleGoogleConnect(response, user) {
+  if (!googleClientId) return sendJson(response, 503, { error: 'GOOGLE_NOT_CONFIGURED' });
+  
+  const state = Math.random().toString(36).substring(2, 15) + Math.random().toString(36).substring(2, 15);
+  const authUrl = buildGoogleAuthUrl(state);
+  
+  if (!authUrl) return sendJson(response, 503, { error: 'GOOGLE_AUTH_URL_BUILD_FAILED' });
+  
+  response.writeHead(302, { Location: authUrl });
+  response.end();
+}
+
+async function handleGoogleCallback(request, response) {
+  const url = new URL(request.url, `http://${request.headers.host || 'localhost'}`);
+  const code = url.searchParams.get('code');
+  const error = url.searchParams.get('error');
+
+  if (error) {
+    return response.writeHead(302, { Location: `/?error=google_${error}` }) || response.end();
+  }
+
+  if (!code) {
+    return response.writeHead(302, { Location: '/?error=no_code' }) || response.end();
+  }
+
+  try {
+    const tokenData = await exchangeGoogleCode(code);
+    const accessToken = tokenData.access_token;
+    const refreshToken = tokenData.refresh_token || null;
+    const expiresIn = tokenData.expires_in || 3600;
+    const expiresAt = new Date(Date.now() + expiresIn * 1000).toISOString();
+
+    const calendars = await fetchGoogleCalendars(accessToken);
+    const primaryCalendar = calendars.find(c => c.primary) || calendars[0];
+    
+    if (!primaryCalendar) {
+      return response.writeHead(302, { Location: '/?error=no_calendars' }) || response.end();
+    }
+
+    response.writeHead(302, { Location: `/?calendar_setup=success&provider=google&calendar=${encodeURIComponent(primaryCalendar.summary || 'Google Calendar')}` });
+    response.end();
+  } catch (error) {
+    console.error('Google callback error:', error);
+    response.writeHead(302, { Location: `/?error=google_callback_${encodeURIComponent(error.message)}` });
+    response.end();
+  }
+}
+
 async function handleSx(request, response, user) {
   if (!geminiApiKey) return sendJson(response, 503, { error: 'SX_NOT_CONFIGURED' });
   if (!allowRequest(user.id)) return sendJson(response, 429, { error: 'RATE_LIMITED' });
@@ -427,6 +481,7 @@ const server = createServer(async (request, response) => {
   try {
     const url = new URL(request.url, `http://${request.headers.host || 'localhost'}`);
     if (url.pathname === '/api/health' && request.method === 'GET') {
+    if (url.pathname === '/api/auth/google/callback' && request.method === 'GET') return handleGoogleCallback(request, response);
       return sendJson(response, 200, {
         status: 'ok',
         service: 'time-tasks',
@@ -438,6 +493,7 @@ const server = createServer(async (request, response) => {
     if (url.pathname.startsWith('/api/')) {
       const user = await authenticate(request);
       if (!user) return sendJson(response, 401, { error: 'UNAUTHORIZED' });
+            if (url.pathname === '/api/auth/google/connect' && request.method === 'GET') return handleGoogleConnect(response, user);
       if (url.pathname === '/api/sx' && request.method === 'POST') return handleSx(request, response, user);
       if (url.pathname === '/api/verse' && request.method === 'GET') return handleVerse(response, user);
       return sendJson(response, 404, { error: 'NOT_FOUND' });

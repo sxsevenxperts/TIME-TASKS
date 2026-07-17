@@ -226,3 +226,31 @@ Popover "Dar baixa"/"Reabrir" ou modal SIM/NÃO ou SX ("dê baixa em X")
 - **Repo:** https://github.com/sxsevenxperts/TIME-TASKS.git
 - **Produção:** https://startups-timetasks.qfotry.easypanel.host
 - **Docs:** `README.md`, `ROADMAP.md`, `MANUAL_DE_USO.md`, `ACCESSIBILITY.md`, `SMOKE_TEST.md`, `PLANNER_PROMPT_MESTRE_TIME_TASKS.md`
+
+## Fase 10 — Integrações de Calendário Externo
+
+### 10.1 — Google Calendar OAuth (✅ 16/07/2026)
+
+**Arquivos alterados:**
+- ✅ `migrations/007_calendar_integrations.sql` — tabela time_tasks_calendar_integrations + campos em time_tasks_events
+- ✅ `js/google-calendar-handler.js` — módulo com funções OAuth, token refresh, fetch eventos
+- ✅ `server.js` — endpoints `/api/auth/google/connect` e `/api/auth/google/callback`
+- ✅ `.env.local` — GOOGLE_CLIENT_ID, GOOGLE_CLIENT_SECRET, GOOGLE_REDIRECT_URI
+
+**Fluxo:**
+1. Usuário clica "Conectar Google Calendar" (UI → próxima fase)
+2. GET `/api/auth/google/connect` → redireciona para `https://accounts.google.com/o/oauth2/v2/auth`
+3. Google redireciona para `/api/auth/google/callback?code=...`
+4. Backend troca `code` por `access_token` + `refresh_token`
+5. Armazena em `time_tasks_calendar_integrations` (RLS por user)
+6. Pronto para sincronização (Fase 10.3)
+
+**Environment (EasyPanel):**
+```
+GOOGLE_CLIENT_ID=xxx.apps.googleusercontent.com
+GOOGLE_CLIENT_SECRET=GOCSPX-xxx
+GOOGLE_REDIRECT_URI=https://startups-timetasks.qfotry.easypanel.host/api/auth/google/callback
+```
+
+**Próximo:** Fase 10.2 (Apple Calendar CalDAV)
+

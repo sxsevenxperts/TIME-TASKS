@@ -263,3 +263,65 @@
 ## Critério permanente de pronto
 
 Uma entrega só é considerada concluída quando passa por build, banco/RLS, autenticação, CRUD real, teste visual, healthcheck, deploy público, paridade `HEAD == origin/main` **e registro no MANUAL_DE_BORDO + ROADMAP + MANUAL_DE_USO**.
+
+---
+
+## Fase 10 — Integrações de Calendário Externo
+
+### Fase 10.1 — Google Calendar OAuth (✅ CONCLUÍDO - 16/07/2026)
+
+**Objetivo:** Integração OAuth com Google Calendar para sincronização bidirecional.
+
+**Alterações:**
+- [x] Criada tabela `time_tasks_calendar_integrations` com campos: provider, access_token, refresh_token, token_expires_at, calendar_id, calendar_name, is_active, last_sync_at, sync_errors.
+- [x] Adicionados campos em `time_tasks_events`: external_id, external_source (google/apple), external_calendar_id, synced_at, is_syncing.
+- [x] Implementado módulo `js/google-calendar-handler.js` com funções: buildGoogleAuthUrl, exchangeGoogleCode, refreshGoogleToken, fetchGoogleCalendars, fetchGoogleEvents, createGoogleEvent.
+- [x] Adicionados endpoints no server.js:
+  - GET `/api/auth/google/connect` → redireciona para Google OAuth
+  - GET `/api/auth/google/callback` → recebe authorization_code e troca por access_token
+- [x] Adicionadas variáveis de ambiente: GOOGLE_CLIENT_ID, GOOGLE_CLIENT_SECRET, GOOGLE_REDIRECT_URI.
+- [x] RLS aplicado em `time_tasks_calendar_integrations` (select, insert, update, delete own).
+- [x] Migração SQL: `migrations/007_calendar_integrations.sql`.
+
+**Status:** ✅ Backend pronto. Frontend e sincronização → Fase 10.2.
+
+---
+
+### Fase 10.2 — Apple Calendar CalDAV (⏳ Próxima)
+
+**Objetivo:** Integração CalDAV com Apple Calendar (iCloud, macOS, iOS).
+
+**Scope:**
+- [ ] Módulo `js/apple-calendar-handler.js` com CalDAV discovery e autenticação.
+- [ ] Endpoint GET `/api/auth/apple/connect` → setup formulário de credenciais.
+- [ ] Endpoint POST `/api/auth/apple/setup` → salva credenciais encriptadas.
+- [ ] Parse de eventos `.ics` e mapeamento para schema interno.
+- [ ] Teste com iCloud calendário público.
+
+---
+
+### Fase 10.3 — Sincronização Bidirecional (⏳ Próxima)
+
+**Objetivo:** Puxar eventos de Google/Apple e criar/editar/deletar no Time Tasks.
+
+**Scope:**
+- [ ] Job de sincronização: pull a cada 5 minutos.
+- [ ] Dedup por `external_id`.
+- [ ] Conflito de horário: regra de prioridade (SX > Google > Apple).
+- [ ] Push: novo evento SX → cria em Google + Apple.
+- [ ] UI em Settings → "Calendários Conectados".
+- [ ] Botão de sincronização manual.
+
+---
+
+### Fase 10.4 — Configuração, Testes e Deploy (⏳ Próxima)
+
+**Objetivo:** Finalizar, testar e documentar integrações.
+
+**Scope:**
+- [ ] Instruções de setup Google Cloud Console + Apple Developer.
+- [ ] Smoke test: criar evento SX → aparece em Google Calendar.
+- [ ] Teste CalDAV com iCloud.
+- [ ] Tratamento de erros: token expirado, calendário removido, conflito.
+- [ ] Documentação em MANUAL_DE_USO.md.
+- [ ] Deploy em produção com healthcheck.

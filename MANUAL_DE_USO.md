@@ -220,6 +220,39 @@ O alerta atual funciona enquanto o aplicativo está aberto. Com o navegador tota
 
 WhatsApp, Telegram e Google Calendar são exibidos como indisponíveis até que as integrações reais sejam implementadas.
 
+## 11. Integrações de Calendário
+
+### Google Calendar
+
+Sincronize seus eventos do Time Tasks com Google Calendar automaticamente.
+
+1. Abra **Configurações > Integrações**.
+2. Clique em **Conectar Google Calendar**.
+3. Faça login na sua conta Google.
+4. Autorize o acesso ao Google Calendar.
+5. Selecione qual calendário Google receberá os eventos.
+
+A partir de agora:
+- Novos eventos criados no Time Tasks aparecem em Google Calendar.
+- Eventos em Google Calendar são sincronizados para o Time Tasks a cada 5 minutos.
+- Edições são refletidas em ambos os calendários.
+- Clique em **Desconectar** para parar a sincronização.
+
+### Apple Calendar
+
+Sincronize com Apple Calendar (iCloud, macOS, iOS) usando CalDAV.
+
+1. Abra **Configurações > Integrações**.
+2. Clique em **Conectar Apple Calendar**.
+3. Insira o e-mail e senha da sua conta iCloud.
+4. Selecione qual calendário Apple receberá os eventos.
+
+Mesma sincronização automática: eventos do Time Tasks → Apple Calendar, e vice-versa.
+
+**Nota:** Google Calendar sincroniza a cada 5 minutos. Apple Calendar sincroniza com menor frequência devido ao protocolo CalDAV. Para sincronização imediata, clique em **Sincronizar agora**.
+
+---
+
 ## 12. Atalhos
 
 | Tecla | Ação |
