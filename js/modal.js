@@ -2,7 +2,7 @@
 // modal.js — Modal de criação/edição e popover de preview
 // ============================================================
 
-import { createEvent, updateEvent, deleteEvent, getEventById, getCalendarColor, detectConflicts } from './events.js';
+import { createEvent, updateEvent, deleteEvent, getEventById, getCalendarColor, detectConflicts, setEventCompleted } from './events.js';
 import { formatDateFull, formatTime, toDateKey } from './utils.js';
 import { getSettings } from './settings.js';
 
@@ -45,6 +45,10 @@ export function initModal({ onEventChanged }) {
     }
   });
 
+  // Toggle SIM/NÃO de baixa do evento
+  document.getElementById('event-completed-yes')?.addEventListener('click', () => setCompletedToggle(true));
+  document.getElementById('event-completed-no')?.addEventListener('click', () => setCompletedToggle(false));
+
   // Submit do formulário
   form?.addEventListener('submit', async (e) => {
     e.preventDefault();
@@ -70,6 +74,16 @@ export function initModal({ onEventChanged }) {
 
   // Popover
   document.getElementById('popover-close')?.addEventListener('click', closePopover);
+  document.getElementById('popover-complete')?.addEventListener('click', async () => {
+    const id = document.getElementById('event-popover')?.dataset.eventId;
+    const event = id ? getEventById(id) : null;
+    if (!event) return;
+    const saved = await setEventCompleted(id, !event.completed);
+    if (!saved) return showToast('Não foi possível atualizar a baixa do evento', 'error');
+    closePopover();
+    showToast(saved.completed ? `Baixa registrada: “${saved.title}”` : `Baixa desfeita: “${saved.title}”`, 'success');
+    if (onEventChange) onEventChange();
+  });
   document.getElementById('popover-edit')?.addEventListener('click', () => {
     const id = document.getElementById('event-popover')?.dataset.eventId;
     closePopover();
@@ -93,6 +107,21 @@ export function initModal({ onEventChanged }) {
       closePopover();
     }
   });
+}
+
+/**
+ * Sincroniza o toggle SIM/NÃO de baixa e o campo oculto que o formulário envia
+ */
+function setCompletedToggle(completed) {
+  const yes = document.getElementById('event-completed-yes');
+  const no = document.getElementById('event-completed-no');
+  const value = document.getElementById('event-completed');
+  if (!yes || !no || !value) return;
+  yes.classList.toggle('status-toggle__btn--active', completed);
+  yes.setAttribute('aria-pressed', String(completed));
+  no.classList.toggle('status-toggle__btn--active', !completed);
+  no.setAttribute('aria-pressed', String(!completed));
+  value.value = completed ? 'sim' : 'nao';
 }
 
 /**
@@ -127,6 +156,7 @@ export function openModal(eventId = null, prefill = {}) {
     document.getElementById('event-calendar').value = event.calendar;
     document.getElementById('event-reminder').value = String(event.reminderMinutes ?? 0);
     document.getElementById('event-description').value = event.description || '';
+    setCompletedToggle(Boolean(event.completed));
 
     if (event.allDay) {
       document.getElementById('time-inputs').style.display = 'none';
@@ -136,6 +166,7 @@ export function openModal(eventId = null, prefill = {}) {
     title.textContent = 'Novo Evento';
     deleteBtn.style.display = 'none';
     document.getElementById('event-id').value = '';
+    setCompletedToggle(false);
     const settings = getSettings();
     document.getElementById('event-calendar').value = settings.defaultCalendar || 'pessoal';
     document.getElementById('event-reminder').value = String(settings.defaultReminder ?? 0);
@@ -188,6 +219,7 @@ async function handleSubmit() {
     calendar: document.getElementById('event-calendar')?.value,
     description: document.getElementById('event-description')?.value?.trim(),
     reminderMinutes: Number(document.getElementById('event-reminder')?.value || 0),
+    completed: document.getElementById('event-completed')?.value === 'sim',
   };
 
   if (!eventData.title) return showToast('Informe um título para o evento', 'error');
@@ -233,7 +265,11 @@ export function openPopover(eventId, anchorRect) {
   } else if (event.allDay) {
     dateTimeStr += ' · Dia inteiro';
   }
+  if (event.completed) dateTimeStr += ' · ✔ Concluído';
   document.getElementById('popover-datetime').textContent = dateTimeStr;
+
+  const completeBtn = document.getElementById('popover-complete');
+  if (completeBtn) completeBtn.textContent = event.completed ? 'Reabrir' : 'Dar baixa';
 
   const descRow = document.getElementById('popover-desc-row');
   const descText = document.getElementById('popover-description');

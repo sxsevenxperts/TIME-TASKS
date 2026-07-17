@@ -21,7 +21,7 @@ const supabaseSocketOrigin = supabaseOrigin.replace(/^http/, 'ws');
 const contentSecurityPolicy = [
   "default-src 'self'",
   "base-uri 'self'",
-  `connect-src 'self' ${supabaseOrigin} ${supabaseSocketOrigin}`.trim(),
+  `connect-src 'self' ${supabaseOrigin} ${supabaseSocketOrigin} https://api.open-meteo.com https://geocoding-api.open-meteo.com`.trim(),
   "font-src 'self' https://fonts.gstatic.com data:",
   "form-action 'self'",
   "frame-ancestors 'self'",
@@ -59,7 +59,7 @@ async function readJson(request) {
   let body = '';
   for await (const chunk of request) {
     body += chunk;
-    if (body.length > 32_768) throw new Error('PAYLOAD_TOO_LARGE');
+    if (body.length > 65_536) throw new Error('PAYLOAD_TOO_LARGE');
   }
   try {
     return JSON.parse(body || '{}');
@@ -135,8 +135,41 @@ function timeToNumber(time) {
   return hours * 60 + minutes;
 }
 
-function normalizeSxResult(result, defaults) {
+const CALENDAR_KEYS = new Set(['pessoal', 'trabalho', 'saude', 'estudos', 'social']);
+
+function sanitizeHistory(history) {
+  if (!Array.isArray(history)) return [];
+  return history
+    .filter(entry => entry && (entry.role === 'user' || entry.role === 'assistant') && String(entry.content || '').trim())
+    .slice(-20)
+    .map(entry => ({
+      role: entry.role,
+      content: String(entry.content).trim().slice(0, 1000)
+    }));
+}
+
+function sanitizeAgenda(agenda) {
+  if (!Array.isArray(agenda)) return [];
+  return agenda
+    .filter(item => item && typeof item.id === 'string' && item.id.length <= 64 && String(item.title || '').trim())
+    .slice(0, 50)
+    .map(item => ({
+      id: item.id,
+      title: String(item.title).trim().slice(0, 180),
+      date: validDate(item.date) ? item.date : null,
+      startTime: validTime(item.startTime) ? item.startTime : null,
+      endTime: validTime(item.endTime) ? item.endTime : null,
+      allDay: Boolean(item.allDay),
+      calendar: CALENDAR_KEYS.has(item.calendar) ? item.calendar : 'pessoal',
+      reminderMinutes: Math.max(0, Math.min(Number(item.reminderMinutes ?? 0) || 0, 10_080)),
+      completed: Boolean(item.completed),
+      createdAt: item.createdAt && !Number.isNaN(Date.parse(item.createdAt)) ? item.createdAt : null
+    }));
+}
+
+function normalizeSxResult(result, defaults, agenda = []) {
   if (!result || typeof result !== 'object') throw new Error('INVALID_MODEL_RESPONSE');
+  const agendaIds = new Set(agenda.map(item => item.id));
 
   if (result.action === 'CREATE_EVENT' && result.event) {
     const event = result.event;
@@ -151,7 +184,6 @@ function normalizeSxResult(result, defaults) {
       : (requestedEnd && timeToNumber(requestedEnd) > timeToNumber(startTime)
           ? requestedEnd
           : addMinutes(startTime, duration));
-    const calendars = new Set(['pessoal', 'trabalho', 'saude', 'estudos', 'social']);
 
     return {
       action: 'CREATE_EVENT',
@@ -161,11 +193,50 @@ function normalizeSxResult(result, defaults) {
         startTime,
         endTime,
         allDay,
-        calendar: calendars.has(event.calendar) ? event.calendar : (defaults.defaultCalendar || 'pessoal'),
+        calendar: CALENDAR_KEYS.has(event.calendar) ? event.calendar : (defaults.defaultCalendar || 'pessoal'),
         description: String(event.description || '').trim().slice(0, 2000),
         reminderMinutes: Math.max(0, Math.min(Number(event.reminderMinutes ?? defaults.defaultReminder ?? 0), 10_080))
       }
     };
+  }
+
+  if (result.action === 'UPDATE_EVENT') {
+    const eventId = String(result.eventId || '');
+    if (!agendaIds.has(eventId)) throw new Error('INVALID_EVENT_REFERENCE');
+    const source = result.changes && typeof result.changes === 'object' ? result.changes : {};
+    const changes = {};
+    if (String(source.title || '').trim()) changes.title = String(source.title).trim().slice(0, 180);
+    if (validDate(source.date)) changes.date = source.date;
+    if (validTime(source.startTime)) changes.startTime = source.startTime;
+    if (validTime(source.endTime)) changes.endTime = source.endTime;
+    if (typeof source.allDay === 'boolean') changes.allDay = source.allDay;
+    if (CALENDAR_KEYS.has(source.calendar)) changes.calendar = source.calendar;
+    if (typeof source.description === 'string') changes.description = source.description.trim().slice(0, 2000);
+    if (source.reminderMinutes !== undefined && source.reminderMinutes !== null) {
+      changes.reminderMinutes = Math.max(0, Math.min(Number(source.reminderMinutes) || 0, 10_080));
+    }
+    // Horário novo sem fim explícito: recalcula o fim preservando a duração padrão.
+    if (changes.startTime && !changes.endTime) {
+      const current = agenda.find(item => item.id === eventId);
+      const duration = current?.startTime && current?.endTime
+        ? timeToNumber(current.endTime) - timeToNumber(current.startTime)
+        : (Number(defaults.defaultDuration) || 60);
+      changes.endTime = addMinutes(changes.startTime, Math.max(duration, 5));
+    }
+    if (!Object.keys(changes).length) throw new Error('INVALID_EVENT_CHANGES');
+    return { action: 'UPDATE_EVENT', eventId, changes };
+  }
+
+  if (result.action === 'DELETE_EVENT') {
+    const eventId = String(result.eventId || '');
+    if (!agendaIds.has(eventId)) throw new Error('INVALID_EVENT_REFERENCE');
+    return { action: 'DELETE_EVENT', eventId };
+  }
+
+  if (result.action === 'SET_EVENT_STATUS') {
+    const eventId = String(result.eventId || '');
+    if (!agendaIds.has(eventId)) throw new Error('INVALID_EVENT_REFERENCE');
+    return { action: 'SET_EVENT_STATUS', eventId, completed: Boolean(result.completed) };
   }
 
   if (result.action === 'CREATE_SEED' && result.seed) {
@@ -213,17 +284,52 @@ async function handleSx(request, response, user) {
     return sendJson(response, 400, { error: 'INVALID_TIMEZONE' });
   }
   const defaults = body.defaults && typeof body.defaults === 'object' ? body.defaults : {};
+  const history = sanitizeHistory(body.history);
+  const agenda = sanitizeAgenda(body.agenda);
+  const userName = String(body.userName || '').trim().slice(0, 80);
   const systemInstruction = [
     'Você é SX, a assistente de agenda do Time Tasks.',
-    'Interprete português do Brasil e transforme pedidos objetivos em CREATE_EVENT ou CREATE_SEED.',
+    'PERSONA: fale como uma pessoa próxima, calorosa e natural, em português do Brasil, com frases curtas e vivas. Nada de tom robótico, burocrático ou de sistema.',
+    userName ? `O nome de quem fala com você é ${userName}. Chame pelo nome com naturalidade, sem exagerar.` : '',
+    'Nunca se descreva como IA, robô, modelo, sistema ou assistente virtual, e nunca mencione tecnologia interna. Se perguntarem se você é humana ou robô, responda com simpatia apenas que é a SX, a assistente do Time Tasks — sem afirmar que é humana.',
+    'Se a pessoa disser que um compromisso "foi cancelado", confirme com gentileza qual evento é (CHAT) e, quando estiver claro, desmarque com DELETE_EVENT. Se disser que o compromisso "já aconteceu" ou "foi cumprido", sugira ou registre a baixa com SET_EVENT_STATUS.',
+    'Interprete português do Brasil e responda com exatamente uma das ações permitidas.',
     'Use CREATE_EVENT quando houver compromisso com duração. Use CREATE_SEED para tarefa ou lembrete pontual.',
+    'Use UPDATE_EVENT para reeditar ou adiar um evento existente (mudar título, data, horário, lembrete, calendário ou descrição). Envie em "changes" somente os campos que mudam.',
+    'Use DELETE_EVENT quando o usuário quiser desmarcar/cancelar um evento existente.',
+    'Use SET_EVENT_STATUS quando o usuário quiser dar baixa (completed=true) ou reabrir (completed=false) um evento existente.',
+    'Você recebe o histórico recente da conversa e a lista AGENDA com os eventos do usuário (cada um com "id").',
+    'Referências como "o último evento criado", "aquela reunião" ou "o evento de amanhã" devem ser resolvidas pela conversa e pela AGENDA; use o "createdAt" mais recente para "último criado".',
+    'Só use um eventId que exista na AGENDA. Se a referência for ambígua ou não existir, responda com CHAT pedindo esclarecimento e cite os títulos candidatos.',
+    'Pedidos como "me lembre X minutos antes" sobre um evento já criado são UPDATE_EVENT com {"reminderMinutes":X}.',
     'Datas relativas devem usar a data/hora e o fuso fornecidos.',
-    'Nunca invente uma ação diferente das três permitidas.',
+    'Nunca invente uma ação diferente das seis permitidas.',
     'Retorne somente JSON válido, sem markdown.',
     'Formato de evento: {"action":"CREATE_EVENT","event":{"title":"","date":"YYYY-MM-DD","startTime":"HH:MM","endTime":"HH:MM","allDay":false,"calendar":"pessoal|trabalho|saude|estudos|social","description":"","reminderMinutes":0}}.',
     'Formato de tarefa: {"action":"CREATE_SEED","seed":{"title":"","notes":"","dueAt":"ISO-8601 ou null","reminderAt":"ISO-8601 ou null"}}.',
+    'Formato de edição/adiamento: {"action":"UPDATE_EVENT","eventId":"","changes":{"title":"","date":"YYYY-MM-DD","startTime":"HH:MM","endTime":"HH:MM","allDay":false,"calendar":"","description":"","reminderMinutes":0}}.',
+    'Formato de desmarcar: {"action":"DELETE_EVENT","eventId":""}.',
+    'Formato de baixa: {"action":"SET_EVENT_STATUS","eventId":"","completed":true}.',
     'Para conversa: {"action":"CHAT","message":""}.'
-  ].join(' ');
+  ].filter(Boolean).join(' ');
+
+  const contextText = [
+    `Agora em UTC: ${now.toISOString()}`,
+    `Agora no fuso do usuário: ${localNow}`,
+    `Fuso: ${timezone}`,
+    `Duração padrão: ${Number(defaults.defaultDuration) || 60} minutos`,
+    `Lembrete padrão: ${Number(defaults.defaultReminder) || 0} minutos`,
+    `AGENDA: ${JSON.stringify(agenda)}`,
+    `Pedido: ${JSON.stringify(text)}`
+  ].join('\n');
+
+  const contents = [
+    ...history.map(entry => ({
+      role: entry.role === 'assistant' ? 'model' : 'user',
+      parts: [{ text: entry.content }]
+    })),
+    { role: 'user', parts: [{ text: contextText }] }
+  ];
 
   const geminiResponse = await fetch(
     `https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(geminiModel)}:generateContent`,
@@ -235,12 +341,7 @@ async function handleSx(request, response, user) {
       },
       body: JSON.stringify({
         system_instruction: { parts: [{ text: systemInstruction }] },
-        contents: [{
-          role: 'user',
-          parts: [{
-            text: `Agora em UTC: ${now.toISOString()}\nAgora no fuso do usuário: ${localNow}\nFuso: ${timezone}\nDuração padrão: ${Number(defaults.defaultDuration) || 60} minutos\nLembrete padrão: ${Number(defaults.defaultReminder) || 0} minutos\nPedido: ${JSON.stringify(text)}`
-          }]
-        }],
+        contents,
         generationConfig: {
           responseMimeType: 'application/json',
           maxOutputTokens: 900
@@ -268,7 +369,12 @@ async function handleSx(request, response, user) {
     return sendJson(response, 502, { error: 'SX_INVALID_RESPONSE' });
   }
 
-  return sendJson(response, 200, normalizeSxResult(parsed, defaults));
+  try {
+    return sendJson(response, 200, normalizeSxResult(parsed, defaults, agenda));
+  } catch (error) {
+    console.error('SX retornou uma ação inválida:', error.message, raw.slice(0, 500));
+    return sendJson(response, 502, { error: 'SX_INVALID_RESPONSE' });
+  }
 }
 
 async function handleVerse(response, user) {
@@ -309,7 +415,7 @@ async function serveStatic(request, response) {
     'Content-Type': mimeTypes[extension] || 'application/octet-stream',
     'Cache-Control': filePath.endsWith('index.html') ? 'no-cache' : 'public, max-age=31536000, immutable',
     'Content-Security-Policy': contentSecurityPolicy,
-    'Permissions-Policy': 'camera=(), geolocation=(), microphone=(self)',
+    'Permissions-Policy': 'camera=(), geolocation=(self), microphone=(self)',
     'X-Content-Type-Options': 'nosniff',
     'Referrer-Policy': 'strict-origin-when-cross-origin',
     'X-Frame-Options': 'SAMEORIGIN'

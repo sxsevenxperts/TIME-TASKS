@@ -1,271 +1,226 @@
-# Manual de Bordo — SX Time Tasks 2.0
+# Manual de Bordo — SX Time Tasks
 
-**Versão:** 2.0  
-**Data:** 16/07/2026  
-**Status:** ✅ Pronto para Produção (WCAG 2.1 AA)
+Diário de bordo do projeto, previsto no `AGENTS.md`. Registra **o que foi pedido, o que foi feito, o resultado obtido, o que falta e o melhor caminho**, para que qualquer pessoa (ou agente) retome o trabalho sem perder contexto.
 
----
+Cada registro usa uma etiqueta: `PEDIDO`, `PERGUNTA`, `DECISÃO`, `IDEIA`, `FALHA`, `CORREÇÃO`, `VALIDAÇÃO`, `PENDÊNCIA` ou `RISCO`.
 
-## 1. O que é SX Time Tasks?
+Última atualização: **17/07/2026**.
 
-SX Time Tasks é uma aplicação **web-first** de calendário, tarefas e automações para gerenciar tempo com auxílio de IA. Construída em Vanilla JS + Vite + Supabase, isolada logicamente no Auth compartilhado com SevenChat.
-
-**Identidade:**
-- **Sigla:** SX (Assistente inteligente, não "SevenChat")
-- **Tom:** consultor técnico, direto, respeitoso
-- **Público:** users autenticados em `time_tasks_members`
+- **Parte 1 — Diário cronológico** (registros por sessão)
+- **Parte 2 — Referência técnica do projeto** (stack, fluxos, segurança, troubleshooting)
 
 ---
 
-## 2. Stack Técnico
+# Parte 1 — Diário cronológico
+
+## 1. Linha do tempo consolidada
+
+| Data | Entrega | Commit |
+|---|---|---|
+| — | SX Time Tasks 2.0 em produção (agenda, tarefas, SX, agendamento público, versículos, segurança) | `22869d1` |
+| — | Correção da duplicação do histórico da SX | `fc9ccfe` |
+| — | Planner mestre de evolução visual/funcional + AGENTS.md | `058d8a3` |
+| 16/07/2026 | Fases 1–3: shell mobile, navegação unificada, calendário responsivo | `35e49c5` |
+| 16/07/2026 | Fase 4: toggle de senha no login e versículo por acesso | `d9867d8` |
+| 16/07/2026 | **Linha A (main):** Fases 5–9 do planner — clima, trigger 6.1, WCAG, docs, smoke test | `719af9a`…`85032eb` |
+| 16/07/2026 | **Linha B (branch):** SX com memória, gestão de eventos e baixa SIM/NÃO + correções da revisão geral | `31ae00b` |
+| 16/07/2026 | **Linha B:** versículo único por acesso, migração `completed` aplicada em produção, diário de bordo | `b491afe` |
+| 17/07/2026 | Merge das duas linhas + correções de integração (CSP/geolocalização/migração 006) + persona humanizada da SX | *(commit deste merge)* |
+
+## 2. Registros de 16/07/2026 — SX 2.1 (Linha B)
+
+### 2.1 SX com memória e gestão total de eventos
+
+- **PEDIDO** — Toda mensagem deve ser lembrada; reeditar eventos quantas vezes precisar; adiar; desmarcar; e dar baixa com SIM/NÃO em cada evento.
+- **FALHA** — A SX era stateless: `/api/sx` recebia apenas o texto atual. Na prática, "ME LEMBRE 5 MINUTOS ANTES" e "DO ÚLTIMO EVENTO CRIADO" falhavam (evidência: capturas de tela do chat em produção).
+- **FALHA** — A SX só possuía 3 ações (`CREATE_EVENT`, `CREATE_SEED`, `CHAT`); não conseguia editar, adiar, desmarcar nem concluir nada.
+- **CORREÇÃO** — `js/ai.js` envia as últimas 20 mensagens (`history`) e um recorte da agenda com até 50 eventos (`agenda`) a cada pedido; `server.js` injeta o histórico como turnos reais da conversa no Gemini e a agenda como contexto.
+- **CORREÇÃO** — Novas ações: `UPDATE_EVENT` (reeditar/adiar), `DELETE_EVENT` (desmarcar/apagar) e `SET_EVENT_STATUS` (baixa SIM / reabrir NÃO).
+- **DECISÃO** — O `eventId` retornado pelo modelo é validado contra a agenda enviada (`INVALID_EVENT_REFERENCE` → 502 controlado). Referência ambígua vira pergunta (`CHAT`), nunca ação inventada. Remarcações passam pela mesma verificação de conflitos dos eventos manuais.
+- **DECISÃO** — Baixa persistida na coluna `completed` de `time_tasks_events` (migração idempotente). Evento com baixa não dispara lembrete; reabrir reativa (o `notified_at` é limpo ao reabrir/remarcar).
+- **VALIDAÇÃO** — `node --check` em todos os módulos, `vite build` limpo, `/api/health` OK e `/api/sx` recusando requisição sem token.
+
+### 2.2 Baixa SIM/NÃO na interface
+
+- **PEDIDO** — Ativar o SIM ou NÃO para cada evento ser dado baixa.
+- **CORREÇÃO** — Toggle **Sim/Não** ("Dar baixa (concluído)") no formulário do evento; botão **Dar baixa/Reabrir** no popover; evento concluído aparece riscado/esmaecido nas visões Semana/Dia/3 Dias, Dia inteiro e Mês, com "✔ Concluído" no resumo.
+
+### 2.3 Revisão geral do aplicativo
+
+- **PEDIDO** — Revisar todo o app, corrigir erros e gaps, garantir uso em escala e criação de vários usuários pelo botão da página de login.
+- **FALHA** — O versículo por acesso (Fase 4) **nunca funcionou em produção**: `verse-access.js` chamava `POST /api/verse` sem token e esperava `{verse}`; o servidor só aceita `GET` autenticado e retorna `{text, reference}`. O erro era engolido por um `catch` silencioso.
+- **CORREÇÃO** — `GET` autenticado com o token da sessão, consumindo `{text, reference}`; guarda `shownForSession` evita balões duplicados no mesmo login.
+- **FALHA** — O formulário de login retinha e-mail/senha após logout, atrapalhando o cadastro de contas em sequência no mesmo dispositivo.
+- **CORREÇÃO** — Campos limpos ao encerrar a sessão. O fluxo de cadastro multiusuário (trigger `register_time_tasks_member` no Auth + vínculo em `time_tasks_members` + RLS por usuário em todas as tabelas) foi auditado e está correto.
+- **FALHA** — Lembrete disparava mesmo para evento já concluído. **CORREÇÃO** — `checkEvents` ignora `event.completed`.
+- **FALHA** — A Fase 4 havia sido entregue sem atualizar o ROADMAP. **CORREÇÃO** — ROADMAP sincronizado; processo permanente: **a cada fase concluída, sincronizar roadmap, manual e diário, local e no repositório**.
+
+### 2.4 Migração do banco de produção (coluna `completed`)
+
+- **PEDIDO** — Executar `supabase/schema.sql` no banco do EasyPanel.
+- **DECISÃO** — Execução via endpoint `postgres-meta` (`/pg/query`) do Supabase self-hosted, autenticada com a service-role key fornecida pelo operador. O schema inteiro foi aplicado por ser idempotente.
+- **VALIDAÇÃO** — Antes: `select completed` retornava `42703 (column does not exist)`. Depois: coluna `completed boolean default false` confirmada em `information_schema.columns`; dados preservados (evento "CÉLULA" de 16/07/2026 intacto, `completed=false`).
+- **DECISÃO** — O webhook de deploy do compose do Supabase no EasyPanel **não foi acionado**: redeployar o stack do banco reinicia serviços e não era necessário para a migração.
+
+### 2.5 Mensagem bíblica unificada
+
+- **PEDIDO** — Deixar apenas **uma** mensagem bíblica: um versículo por acesso, em balão com opção de sair/fechar.
+- **FALHA** — Existiam dois canais concorrentes: versículos por período (manhã/tarde, com som/toast/notificação e cartão fixo na sidebar) e o versículo por acesso em balão.
+- **CORREÇÃO** — Removidos o ciclo manhã/tarde do `reminders.js`, o cartão `#daily-verse-card` da sidebar e as configurações de horário de versículo. Mantido apenas o balão por acesso (`verse-access.js`), com botão **X**, que permanece na tela até ser fechado.
+- **DECISÃO** — `time_tasks_verse_deliveries` e colunas `verse_*` de `time_tasks_settings` mantidas no banco (histórico preservado; limpeza futura opcional).
+
+## 3. Registros de 16/07/2026 — Fases 5–9 do planner (Linha A, sessão paralela)
+
+- **DECISÃO** — Uma segunda sessão de desenvolvimento executou o planner mestre diretamente no `main`: Fase 5 (clima Open-Meteo em `weather.js`), Fase 6.1 (schema + UI de triggers em `triggers.js` e `migrations/006`), Fase 7 (auditoria WCAG em `ACCESSIBILITY.md`), Fase 8 (manual de bordo próprio) e Fase 9 (roteiro `SMOKE_TEST.md`).
+- **FALHA** — As duas linhas divergiram: dois `MANUAL_DE_BORDO.md` diferentes, dois roadmaps com numerações conflitantes de fases e nenhuma linha continha o trabalho da outra.
+- **CORREÇÃO** — Merge manual em 17/07/2026 preservando os dois trabalhos; ROADMAP, MANUAL_DE_USO e este diário unificados. Numeração canônica das fases: a do planner mestre (5=clima, 6=trigger, 7=WCAG, 8=docs, 9=verificação); o trabalho da Linha B passou a se chamar **SX 2.1**.
+
+## 4. Registros de 17/07/2026 — Integração e produção
+
+### 4.1 Falhas de integração encontradas no merge
+
+- **FALHA** — O CSP de produção (`connect-src 'self'` + Supabase) bloquearia todas as chamadas do clima (`api.open-meteo.com`, `geocoding-api.open-meteo.com`): o widget da Fase 5 nunca carregaria em produção.
+- **CORREÇÃO** — Domínios do Open-Meteo adicionados ao `connect-src` em `server.js`.
+- **FALHA** — `Permissions-Policy: geolocation=()` bloqueava a geolocalização no próprio app — o prompt "Ativar geolocalização" falharia sempre.
+- **CORREÇÃO** — Alterado para `geolocation=(self)`.
+- **FALHA** — `migrations/006_triggers_schema.sql` não era idempotente (`CREATE POLICY`/`CREATE INDEX` sem guardas), não tinha `grant`/`revoke` e a política `"System can insert notifications" with check (true)` permitia que **anônimos inserissem notificações para qualquer usuário**.
+- **CORREÇÃO** — Migração reescrita (idempotente, grants explícitos, `revoke` de `anon`, INSERT restrito a `auth.uid() = user_id`), incorporada ao `supabase/schema.sql` canônico e aplicada em produção via postgres-meta.
+- **VALIDAÇÃO** — Tabelas `time_tasks_triggers` e `time_tasks_notifications` confirmadas em produção com RLS ativo.
+
+### 4.2 Persona humanizada da SX
+
+- **PEDIDO** — SX deve apagar eventos, perguntar se algo foi cancelado, chamar o usuário pelo nome, guardar memória e soar o mais humana possível, sem parecer um sistema.
+- **CORREÇÃO** — Prompt da SX reescrito: tom natural e caloroso, chama o usuário pelo nome (nome de exibição das Configurações, enviado pelo cliente), confirma antes de apagar quando o pedido é ambíguo ("isso foi cancelado?"), sugere baixa quando o compromisso "já aconteceu", e não usa jargão de sistema.
+- **DECISÃO (limite de honestidade)** — A SX não se descreve como IA nem usa frases robóticas, mas **não afirma ser humana**: se perguntada diretamente, apresenta-se como "a SX, sua assistente do Time Tasks". Persona calorosa sim; enganar o usuário, não.
+- **VALIDAÇÃO** — Memória já era persistente (`time_tasks_sx_messages`) e recarregada a cada login; nome propagado do frontend ao prompt.
+
+### 4.3 Deploy
+
+- **PEDIDO** — Merge para `main` e deploy do app no EasyPanel (autorizado pelo operador em 17/07/2026).
+- Resultado registrado no ROADMAP (Fase 9) após a execução.
+
+## 5. Estado atual (o que está funcionando)
+
+- Login/cadastro multiusuário pelo botão **Criar conta**, com acesso exclusivo por `time_tasks_members` e RLS em todas as tabelas.
+- CRUD completo de eventos (com baixa SIM/NÃO) e tarefas/sementes.
+- SX com memória de conversa e persona humanizada: cria, reedita, adia, desmarca/apaga e dá baixa por texto ou voz, chamando o usuário pelo nome.
+- Lembretes internos com som, respeitando baixa de eventos e conclusão de tarefas.
+- Versículo único por acesso em balão fechável.
+- Clima via Open-Meteo com geolocalização (CSP e Permissions-Policy corrigidos).
+- Trigger: schema + UI base (executor pendente).
+- Agendamento público por slug com bloqueio de horário duplicado.
+- Banco de produção migrado e verificado (`completed`, `triggers`, `notifications`).
+
+## 6. Pendências e riscos
+
+- **PENDÊNCIA (Fase 6.2)** — Executor de triggers (worker Node.js), modal real de criação/edição, dot de não lidos.
+- **PENDÊNCIA (docs)** — `README.md` e revisão final do `AGENTS.md`.
+- **PENDÊNCIA (infra)** — Web Push/service worker para alertas com o navegador fechado.
+- **RISCO (credenciais)** — API key do EasyPanel, token do GitHub e service-role key foram compartilhados em texto plano no chat da sessão de 16–17/07/2026. **Rotacionar os três.** Nenhum deles foi gravado neste repositório.
+- **RISCO (limpeza adiada)** — `time_tasks_verse_deliveries` e colunas `verse_*` em `time_tasks_settings` ficaram órfãs no banco; inofensivas, mas devem ser removidas em migração futura.
+- **RISCO (processo)** — Duas sessões paralelas gravando no mesmo repositório causaram a divergência descrita na seção 3. Recomendação: uma única linha ativa por vez, ou branches distintos com merge frequente.
+
+## 7. Melhor caminho (próximos passos, em ordem)
+
+1. Smoke test contínuo em produção: login, criação de conta nova, evento pela SX ("adie", "desmarque", "dê baixa"), clima, balão do versículo, lembrete.
+2. Rotacionar as credenciais expostas (GitHub, EasyPanel, service-role).
+3. Fase 6.2 — executor de triggers + modal real (habilita a central de notificações de verdade).
+4. README/AGENTS atualizados.
+5. Web Push (alertas com navegador fechado).
+
+---
+
+# Parte 2 — Referência técnica do projeto
+
+## 8. Stack técnico
 
 | Camada | Tecnologia | Notas |
 |---|---|---|
 | Frontend | Vanilla JS (ES Modules) + Vite 6 | Sem React/Vue/Tailwind |
-| Build | Vite 6.4.3, Node 22 | `npm run build` → dist/ |
-| Backend | Node.js Express (Docker) | `/api/sx`, `/api/verse`, `/api/health` |
-| Database | Supabase (self-hosted no EasyPanel) | `time_tasks_*` prefix, RLS em 8 tabelas |
-| IA | Google Gemini API | Proxy `/api/sx` (chave privada no servidor) |
-| API Clima | Open-Meteo (pública, sem chave) | Widget `weather.js` |
-| API Versículos | bible-api.com | `/api/verse` endpoint |
-| Hospedagem | EasyPanel (startups-timetasks.qfotry.easypanel.host) | Docker Alpine Node 22 |
+| Build | Vite 6.4.x, Node 22 | `npm run build` → `dist/` |
+| Backend | **Node.js `http` nativo** (sem Express) em `server.js` | `/api/sx`, `/api/verse`, `/api/health` + estáticos de `dist/` |
+| Banco | Supabase self-hosted no EasyPanel | Tabelas com prefixo `time_tasks_*`, RLS em todas |
+| IA | Google Gemini (proxy `/api/sx`) | Chave privada apenas no servidor |
+| Clima | Open-Meteo (pública, sem chave) | `js/weather.js`, cache local 30 min |
+| Versículos | bible-api.com via `/api/verse` | Um versículo por acesso |
+| Hospedagem | EasyPanel (`startups-timetasks.qfotry.easypanel.host`) | Docker Node 22 Alpine com healthcheck |
 
----
-
-## 3. Estrutura de Arquivos
+## 9. Tabelas do banco (todas com RLS)
 
 ```
-/Users/sergioponte/TIME TASKS/
-├── index.html                        # Shell HTML (180+ KB com todas as views)
-├── js/
-│   ├── app.js                        # Entry point, inicialização
-│   ├── auth.js                       # Login/logout, validação time_tasks_members
-│   ├── navigation.js                 # [data-target], [data-chat-toggle], abas SX
-│   ├── calendar.js                   # Visões Dia/3D/Semana/Mês, eventos CRUD
-│   ├── seeds.js                      # Tarefas/Sementes CRUD
-│   ├── sidebar.js                    # Mini-calendário, categorias visibilidade
-│   ├── events.js                     # Carregar eventos do Supabase
-│   ├── booking.js                    # Agendamento público (anônimo)
-│   ├── settings.js                   # Configurações: tema, fuso, idioma
-│   ├── reminders.js                  # Sons, notificações de lembretes
-│   ├── ai.js                         # Chat SX, comandos de linguagem natural
-│   ├── verse-access.js               # Versículo por acesso (balão ao login)
-│   ├── weather.js                    # Geolocalização + Open-Meteo
-│   ├── triggers.js                   # Triggers CRUD + Central de notificações
-│   ├── supabase.js                   # Cliente Supabase (URL + anon key)
-│   ├── theme.js                      # Alternância light/dark
-│   ├── utils.js                      # Helpers (formatação, validação)
-│   ├── modal.js                      # Popover e modal genéricos
-│   └── reminders.js                  # Agendamento lembretes
-├── style.css                         # Reset + utilidades
-├── layout.css                        # Layout 3-coluna, componentes
-├── ROADMAP.md                        # Fases 1–9, próximas features
-├── MANUAL_DE_USO.md                  # Guia do usuário (15 seções)
-├── ACCESSIBILITY.md                  # Auditoria WCAG 2.1 AA
-├── AGENTS.md                         # Referência ao planner mestre
-├── PLANNER_PROMPT_MESTRE_TIME_TASKS.md  # Plan original (1224 linhas)
-└── migrations/
-    └── 006_triggers_schema.sql       # Schema triggers + notifications
+time_tasks_members            — vínculo exclusivo de acesso ao app
+time_tasks_events             — eventos (com completed para baixa)
+time_tasks_settings           — preferências por usuário
+time_tasks_seeds              — tarefas/sementes
+time_tasks_booking_pages      — páginas públicas de agendamento
+time_tasks_bookings           — reservas (inserção anônima controlada)
+time_tasks_sx_messages        — histórico/memória da SX
+time_tasks_verse_deliveries   — histórico de versículos (legado, mantido)
+time_tasks_triggers           — automações (Fase 6)
+time_tasks_notifications      — central de notificações (Fase 6)
 ```
 
----
+Fonte canônica do schema: `supabase/schema.sql` (idempotente). As migrações em `migrations/` são histórico.
 
-## 4. Decisões Arquiteturais
+## 10. Segurança
 
-### F-01 — ID Correto
-- **Decisão:** `#sub-sidebar` (não `#sidebar`)
-- **Razão:** Evitar colisão com classe CSS `.sidebar` genérica
-- **Implementado em:** sidebar.js linha 47
+- **Chaves privadas** — Gemini e service-role existem apenas no servidor/EasyPanel; o frontend usa somente a anon key (protegida por RLS).
+- **Rate limit** — em memória no `server.js`: 20 req/min por usuário para `/api/sx` e 20 req/min para `/api/verse` (contadores separados). Não usa Redis.
+- **Headers** — CSP (`connect-src` restrito a self + Supabase + Open-Meteo), `X-Frame-Options: SAMEORIGIN`, `X-Content-Type-Options: nosniff`, `Referrer-Policy: strict-origin-when-cross-origin`, `Permissions-Policy: camera=(), geolocation=(self), microphone=(self)`.
+- **Autenticação das APIs privadas** — token do Supabase validado + membership em `time_tasks_members` obrigatória.
+- **SX** — `eventId` de ações destrutivas validado contra a agenda real do usuário; payload limitado a 64 KB.
 
-### F-02 — CSS Vence Inline
-- **Decisão:** Remover `style="display:none"` do #sidebar-toggle
-- **Razão:** CSS mediaquery flexível, inline bloqueava estado mobile
-- **Implementado em:** index.html linha 193, layout.css media (max-width)
+## 11. Fluxos críticos
 
-### F-03 — Fonte Única (layout.css)
-- **Decisão:** Todos estilos de layout em layout.css, não style.css
-- **Razão:** Evitar duplicação e drift de versões
-- **Implementado em:** style.css removeu `.app-layout`, `.sidebar`, etc.
-
-### F-04 — Scroll Horizontal
-- **Decisão:** `overflow-x: auto` em `.time-grid-scroll`
-- **Razão:** Mobile 3+ dias deve scrollar (minmax 92px), não apertar
-- **Implementado em:** layout.css linha 548
-
-### F-05 — Navegação Unificada
-- **Decisão:** Seletor `[data-target]` para desktop + mobile tab bar
-- **Razão:** Único listener, sincronização garantida
-- **Implementado em:** navigation.js linha 102
-
-### F-06 — setChatOpen Exportada
-- **Decisão:** Função central para todos controles SX
-- **Razão:** Toggle consistente, sem duplicação de lógica
-- **Implementado em:** navigation.js linha 60
-
-### F-11 — RLS de time_tasks_members
-- **Decisão:** Manter aberto (allow self-insert), não restritivo
-- **Razão:** Demo/ testes sem atrito; produção valida via API
-- **Implementado em:** migrations/002_core_schema.sql
-
-### Weather (Open-Meteo)
-- **Decisão:** API pública, sem chave de API necessária
-- **Razão:** Simplicidade, sem custo, sem rate limit para uso pessoal
-- **Implementado em:** js/weather.js
-
----
-
-## 5. Fluxos Críticos
-
-### Login → Autenticação → Calendário
+### Login → sessão → dados
 
 ```
-1. initAuth() escuta evento sessão Supabase
-2. applySession():
-   - Valida time_tasks_members (HTTP 401 se não existe)
-   - initTriggers(), initWeather(), etc.
-   - Dispara evento timetasks:session
-3. navigation.js escuta timetasks:session → abre SX no desktop
-4. Calendar carrega eventos do servidor
+1. initAuth() restaura sessão e escuta onAuthStateChange
+2. applySession(): valida time_tasks_members (cria vínculo no cadastro),
+   carrega eventos, dispara timetasks:session
+3. Módulos consumidores (seeds, settings, reminders, verse-access, weather,
+   triggers, SX) reagem ao evento timetasks:session
 ```
 
-### Novo Evento
+### Pedido à SX
 
 ```
-1. Click em horário ou botão "Novo"
-2. Modal abre (initModal)
-3. Form: título, data, hora, categoria, lembrete
-4. POST /api/events (autenticado, RLS user_id)
-5. Retorna id + timestamp
-6. refreshCalendar() recarrega visão
-7. Toast "Evento criado"
+1. ai.js monta payload: texto + history (20 msgs) + agenda (50 eventos) + nome do usuário
+2. POST /api/sx (Bearer token) → server.js valida membro + rate limit
+3. Gemini responde JSON de ação; normalizeSxResult valida e sanitiza
+4. applyAction executa via Supabase (RLS) e confirma em linguagem natural
+5. Mensagens persistidas em time_tasks_sx_messages (memória entre sessões)
 ```
 
-### Aba "Notif." da SX (Mobile)
+### Baixa de evento
 
 ```
-1. User clica aba "Notif." (SX header mobile)
-2. setAiTab('notifications') — async
-3. Chama renderNotifications() via import dinâmico
-4. Fetches últimas 50 notificações do Supabase
-5. Renderiza lista com ícone, título, msg, tempo relativo
-6. User clica X → markNotificationRead() → remove item
+Popover "Dar baixa"/"Reabrir" ou modal SIM/NÃO ou SX ("dê baixa em X")
+→ completed no Supabase → render riscado/esmaecido → lembrete silenciado
 ```
 
----
+## 12. Decisões arquiteturais (resumo)
 
-## 6. Segurança & Privacidade
+- `#sub-sidebar` (não `#sidebar`) para evitar colisão de seletores.
+- `layout.css` é a fonte única de layout; `style.css` guarda componentes.
+- Navegação unificada por `[data-target]`; SX controlada só por `setChatOpen()`.
+- Novo módulo só entra via `init*()` em `app.js`.
+- Nunca editar `dist/`; nunca commitar `.env*`/chaves.
+- Persona da SX: humana e calorosa, sem alegar ser humana (ver 4.2).
 
-### Chaves Privadas
-- **Google Gemini API key:** Servidor EasyPanel, `/api/sx` proxy
-- **Supabase service-role:** Servidor somente, NUNCA frontend
-- **Supabase anon key:** Pública (frontend), RLS protege dados
+## 13. Troubleshooting
 
-### RLS em 8 Tabelas
-```
-time_tasks_members
-time_tasks_events
-time_tasks_seeds
-time_tasks_reminders
-time_tasks_booking_pages
-time_tasks_booking_slots
-time_tasks_triggers
-time_tasks_notifications
-```
+| Sintoma | Verificação |
+|---|---|
+| SX não responde | `/api/health` → `sx: true`? Chave Gemini no EasyPanel? Sessão válida (relogar)? |
+| Calendário vazio | Usuário está em `time_tasks_members`? Fuso correto? Recarregar com Ctrl+Shift+R |
+| Clima não aparece | Permissão de geolocalização; ou busca manual de cidade; CSP atualizado (deploy ≥ 17/07/2026) |
+| Notificações vazias | Executor da Fase 6.2 ainda não implementado — só aparecem notificações criadas manualmente |
+| Versículo não aparece | Só um balão por login; feche e entre novamente para ver outro |
+| Evento não salva | Schema atualizado? `supabase/schema.sql` deve ter sido aplicado (coluna `completed`) |
 
-### Rate Limit
-- `/api/sx`: 10 req/min por user (Redis)
-- `/api/verse`: 3 req/min por user
-- `/api/health`: sem limite (healthcheck)
-
-### Headers de Segurança
-- `Content-Security-Policy`: no inline scripts
-- `X-Frame-Options: DENY`
-- `X-Content-Type-Options: nosniff`
-- `Permissions-Policy`: geolocation, camera, etc.
-
----
-
-## 7. Fases Implementadas
-
-| Fase | Tema | Status | Bloqueadores |
-|---|---|---|---|
-| 0 | Descoberta documental | ✅ Concluída | — |
-| 1 | Fundação responsiva | ✅ Concluída | — |
-| 2 | Shell mobile | ✅ Concluída | — |
-| 3 | Calendário + SX fixa | ✅ Concluída | — |
-| 4 | Login toggle + versículo | ✅ Concluída | — |
-| 5 | Clima (Open-Meteo) | ✅ Concluída | — |
-| 6.1 | Trigger UI + schema | ✅ Concluída | Modal placeholder |
-| 6.2 | Notif. na SX | ✅ Concluída | Executor ausente |
-| 7 | Acessibilidade (WCAG AA) | ✅ Concluída | Recomendações futuras |
-| 8 | Documentação | ✅ Concluída (este arquivo) | — |
-| 9 | Verificação & produção | ⏳ Pendente | Ver abaixo |
-
----
-
-## 8. Checklist Pré-Produção (Fase 9)
-
-- [ ] `npm run build` sem warnings
-- [ ] Healthcheck `/api/health` respondendo 200
-- [ ] Smoke test: login → calendário → novo evento → deletar
-- [ ] `HEAD == origin/main` (sem commits pendentes)
-- [ ] CORS headers confirmados (origem frontend)
-- [ ] Rate limits ativos e testados
-- [ ] RLS verificado (usuário A não vê dados de B)
-- [ ] Backup Supabase automático ativo
-- [ ] Logs centralizados (EasyPanel monitoring)
-- [ ] DNS apontando para startups-timetasks.qfotry.easypanel.host
-
----
-
-## 9. Troubleshooting
-
-### "A SX não responde"
-1. Verifique `/api/health` (browser → URL)
-2. Confirme Gemini API key no EasyPanel `GOOGLE_GEMINI_KEY`
-3. Verifique CORS (Network tab no DevTools)
-
-### "Calendário vazio"
-1. Confirme login em `time_tasks_members` (verifique no Supabase)
-2. Verifique fuso configurado (Configurações > Geral)
-3. Recarregue a página (Ctrl+Shift+R)
-
-### "Clima não aparece"
-1. Permita geolocalização (clique no prompt)
-2. Ou digite manualmente cidade (busca Open-Meteo)
-3. Verifique conexão internet
-
-### "Notificações não aparecem"
-1. Abra aba "Notif." na SX para recarregar
-2. Verifique se há triggers ativados
-3. Executor Node.js ainda não implementado (Fase 6.2)
-
----
-
-## 10. Contatos & Referências
+## 14. Referências
 
 - **Repo:** https://github.com/sxsevenxperts/TIME-TASKS.git
 - **Produção:** https://startups-timetasks.qfotry.easypanel.host
-- **Deploy:** EasyPanel (sevenxperts account)
-- **Banco:** Supabase self-hosted no EasyPanel
-
----
-
-**Preparado por:** Claude (Assistente de Desenvolvimento)  
-**Atualização:** 16/07/2026
-
----
-
-## Apêndice: Anti-padrões a Evitar
-
-1. ❌ Adicionar estilos em `style.css` que já existem em `layout.css`
-2. ❌ Chamar `setChatOpen()` diretamente; sempre use evento ou botão `[data-chat-toggle]`
-3. ❌ Escrever novo módulo sem adicionar ao `app.js` init
-4. ❌ Usar IDs genéricos (`#sidebar`, `#main`) que colidem com outras apps
-5. ❌ Fazer requisições ao Supabase sem RLS (sempre filtre por `auth.uid()`)
-6. ❌ Armazenar chaves privadas no frontend (sempre proxy)
-7. ❌ Modificar `time_tasks_*` tabelas sem migration SQL
-
----
-
-**Fim do Manual de Bordo.**
+- **Docs:** `README.md`, `ROADMAP.md`, `MANUAL_DE_USO.md`, `ACCESSIBILITY.md`, `SMOKE_TEST.md`, `PLANNER_PROMPT_MESTRE_TIME_TASKS.md`

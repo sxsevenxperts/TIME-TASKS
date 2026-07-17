@@ -36,7 +36,7 @@ Esse arquivo é a fonte de verdade para qualquer tarefa relacionada às referên
 - [`ROADMAP.md`](./ROADMAP.md) — roadmap do produto.
 - [`MANUAL_DE_USO.md`](./MANUAL_DE_USO.md) — fluxos de uso validados.
 - [`MANUAL.md`](./MANUAL.md) — ponte para o manual oficial.
-- `MANUAL_DE_BORDO.md` — ainda não existe; deve ser criado na Fase 8 do planner mestre.
+- [`MANUAL_DE_BORDO.md`](./MANUAL_DE_BORDO.md) — diário de bordo do projeto (criado em 16/07/2026); atualizar a cada fase concluída com as etiquetas padronizadas.
 
 ## Anti-padrões proibidos (resumo)
 

@@ -182,7 +182,11 @@ export async function initAuth() {
     } else {
       lastSessionId = null;
       currentUser = null;
-      // Show Auth UI, Hide App
+      // Show Auth UI, Hide App. Campos limpos permitem cadastrar outra conta
+      // no mesmo dispositivo sem carregar credenciais da sessão anterior.
+      emailInput.value = '';
+      passwordInput.value = '';
+      passwordInput.type = 'password';
       authOverlay.style.display = 'flex';
       appLayout.style.visibility = 'hidden';
       appLayout.style.opacity = '0';

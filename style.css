@@ -1265,3 +1265,44 @@ input, select, textarea {
 @keyframes spin {
   to { transform: rotate(360deg); }
 }
+
+/* Baixa de eventos (SIM/NÃO) */
+.status-toggle {
+  display: inline-flex;
+  gap: 0;
+  border: 1px solid var(--color-border);
+  border-radius: 8px;
+  overflow: hidden;
+}
+
+.status-toggle__btn {
+  padding: 8px 18px;
+  background: transparent;
+  border: none;
+  color: var(--color-text-secondary);
+  font-size: 0.85rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background-color 0.15s ease, color 0.15s ease;
+}
+
+.status-toggle__btn + .status-toggle__btn {
+  border-left: 1px solid var(--color-border);
+}
+
+.status-toggle__btn--active {
+  background-color: var(--color-primary);
+  color: #fff;
+}
+
+.event-block--done,
+.allday-chip.event-done,
+.month-grid__event.event-done {
+  opacity: 0.55;
+}
+
+.event-block--done .event-block__title,
+.allday-chip.event-done,
+.month-grid__event.event-done {
+  text-decoration: line-through;
+}

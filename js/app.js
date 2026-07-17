@@ -53,7 +53,8 @@ function init() {
   initTriggers();
   initNavigation();
   initAI({
-    onEventCreated: () => refreshCalendar()
+    onEventCreated: () => refreshCalendar(),
+    onEventChanged: () => refreshCalendar()
   });
   setupKeyboardShortcuts();
   void initAuth();

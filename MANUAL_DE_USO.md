@@ -27,13 +27,9 @@ Abra **Configurações** e clique em **Sair** no fim do menu.
 
 ## 2. Versículo de boas-vindas
 
-Ao entrar na conta, um versículo bíblico aparece em um balão animado no topo da tela. Este é um versículo **por acesso** — único a cada vez que você faz login, diferente do histórico de notificações que usa períodos (manhã/tarde).
+Ao entrar na conta, um versículo bíblico aparece em um balão animado, com botão **X** para fechar quando quiser. O balão permanece visível até ser fechado.
 
-Você pode:
-- Clicar em **X** para fechar o balão imediatamente.
-- Deixar o balão desaparecer automaticamente.
-
-O versículo fica armazenado apenas para referência pessoal durante a sessão.
+Este é o **único** canal de mensagem bíblica do aplicativo: um versículo por acesso, sorteado automaticamente, sem configuração. As entregas por período (manhã/tarde) foram descontinuadas para evitar mensagens duplicadas.
 
 ## 3. Clima em tempo real
 
@@ -99,6 +95,15 @@ Se a verificação de conflitos estiver ativa, o sistema impede sobreposição d
 
 Clique no evento para abrir o resumo. Use **Editar** ou **Excluir**.
 
+### Dar baixa (SIM/NÃO)
+
+Cada evento tem um controle de baixa:
+
+- No resumo do evento (popover), o botão **Dar baixa** marca o evento como concluído; ele muda para **Reabrir** quando o evento já está baixado.
+- No formulário de edição, o campo **Dar baixa (concluído)** oferece os botões **Sim** e **Não**.
+
+Eventos com baixa aparecem riscados e esmaecidos no calendário e **não disparam lembrete**. Reabrir o evento (NÃO) reativa o lembrete.
+
 ### Categorias
 
 Os calendários disponíveis são Pessoal, Trabalho, Saúde, Estudos e Social. As caixas na lateral ocultam/exibem categorias sem apagar os dados.
@@ -114,13 +119,29 @@ Os calendários disponíveis são Pessoal, Trabalho, Saúde, Estudos e Social. A
 
 Clique no botão SX (barra lateral no desktop ou aba SX no mobile) para abrir a assistente.
 
+A SX **lembra a conversa recente** e conhece a sua agenda: você pode se referir a eventos já criados ("o último evento criado", "a reunião de amanhã") e reeditar quantas vezes precisar.
+
 Exemplos:
 
 - `Agende reunião amanhã das 15h às 16h e avise 10 minutos antes.`
 - `Crie uma tarefa para enviar o relatório sexta às 14h.`
 - `Marque consulta dia 20 às 09h no calendário Saúde.`
+- `Me lembre 5 minutos antes.` (aplica ao evento citado na conversa)
+- `Adie a reunião de amanhã para sexta às 10h.`
+- `Desmarque a consulta do dia 20.`
+- `Dê baixa no evento CÉLULA.` / `Reabra o evento CÉLULA.`
 
-A SX interpreta a data no fuso configurado, valida o resultado e só então salva no Supabase. A chave privada da IA fica no servidor e não aparece nas configurações nem no navegador.
+O que a SX pode fazer com a agenda:
+
+| Pedido | Ação |
+|---|---|
+| Criar evento ou tarefa | Cria e confirma com data/horário |
+| Reeditar (título, horário, lembrete, calendário, descrição) | Atualiza só os campos citados |
+| Adiar/remarcar | Move o evento para a nova data/horário |
+| Desmarcar/cancelar | Remove o evento da agenda |
+| Dar baixa (SIM) ou reabrir (NÃO) | Marca/desmarca o evento como concluído |
+
+Se a referência for ambígua (dois eventos parecidos), a SX pergunta antes de agir. A SX interpreta a data no fuso configurado, valida o resultado e só então salva no Supabase. A chave privada da IA fica no servidor e não aparece nas configurações nem no navegador.
 
 ### Abas da SX (mobile)
 
@@ -186,30 +207,20 @@ Abra **Configurações > Notificações**.
 
 O alerta atual funciona enquanto o aplicativo está aberto. Com o navegador totalmente fechado, a entrega exige Web Push/service worker, item registrado no roadmap.
 
-## 11. Versículos diários
-
-Em **Configurações > Notificações**:
-
-1. Ative **Versículos diários**.
-2. Escolha o horário da manhã e da tarde.
-3. Mantenha o app aberto no horário para receber o som, toast e, se permitido, a notificação do navegador.
-
-O histórico impede repetição do mesmo versículo para a conta e limita uma entrega por período em cada dia.
-
-## 12. Configurações
+## 11. Configurações
 
 - **Meu Plano** — estado do ambiente privado.
 - **Conta** — nome de exibição, e-mail e sessão.
 - **Geral** — idioma, tema, fuso, formato de hora e início da semana.
 - **Calendários** — visibilidade e calendário padrão.
-- **Notificações** — alertas, som e versículos.
+- **Notificações** — alertas e som.
 - **IA** — resposta inteligente e entrada por voz.
 - **Novos Eventos** — duração, lembrete e conflitos.
 - **Sobre** — versão, privacidade e documentação.
 
 WhatsApp, Telegram e Google Calendar são exibidos como indisponíveis até que as integrações reais sejam implementadas.
 
-## 13. Atalhos
+## 12. Atalhos
 
 | Tecla | Ação |
 |---|---|
@@ -222,7 +233,7 @@ WhatsApp, Telegram e Google Calendar são exibidos como indisponíveis até que 
 
 Os atalhos não são executados enquanto o foco estiver em campo de texto, seleção ou área de digitação.
 
-## 14. Segurança e privacidade
+## 13. Segurança e privacidade
 
 - Todas as tabelas do aplicativo começam com `time_tasks_`.
 - RLS usa `auth.uid()` para separar as contas.
@@ -230,7 +241,7 @@ Os atalhos não são executados enquanto o foco estiver em campo de texto, sele�
 - A anon key do Supabase é pública; service-role, senha do banco, tokens operacionais e chave da IA são privados.
 - O Supabase atual é compartilhado fisicamente, mas o Time Tasks possui isolamento lógico de dados e acesso. Uma instância dedicada está prevista se for necessário isolamento físico.
 
-## 15. Solução de problemas
+## 14. Solução de problemas
 
 ### A SX não responde
 

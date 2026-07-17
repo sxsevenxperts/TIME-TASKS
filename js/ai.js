@@ -1,6 +1,6 @@
 import { supabase } from './supabase.js';
 import { getCurrentUser } from './auth.js';
-import { createEvent, detectConflicts } from './events.js';
+import { createEvent, detectConflicts, deleteEvent, getEventById, loadEvents, patchEvent, setEventCompleted } from './events.js';
 import { createSeed } from './seeds.js';
 import { getSettings } from './settings.js';
 import { showToast } from './modal.js';
@@ -9,6 +9,39 @@ let initialized = false;
 let sending = false;
 let recognition = null;
 let historyLoadVersion = 0;
+
+// Memória de conversa enviada à SX a cada pedido, para que referências como
+// "o último evento criado" ou "me lembre 5 minutos antes" sejam resolvidas.
+const MEMORY_LIMIT = 20;
+let conversationMemory = [];
+
+function rememberMessage(role, content) {
+  const text = String(content || '').trim();
+  if (!text) return;
+  conversationMemory.push({ role, content: text.slice(0, 1000) });
+  if (conversationMemory.length > MEMORY_LIMIT) {
+    conversationMemory = conversationMemory.slice(-MEMORY_LIMIT);
+  }
+}
+
+// Recorte compacto da agenda para a SX localizar eventos por título/data.
+function agendaSnapshot() {
+  return [...loadEvents()]
+    .sort((a, b) => String(b.createdAt || '').localeCompare(String(a.createdAt || '')))
+    .slice(0, 50)
+    .map(event => ({
+      id: event.id,
+      title: event.title,
+      date: event.date,
+      startTime: event.startTime,
+      endTime: event.endTime,
+      allDay: event.allDay,
+      calendar: event.calendar,
+      reminderMinutes: event.reminderMinutes,
+      completed: Boolean(event.completed),
+      createdAt: event.createdAt
+    }));
+}
 
 function historyElement() {
   return document.getElementById('ai-chat-history');
@@ -38,7 +71,7 @@ function addMessage(content, role, customClass = '') {
 function renderWelcome() {
   const history = historyElement();
   if (!history || history.children.length) return;
-  addMessage('Olá! Eu sou a SX. Diga ou fale o que deseja agendar.', 'assistant');
+  addMessage('Olá! Eu sou a SX. Posso criar, reeditar, adiar, desmarcar e dar baixa em eventos e tarefas. Diga ou fale o que precisa.', 'assistant');
 }
 
 async function persistMessage(role, content, action = null) {
@@ -75,7 +108,11 @@ async function loadHistory() {
     console.error('Erro ao carregar histórico da SX:', error);
     return renderWelcome();
   }
-  data.reverse().forEach(message => addMessage(message.content, message.role));
+  conversationMemory = [];
+  data.reverse().forEach(message => {
+    addMessage(message.content, message.role);
+    rememberMessage(message.role, message.content);
+  });
   renderWelcome();
 }
 
@@ -93,7 +130,10 @@ function errorMessage(code) {
     INVALID_TEXT: 'O pedido precisa ser mais curto e objetivo.',
     SX_PROVIDER_ERROR: 'A SX está temporariamente indisponível. Tente novamente em instantes.',
     SX_EMPTY_RESPONSE: 'A SX não retornou uma resposta utilizável.',
-    SX_INVALID_RESPONSE: 'A SX não conseguiu interpretar esse pedido com segurança.'
+    SX_INVALID_RESPONSE: 'A SX não conseguiu interpretar esse pedido com segurança.',
+    EVENT_NOT_FOUND: 'Não encontrei esse evento na sua agenda. Ele pode ter sido removido.',
+    EVENT_UPDATE_FAILED: 'A SX entendeu o pedido, mas não consegui atualizar o evento. Tente novamente.',
+    EVENT_DELETE_FAILED: 'A SX entendeu o pedido, mas não consegui desmarcar o evento. Tente novamente.'
   };
   return errors[code] || 'Não foi possível concluir o pedido agora.';
 }
@@ -102,6 +142,8 @@ async function askSx(text) {
   const token = await sessionToken();
   if (!token) throw new Error('UNAUTHORIZED');
   const settings = getSettings();
+  const userName = String(settings.displayName || '').trim()
+    || String(getCurrentUser()?.email || '').split('@')[0];
   const response = await fetch('/api/sx', {
     method: 'POST',
     headers: {
@@ -113,6 +155,9 @@ async function askSx(text) {
       now: new Date().toISOString(),
       timezone: settings.timezone,
       language: settings.language,
+      history: conversationMemory.slice(0, -1),
+      agenda: agendaSnapshot(),
+      userName,
       defaults: {
         defaultCalendar: settings.defaultCalendar,
         defaultDuration: settings.defaultDuration,
@@ -146,7 +191,48 @@ async function applyAction(result, callbacks) {
     callbacks.onSeedCreated?.(saved);
     return `Pronto! A tarefa “${saved.title}” foi criada${saved.reminderAt ? ' com lembrete' : ''}.`;
   }
-  return result.message || 'Posso criar eventos, tarefas e lembretes para você.';
+  if (result.action === 'UPDATE_EVENT' && result.eventId) {
+    const current = getEventById(result.eventId);
+    if (!current) throw new Error('EVENT_NOT_FOUND');
+    const changes = result.changes || {};
+    const settings = getSettings();
+    const changesTime = changes.date !== undefined || changes.startTime !== undefined || changes.endTime !== undefined || changes.allDay !== undefined;
+    if (settings.conflictCheck && changesTime && !(changes.allDay ?? current.allDay)) {
+      const date = changes.date ?? current.date;
+      const startTime = changes.startTime ?? current.startTime;
+      const endTime = changes.endTime ?? current.endTime;
+      const conflicts = detectConflicts(date, startTime, endTime, current.id);
+      if (conflicts.length) {
+        return `O novo horário conflita com “${conflicts[0].title}”. Nada foi alterado; escolha outro horário.`;
+      }
+    }
+    const saved = await patchEvent(result.eventId, changes);
+    if (!saved) throw new Error('EVENT_UPDATE_FAILED');
+    callbacks.onEventChanged?.(saved);
+    const when = saved.allDay ? `${saved.date} (dia inteiro)` : `${saved.date} às ${saved.startTime}`;
+    return changesTime
+      ? `Pronto! “${saved.title}” foi remarcado para ${when}.`
+      : `Pronto! Atualizei “${saved.title}” (${when}).`;
+  }
+  if (result.action === 'DELETE_EVENT' && result.eventId) {
+    const current = getEventById(result.eventId);
+    if (!current) throw new Error('EVENT_NOT_FOUND');
+    const removed = await deleteEvent(result.eventId);
+    if (!removed) throw new Error('EVENT_DELETE_FAILED');
+    callbacks.onEventChanged?.(null);
+    return `Desmarquei “${current.title}” de ${current.date}. O evento foi removido da agenda.`;
+  }
+  if (result.action === 'SET_EVENT_STATUS' && result.eventId) {
+    const current = getEventById(result.eventId);
+    if (!current) throw new Error('EVENT_NOT_FOUND');
+    const saved = await setEventCompleted(result.eventId, result.completed);
+    if (!saved) throw new Error('EVENT_UPDATE_FAILED');
+    callbacks.onEventChanged?.(saved);
+    return saved.completed
+      ? `Baixa registrada: “${saved.title}” foi marcado como concluído (SIM).`
+      : `Baixa desfeita: “${saved.title}” voltou a ficar em aberto (NÃO).`;
+  }
+  return result.message || 'Posso criar, reeditar, adiar, desmarcar e dar baixa em eventos e tarefas para você.';
 }
 
 function setupVoice(input, sendMessage) {
@@ -207,6 +293,7 @@ export function initAI(callbacks = {}) {
     input.disabled = true;
     addMessage(text, 'user');
     void persistMessage('user', text);
+    rememberMessage('user', text);
     input.value = '';
     const loading = addMessage('Processando seu pedido…', 'assistant', 'ai-loading');
     try {
@@ -215,6 +302,7 @@ export function initAI(callbacks = {}) {
       loading?.remove();
       addMessage(response, 'assistant');
       void persistMessage('assistant', response, result.action || 'CHAT');
+      rememberMessage('assistant', response);
     } catch (error) {
       loading?.remove();
       const message = ['EVENT_SAVE_FAILED', 'SEED_SAVE_FAILED'].includes(error.message)
@@ -222,6 +310,7 @@ export function initAI(callbacks = {}) {
         : errorMessage(error.message);
       addMessage(message, 'assistant');
       void persistMessage('assistant', message, 'ERROR');
+      rememberMessage('assistant', message);
       console.error('Erro na SX:', error);
     } finally {
       sending = false;
@@ -243,7 +332,9 @@ export function initAI(callbacks = {}) {
     if (event.detail?.user) void loadHistory();
     else {
       historyLoadVersion += 1;
-      historyElement().innerHTML = '';
+      conversationMemory = [];
+      const history = historyElement();
+      if (history) history.innerHTML = '';
       renderWelcome();
     }
   });

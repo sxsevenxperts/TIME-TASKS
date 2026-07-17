@@ -1,9 +1,7 @@
 # Roadmap — SX Time Tasks
 
-**Status:** ✅ **TODAS AS 9 FASES CONCLUÍDAS — PRONTO PARA PRODUÇÃO**  
-**Última revisão técnica:** 16/07/2026  
-**Commits desta sessão:** 12 (Fases 1–9)  
-**Build:** ✅ Zero vulnerabilidades, 65 módulos, WCAG 2.1 AA
+**Última revisão técnica:** 17/07/2026
+**Status:** Fases 1–5 e 7–8 do planner concluídas; SX 2.1 (memória + gestão de eventos) entregue; Fase 6.2 (executor de triggers) pendente; Fase 9 em validação de produção.
 
 ## Versão 2.0 — entregue
 
@@ -59,10 +57,8 @@
 
 - [x] Som de dois tons no momento do lembrete.
 - [x] Toast interno e Notification API quando permitida.
-- [x] Versículo da manhã e da tarde.
-- [x] Unicidade por usuário, data/período e versículo.
+- [x] ~~Versículo da manhã e da tarde~~ — substituído em 16/07/2026 por **um único versículo por acesso** (balão com botão X).
 - [x] Botão para testar o som.
-- [x] Horários configuráveis.
 
 ### Infraestrutura e segurança
 
@@ -76,9 +72,9 @@
 
 ---
 
-## Planner Mestre — Fases 1–5 (concluídas), Fase 6 (em andamento) em 16/07/2026
+## Planner Mestre — estado por fase (17/07/2026)
 
-### Fase 1 — Fundação responsiva
+### Fase 1 — Fundação responsiva (concluída)
 
 - [x] F-01: `js/sidebar.js` corrigido para usar `#sub-sidebar` e classe `sub-sidebar--open`.
 - [x] F-02: `style="display:none"` removido de `#sidebar-toggle`; `aria-controls`/`aria-expanded` adicionados.
@@ -87,7 +83,7 @@
 - [x] F-05: Navegação unificada em `[data-target]` — nav-strip desktop e tab bar mobile servidos pelo mesmo listener.
 - [x] F-06: `setChatOpen()` exportada; todos os controles de abertura/fechamento da SX usam a mesma função.
 
-### Fase 2 — Shell e navegação mobile
+### Fase 2 — Shell e navegação mobile (concluída)
 
 - [x] `#mobile-tabbar` com quatro botões: Calendário, Seed, Trigger, SX.
 - [x] Ao clicar no botão de histórico (relógio) dentro da SX, o painel fecha e navega para Seeds com `keepChatState: true`.
@@ -99,7 +95,7 @@
 - [x] `safe-area-inset-bottom` aplicado na tab bar e no padding do `.app-body` mobile.
 - [x] Shell do Trigger: botão no nav-strip, sidebar `#sidebar-trigger`, view `#view-trigger`.
 
-### Fase 3 — Calendário mobile e SX fixa no desktop
+### Fase 3 — Calendário mobile e SX fixa no desktop (concluída)
 
 - [x] Calendário inicia em visão Mês no mobile, Semana no desktop (`initialViewForViewport()`).
 - [x] `hourHeight()` retorna 44 px no mobile e 60 px no desktop (evita colunas ilegíveis).
@@ -110,49 +106,102 @@
 - [x] Layout de 3 colunas (sub-sidebar + main-content + ai-sidebar) entregue pelo flexbox existente sem CSS extra.
 - [x] Correção de `.ai-input-wrapper` duplicado em `layout.css` (merged em única regra).
 
-### Fase 4 — Login e versículo por acesso
+### Fase 4 — Login e versículo por acesso (concluída, com correções pós-entrega)
 
 - [x] Toggle mostrar/ocultar senha no formulário de login: botão com ícone de olho ao lado do campo.
 - [x] `auth.js`: event listener do toggle que alterna `type='password'` e `type='text'`, marca botão com classe `.active`.
-- [x] `verse-access.js`: novo módulo que escuta evento `timetasks:session` (dispara após login bem-sucedido).
-- [x] Chamada a `/api/verse` com `type: 'access'` para obter versículo único por acesso.
-- [x] Balão animado (bounce effect) exibindo versículo + referência, com botão X para fechar.
+- [x] `verse-access.js`: módulo que escuta `timetasks:session` e exibe balão animado com versículo + referência e botão X.
 - [x] CSS para `.verse-access-balloon` com entrada/saída suave, backdrop blur, z-index 2000.
-- [x] Integração em `app.js` — `initVerseAccess()` chamado após `initReminders()`.
+- [x] **Correção pós-entrega:** o balão nunca aparecia em produção — `verse-access.js` chamava `POST /api/verse` sem token e esperava `{verse}`; corrigido para `GET` autenticado consumindo `{text, reference}`.
+- [x] **Correção pós-entrega:** campos de e-mail/senha limpos ao encerrar a sessão, permitindo cadastrar várias contas em sequência pelo botão **Criar conta**.
 
-### Fase 5 — Previsão climática
+### Fase 5 — Previsão climática (concluída, com correções pós-entrega)
 
-- [x] `weather.js`: novo módulo com geolocalização automática via `navigator.geolocation`.
-- [x] Integração Open-Meteo API (pública, sem chave necessária) para dados de clima em tempo real.
-- [x] `getLocation()`: armazena coordenadas em localStorage, fallback manual por entrada de cidade.
-- [x] `fetchWeather()`: obtém temperatura, umidade, código climático WMO.
-- [x] `searchCity()`: geocodificação reversa com Open-Meteo para entrada manual de cidade.
-- [x] Mapeamento WMO Weather Codes → emoji + descrição em português (☀️ Limpo, 🌧️ Chuva, etc).
-- [x] Cache local de 30 min para reduzir carga na API.
-- [x] Widget compacto no header do calendário: temperatura + descrição em desktop, apenas emoji em mobile.
-- [x] Prompt com botões "Ativar geolocalização" e "Buscar manualmente" quando localização negada.
-- [x] Integração em `app.js` — `initWeather()` chamado após `initVerseAccess()`.
+- [x] `weather.js`: geolocalização automática via `navigator.geolocation` com fallback manual de cidade.
+- [x] Integração Open-Meteo (pública, sem chave) para temperatura, umidade e código WMO.
+- [x] Mapeamento WMO → emoji + descrição em português; cache local de 30 min.
+- [x] Widget compacto no header do calendário; prompt com "Ativar geolocalização" e "Buscar manualmente".
+- [x] **Correção pós-entrega:** o CSP de produção (`connect-src 'self' + Supabase`) bloqueava `api.open-meteo.com` e `geocoding-api.open-meteo.com`; domínios adicionados ao `connect-src`.
+- [x] **Correção pós-entrega:** `Permissions-Policy: geolocation=()` bloqueava a geolocalização no próprio app; alterado para `geolocation=(self)`.
 
-### Fase 6 — Trigger & Central de Notificações (Parcial — 6.1)
+### Fase 6 — Trigger & Central de Notificações (parcial)
 
 **6.1 — Schema e UI base (concluído):**
 
-- [x] Schema `time_tasks_triggers`: name, type (weather/summary/reminder), enabled, condition/action JSONB, schedule, next_run_at
-- [x] Schema `time_tasks_notifications`: trigger_id, type, title, message, icon, read, expires_at (30 dias)
-- [x] RLS em ambas as tabelas por user_id
-- [x] `js/triggers.js`: módulo frontend para CRUD de triggers e exibição de notificações
-- [x] `renderTriggers()`: lista com toggle enable/disable, editar, deletar
-- [x] `renderNotifications()`: lista com ícone, título, mensagem, tempo relativo, marcar lido
-- [x] `fetchNotifications()`: GET 50 itens ordenados por created_at
-- [x] CSS `.trigger-card`, `.badge--weather/summary/reminder`, `.toggle-switch`, `.feature-empty`
-- [x] Integração em `app.js` — `initTriggers()` após `initWeather()`
+- [x] Schema `time_tasks_triggers` (name, type weather/summary/reminder, enabled, condition/action JSONB, schedule, next_run_at).
+- [x] Schema `time_tasks_notifications` (trigger_id, type, title, message, icon, read, expires_at 30 dias).
+- [x] RLS em ambas as tabelas por usuário.
+- [x] `js/triggers.js`: CRUD de triggers e exibição de notificações; `renderTriggers()`, `renderNotifications()`, `fetchNotifications()`.
+- [x] CSS `.trigger-card`, `.badge--weather/summary/reminder`, `.toggle-switch`, `.feature-empty`.
+- [x] `renderNotifications()` chamado ao abrir a aba Notif. da SX.
+- [x] **Correção pós-entrega:** a migração `006_triggers_schema.sql` não era idempotente (`CREATE POLICY`/`CREATE INDEX` sem guardas), não tinha `grant`/`revoke` e a política de INSERT de notificações (`with check (true)`) permitia escrita anônima; corrigida, incorporada ao `supabase/schema.sql` canônico e aplicada em produção.
 
-**6.2 — Executor Node.js (pendente):**
+**6.2 — Executor (pendente):**
 
-- [ ] Worker Node.js para polling/cronograma de triggers
-- [ ] Lógica de disparo de notificações baseada em tipo (weather, summary, reminder)
-- [ ] Modal de criação/edição de triggers
-- [ ] Testes no backend
+- [ ] Worker Node.js para polling/cronograma de triggers.
+- [ ] Lógica de disparo por tipo (weather, summary, reminder).
+- [ ] Modal real de criação/edição de triggers (hoje é placeholder).
+- [ ] Dot indicador (`#notifications-dot`) sincronizado com itens não lidos.
+
+### Fase 7 — Acessibilidade, segurança e robustez (concluída)
+
+- [x] Auditoria WCAG 2.1 AA documentada em `ACCESSIBILITY.md`.
+- [x] `npm audit --omit=dev`: zero vulnerabilidades.
+- [x] Rate limit e validação de entrada nas rotas do servidor.
+
+### Fase 8 — Documentação (concluída)
+
+- [x] `MANUAL_DE_BORDO.md` unificado: diário cronológico + referência técnica do projeto.
+- [x] `MANUAL_DE_USO.md` revisado a cada entrega.
+- [x] `SMOKE_TEST.md` com roteiro de verificação.
+- [ ] `README.md` atualizado com as fases concluídas (pendente).
+- [ ] `AGENTS.md` revisado para o estado atual dos módulos (parcial).
+
+### Fase 9 — Verificação, build e produção (em andamento)
+
+- [x] `npm run build` limpo.
+- [x] `node --check` em todos os módulos JS.
+- [x] Migrações aplicadas e verificadas no banco de produção (coluna `completed`; triggers/notifications).
+- [ ] Deploy no EasyPanel validado com healthcheck e smoke test da versão atual.
+- [ ] Paridade entre local e produção confirmada (`HEAD == origin/main` + bundle em produção).
+
+---
+
+## SX 2.1 — Memória e gestão total de eventos (concluída em 16–17/07/2026)
+
+### Memória de conversa
+
+- [x] O frontend envia as últimas 20 mensagens da conversa (`history`) e um recorte da agenda com até 50 eventos (`agenda`, com `id`, título, data, horário, lembrete, baixa e `createdAt`) para `/api/sx`.
+- [x] O servidor injeta o histórico como turnos reais da conversa no Gemini e a agenda como contexto, permitindo resolver referências como "o último evento criado", "a reunião de amanhã" e "me lembre 5 minutos antes".
+- [x] A memória é recarregada do histórico persistido (`time_tasks_sx_messages`) ao entrar e é zerada ao sair da sessão.
+
+### Novas ações da SX
+
+- [x] `UPDATE_EVENT` — reeditar quantas vezes precisar e adiar/remarcar (só os campos citados mudam; horário novo sem fim explícito preserva a duração atual do evento).
+- [x] `DELETE_EVENT` — desmarcar/cancelar/apagar evento pela conversa.
+- [x] `SET_EVENT_STATUS` — dar baixa (SIM) ou reabrir (NÃO) um evento.
+- [x] O servidor valida que o `eventId` retornado pelo modelo existe na agenda enviada; referência ambígua vira pergunta (`CHAT`), nunca ação inventada.
+- [x] Verificação de conflitos aplicada também em remarcações feitas pela SX.
+
+### Persona humanizada
+
+- [x] SX conversa em tom natural e caloroso, chama o usuário pelo nome (nome de exibição das Configurações) e não usa jargão de sistema.
+- [x] Quando o usuário menciona que um compromisso "foi cancelado", a SX confirma antes de desmarcar; quando "já aconteceu", sugere dar baixa.
+- [x] Política de identidade: a SX não se descreve como IA nem usa frases robóticas; se perguntada diretamente, apresenta-se como "a SX, sua assistente do Time Tasks", sem alegar ser humana.
+
+### Baixa de eventos (SIM/NÃO)
+
+- [x] Coluna `completed` em `time_tasks_events` (migração idempotente, aplicada e verificada em produção em 16/07/2026).
+- [x] Toggle **Sim/Não** "Dar baixa (concluído)" no formulário do evento.
+- [x] Botão **Dar baixa**/**Reabrir** no popover de resumo do evento.
+- [x] Evento com baixa aparece riscado/esmaecido nas visões Semana/Dia/3 Dias, Dia inteiro e Mês.
+- [x] Evento com baixa não dispara lembrete; reabrir reativa o lembrete.
+
+### Mensagem bíblica unificada
+
+- [x] Apenas um canal de mensagem bíblica: **um versículo por acesso**, em balão com botão X para fechar.
+- [x] Removidos: entregas por período (manhã/tarde), cartão fixo da sidebar e configurações de horário de versículo.
+- [x] `time_tasks_verse_deliveries` e colunas `verse_*` de settings mantidas no banco por preservação de histórico (limpeza futura opcional).
 
 ---
 
@@ -173,51 +222,44 @@
 | Navegação desktop não funcionava na tab bar mobile | seletor unificado `[data-target]` em navigation.js | ambas as barras sincronizadas |
 | Múltiplos controles da SX sem estado central | `setChatOpen()` exportada e usada em todos os pontos | toggle consistente |
 | `.ai-input-wrapper` definido duas vezes em layout.css | regras merged em uma única declaração | sem override inesperado |
-
-## Falhas & Limitações Fase 6
-
-| # | Falha/Limitação | Estado | Impacto |
-|---|---|---|---|
-| 6.1 | Modal de criação/edição é placeholder (alert) | ⏳ Pendente | Usuários não conseguem criar triggers ainda |
-| 6.2 | Executor Node.js não implementado | ⏳ Pendente | Triggers não disparam notificações automaticamente |
-| 6.3 | Aba "Notif." não chama renderNotifications() ao abrir | ⏳ Pendente (verificar navigation.js `setAiTab`) | Notificações não recarregam ao trocar de aba |
-| 6.4 | Botão historico (relógio) não sincroniza estado de notificações lidas | ⏳ Não implementado | Ponto vermelho de notificações pode não desaparecer |
+| SX esquecia o contexto: "ME LEMBRE 5 MINUTOS ANTES" e "DO ÚLTIMO EVENTO CRIADO" falhavam | histórico da conversa e agenda enviados ao modelo a cada pedido | referências resolvidas por `createdAt`/título |
+| SX só criava: não editava, adiava, desmarcava nem dava baixa | ações `UPDATE_EVENT`, `DELETE_EVENT` e `SET_EVENT_STATUS` no servidor e no frontend | teste do fluxo no endpoint e build |
+| SX podia agir sobre evento inventado pelo modelo | `eventId` validado contra a agenda enviada; ambiguidade vira pergunta | `INVALID_EVENT_REFERENCE` → 502 controlado |
+| Eventos não tinham baixa | coluna `completed` + toggle SIM/NÃO no modal e popover | migração idempotente no schema |
+| Lembrete disparava para evento já concluído | filtro `event.completed` em `checkEvents` | lembrete silenciado após baixa |
+| Versículo por acesso (Fase 4) nunca aparecia | `POST` sem token e formato `{verse}` trocados por `GET` autenticado com `{text, reference}` | balão funcional após login |
+| Fase 4 entregue sem atualização do roadmap | fase marcada como concluída com as correções registradas | este documento |
+| Formulário de login retinha credenciais após logout | campos limpos ao encerrar sessão | cadastro de múltiplas contas em sequência |
+| Duas mensagens bíblicas concorrentes (manhã/tarde + acesso) | canal único: versículo por acesso em balão fechável | seção 2 do manual atualizada |
+| Banco de produção sem a coluna `completed` (salvar evento falharia após deploy) | `schema.sql` executado via postgres-meta com verificação antes/depois | `42703` → coluna presente, evento "CÉLULA" intacto |
+| Duas sessões de desenvolvimento divergiram (main × branch de trabalho) | merge manual preservando os dois trabalhos; roadmap/manuais unificados | histórico do git em 17/07/2026 |
+| CSP de produção bloqueava Open-Meteo (clima nunca carregaria) | `api.open-meteo.com` e `geocoding-api.open-meteo.com` no `connect-src` | fase 5 corrigida |
+| `Permissions-Policy: geolocation=()` bloqueava a geolocalização do clima | `geolocation=(self)` | fase 5 corrigida |
+| Migração 006 sem idempotência, sem grants e com INSERT anônimo em notificações | migração reescrita, incorporada ao `schema.sql` e aplicada em produção | política restrita a `auth.uid() = user_id` |
 
 ---
 
-## Próximas fases
+## Próximos passos
 
-### Fase 6 — Trigger e central de notificações
+### Fase 6.2 — Executor de triggers
 
-- [ ] Schema `time_tasks_triggers` com RLS por usuário.
-- [ ] UI de criação/edição de triggers (tipo, condição, canal de entrega).
 - [ ] Worker Node.js para polling/cronograma e despacho de notificações.
-- [ ] Preencher `#ai-pane-notifications` com notificações reais do banco.
-- [ ] Dot indicador (`#notifications-dot`) ativo quando há itens não lidos.
+- [ ] Modal real de criação/edição de triggers.
+- [ ] Dot indicador de não lidos sincronizado.
 
-### Fase 7 — Acessibilidade, segurança e robustez
+### Documentação restante
 
-- [ ] Auditoria WCAG: foco, contraste, roles, labels, navegação por teclado.
-- [ ] `npm audit` limpo após novas dependências das fases anteriores.
-- [ ] Rate limit e validação de entrada nas novas rotas do servidor.
-- [ ] Smoke test automatizado dos fluxos críticos.
-
-### Fase 8 — Documentação
-
-- [ ] Criar `MANUAL_DE_BORDO.md` consolidando todo o histórico, decisões e anti-padrões.
 - [ ] Atualizar `README.md` com as fases concluídas e instruções de deploy atualizadas.
 - [ ] Revisar `AGENTS.md` para refletir o estado atual dos módulos.
 
-### Fase 9 — Verificação, build e produção
+### Infraestrutura futura
 
-- [ ] `npm run build` limpo.
-- [ ] `node --check` em todos os módulos JS.
-- [ ] `HEAD == origin/main` verificado.
-- [ ] Deploy no EasyPanel validado com healthcheck e smoke test.
-- [ ] Paridade entre local e produção confirmada.
+- [ ] Web Push + service worker para alertas com o navegador fechado.
+- [ ] Limpeza opcional de `time_tasks_verse_deliveries` e colunas `verse_*` de settings.
+- [ ] Rotação das credenciais operacionais compartilhadas durante a sessão de 16–17/07/2026 (GitHub, EasyPanel, service-role).
 
 ---
 
 ## Critério permanente de pronto
 
-Uma entrega só é considerada concluída quando passa por build, banco/RLS, autenticação, CRUD real, teste visual, healthcheck, deploy público e paridade `HEAD == origin/main`.
+Uma entrega só é considerada concluída quando passa por build, banco/RLS, autenticação, CRUD real, teste visual, healthcheck, deploy público, paridade `HEAD == origin/main` **e registro no MANUAL_DE_BORDO + ROADMAP + MANUAL_DE_USO**.
