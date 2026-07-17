@@ -97,7 +97,9 @@ Cada registro usa uma etiqueta: `PEDIDO`, `PERGUNTA`, `DECISÃO`, `IDEIA`, `FALH
 ### 4.3 Deploy
 
 - **PEDIDO** — Merge para `main` e deploy do app no EasyPanel (autorizado pelo operador em 17/07/2026).
-- Resultado registrado no ROADMAP (Fase 9) após a execução.
+- **DECISÃO** — A API do painel EasyPanel (porta 3000, HTTP puro) não é alcançável do ambiente de execução (o proxy só encaminha TLS); o deploy aconteceu pelo **auto-deploy do serviço no push para `main`**, sem precisar do painel.
+- **VALIDAÇÃO** — Produção servindo o bundle exato do build do merge; `/api/health` com `sx: true` e `supabase: true`; CSP com Open-Meteo e `geolocation=(self)` ativos; `/api/sx` e `/api/verse` recusando requisições sem token; banco com `completed`, `time_tasks_triggers` e `time_tasks_notifications` (4 políticas restritas cada).
+- **PENDÊNCIA** — Rotacionar as credenciais compartilhadas no chat (GitHub, EasyPanel, service-role) — elas não foram gravadas no repositório.
 
 ## 5. Estado atual (o que está funcionando)
 

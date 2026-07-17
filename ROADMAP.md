@@ -157,13 +157,13 @@
 - [ ] `README.md` atualizado com as fases concluídas (pendente).
 - [ ] `AGENTS.md` revisado para o estado atual dos módulos (parcial).
 
-### Fase 9 — Verificação, build e produção (em andamento)
+### Fase 9 — Verificação, build e produção (concluída em 17/07/2026)
 
 - [x] `npm run build` limpo.
 - [x] `node --check` em todos os módulos JS.
 - [x] Migrações aplicadas e verificadas no banco de produção (coluna `completed`; triggers/notifications).
-- [ ] Deploy no EasyPanel validado com healthcheck e smoke test da versão atual.
-- [ ] Paridade entre local e produção confirmada (`HEAD == origin/main` + bundle em produção).
+- [x] Deploy no EasyPanel validado: auto-deploy no push para `main` publicou o bundle do merge; `/api/health` com `sx: true` e `supabase: true`.
+- [x] Paridade entre local e produção confirmada: hash do bundle em produção idêntico ao build local do merge; CSP com Open-Meteo e `geolocation=(self)` ativos; APIs recusando requisições sem token.
 
 ---
 
