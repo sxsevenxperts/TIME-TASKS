@@ -458,6 +458,96 @@ npm run preview         # Servir em http://localhost:4173
 
 **Commit:** `de6ea47` — feat: transformação em PWA
 
+### 11.2 — Login Permanente para JWS (✅ 16/07/2026)
+
+**PEDIDO**
+- App JWS precisa manter usuário **sempre logado**
+- Notificações funcionam sem abrir app (requer auth ativa)
+- Restaurar sessão ao reabrir app
+- Renovar token automaticamente
+
+**Arquivos criados:**
+
+1. **`js/persistent-auth.js`** — Gerenciador de sessão persistente (276 linhas)
+   - `savePersistentSession()` — salva session em localStorage
+   - `restorePersistentSession()` — restaura do localStorage
+   - `silentAutoLogin()` — auto-login com refresh_token (sem UI)
+   - `startAutoRefresh()` — agenda renovação 5 min antes de expirar
+   - `refreshToken()` — renova token automaticamente
+   - `logout()` — logout completo (limpa localStorage + Supabase)
+   - `getPersistedSessionInfo()` — info da sessão
+   - `setupAuthSyncListener()` — sincroniza auth entre abas
+
+2. **`JWS_PERSISTENT_LOGIN.md`** — Documentação completa (287 linhas)
+   - Overview do sistema
+   - Fluxo de auto-login
+   - APIs e exemplos
+   - Segurança (XSS, token hijacking)
+   - Troubleshooting
+   - Referência técnica
+
+**Atualizações: `js/auth.js`**
+- Importa persistent-auth
+- Tenta silentAutoLogin() antes de mostrar tela
+- Salva sessão após login
+- Agenda token refresh automático
+- Configura sincronização entre abas
+
+**Atualizações: `public/pwa-register.js`**
+- Verifica autenticação periodicamente (5 min)
+- Envia mensagens CHECK_AUTH ao Service Worker
+
+**Atualizações: `public/service-worker.js`**
+- Handler de mensagens type='CHECK_AUTH'
+- Verifica sessão em localStorage
+- Limpa sessão expirada automaticamente
+
+**Fluxo Auto-Login**
+```
+App aberto
+  ↓
+Há localStorage['timetasks_auth_persistent']?
+  ├─ SIM → Renovar com refresh_token
+  │         ├─ Sucesso → Direto pro app (sem tela login)
+  │         └─ Falha → Mostrar tela login
+  └─ NÃO → Mostrar tela login
+```
+
+**Token Refresh**
+- Expira em 60 minutos
+- Sistema renova em 55 minutos automaticamente
+- Se app fecha, ao reabrir renova imediatamente
+- Fallback silencioso se falhar
+
+**Segurança**
+- ✅ localStorage (não httpOnly) — risco XSS mitigado por CSP
+- ✅ Refresh token renovado a cada uso
+- ✅ Sessão expirada força re-login
+- ✅ Sincronização entre abas detecta logout
+- ⏳ Futuro: mover para httpOnly cookies
+
+**Storage Format**
+```json
+{
+  "user": { "id", "email", ... },
+  "accessToken": "eyJhbGc...",
+  "refreshToken": "eyJhbGc...",
+  "expiresAt": 1721270400,
+  "savedAt": 1721266800000
+}
+```
+
+**APIs Disponíveis**
+```javascript
+import {
+  silentAutoLogin,          // Tenta auto-login
+  logout,                   // Logout completo
+  getPersistedSessionInfo   // Info da sessão
+} from './persistent-auth.js';
+```
+
+**Commit:** `0789526` — feat: login permanente para PWA JWS
+
 ---
 
 **Status das fases (até Fase 11):**

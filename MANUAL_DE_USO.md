@@ -276,6 +276,26 @@ Os atalhos não são executados enquanto o foco estiver em campo de texto, sele�
 
 ## 15. Modo PWA (Progressive Web App)
 
+### Login Permanente (JWS)
+
+Ao fazer login uma vez, o Time Tasks **mantém você logado permanentemente**:
+
+- **Auto-login silencioso** — ao abrir o app, entra direto (sem mostrar tela de login)
+- **Sessão restaurada** — ao reabrir o app dias depois, continua logado
+- **Token renovado automaticamente** — a cada hora, o acesso é renovado silenciosamente
+- **Notificações funcionam** — mesmo com app fechado, recebe notificações (requer login ativo)
+
+**Como funciona:**
+1. Ao fazer login → sessão salva localmente no app
+2. Ao reabrir app → auto-login com token renovado
+3. Se token expirar → renova automaticamente sem avisar
+
+**Logout permanente:**
+- Abra **Configurações > Sair** para fazer logout
+- Se aparecer "sessão expirada" → tente login novamente
+
+**Nota:** Limpar dados do navegador (F12 > Storage > Clear All) remove o login permanente. Reinstale o app se isso acontecer.
+
 ### Instalar na home screen
 
 O SX Time Tasks é um **Progressive Web App (PWA)** — você pode instalá-lo como um app nativo sem visitar uma app store.
