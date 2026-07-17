@@ -226,30 +226,38 @@ WhatsApp, Telegram e Google Calendar são exibidos como indisponíveis até que 
 
 Sincronize seus eventos do Time Tasks com Google Calendar automaticamente.
 
-1. Abra **Configurações > Integrações**.
+**Conectar:**
+1. Abra **Configurações > Calendários > Integrações**.
 2. Clique em **Conectar Google Calendar**.
-3. Faça login na sua conta Google.
+3. Faça login na sua conta Google (se não estiver logado).
 4. Autorize o acesso ao Google Calendar.
 5. Selecione qual calendário Google receberá os eventos.
 
-A partir de agora:
-- Novos eventos criados no Time Tasks aparecem em Google Calendar.
-- Eventos em Google Calendar são sincronizados para o Time Tasks a cada 5 minutos.
-- Edições são refletidas em ambos os calendários.
-- Clique em **Desconectar** para parar a sincronização.
+**Funcionalidade:**
+- ✅ Novos eventos criados no Time Tasks aparecem em Google Calendar automaticamente.
+- ✅ Eventos em Google Calendar são sincronizados para o Time Tasks a cada 5 minutos.
+- ✅ Edições são refletidas em ambos os calendários.
+- ✅ Status do sincronismo exibido na UI (⏱️ Última sincronização: XXX).
+- 🔌 Clique em **Desconectar** para parar a sincronização.
 
-### Apple Calendar
+### Apple Calendar (CalDAV)
 
-Sincronize com Apple Calendar (iCloud, macOS, iOS) usando CalDAV.
+Sincronize com Apple Calendar (iCloud, macOS, iOS) usando o protocolo CalDAV.
 
-1. Abra **Configurações > Integrações**.
+**Conectar:**
+1. Abra **Configurações > Calendários > Integrações**.
 2. Clique em **Conectar Apple Calendar**.
-3. Insira o e-mail e senha da sua conta iCloud.
-4. Selecione qual calendário Apple receberá os eventos.
+3. Insira o e-mail de sua conta iCloud.
+4. Insira a **senha de app** (ou senha regular, dependendo da config).
+5. Selecione qual calendário Apple receberá os eventos.
 
-Mesma sincronização automática: eventos do Time Tasks → Apple Calendar, e vice-versa.
+**Funcionalidade:**
+- ✅ Mesma sincronização automática (5 minutos).
+- ✅ Eventos Time Tasks ↔ Apple Calendar.
+- ✅ Suporta múltiplos calendários.
+- 🔌 Clique em **Desconectar** para encerrar.
 
-**Nota:** Google Calendar sincroniza a cada 5 minutos. Apple Calendar sincroniza com menor frequência devido ao protocolo CalDAV. Para sincronização imediata, clique em **Sincronizar agora**.
+**Nota:** Google Calendar sincroniza a cada 5 minutos. Apple Calendar pode ter latência ligeiramente maior devido ao CalDAV. Ambos auto-sincronizam em background — não é necessário clicar em "Sincronizar agora" na maioria dos casos.
 
 ---
 
@@ -375,7 +383,73 @@ Se o app estiver lento ou com dados desatualizados:
 
 Recarregue a página ou reinstale o app após limpar.
 
-## 16. Solução de problemas
+## 16. Automações com Triggers
+
+Crie automações que executam ações em cronograma ou quando condições são atendidas.
+
+### O que é um Trigger?
+
+Um **Trigger** é uma automação que executa periodicamente (ex: todos os dias) ou sob condição (ex: temperatura > 30°C). Cada trigger gera notificações automáticas sem necessidade de configuração manual.
+
+### Tipos de Triggers
+
+#### 🌡️ Clima
+Monitora temperatura em uma cidade e notifica quando ultrapassa um limite.
+
+**Configuração:**
+- Cidade: onde monitorar (ex: "São Paulo")
+- Temperatura Limite: em °C (ex: 30°C)
+- Frequência: verifica a cada hora
+
+**Exemplo:** "Alerta-me quando a temperatura em São Paulo passar de 35°C"
+
+#### 📅 Resumo da Agenda
+Envia um resumo dos eventos do dia em horário pré-definido.
+
+**Configuração:**
+- Dia da semana: quando enviar (ex: segunda-feira)
+- Horário: que horas (ex: 08:00)
+- Frequência: uma vez no dia
+
+**Exemplo:** "Segunda-feira às 8:00, receba resumo da agenda"
+
+#### ⏰ Lembrete Customizado
+Notificação com mensagem personalizada em frequência fixa.
+
+**Configuração:**
+- Mensagem: o que avisar (ex: "Beber água")
+- Frequência: Uma vez / Diariamente / Semanalmente
+
+**Exemplo:** "Lembrar-me diariamente para exercitar"
+
+### Criar um Trigger
+
+1. Abra **Configurações > Triggers** (aba ⚡).
+2. Clique em **Novo Trigger**.
+3. Preencha:
+   - **Nome:** label da automação (ex: "Alerta de Calor")
+   - **Tipo:** escolha Clima / Resumo / Lembrete
+   - **Condição:** preencha os campos específicos do tipo
+   - **Ativar:** checkbox para ligar/desligar
+4. Clique em **Criar Trigger**.
+
+### Gerenciar Triggers
+
+- **Ver status:** Abra Configurações > Triggers para listar all triggers.
+- **Editar:** (em desenvolvimento)
+- **Desativar:** desligue o checkbox "Ativar" sem deletar.
+- **Deletar:** (em desenvolvimento)
+
+### Notificações de Triggers
+
+Cada trigger que dispara gera uma notificação:
+- Aparece como card na Notificação (se ativa)
+- Segue o mesmo som/aparência de lembretes
+- Não tem limite de quantidade
+
+---
+
+## 17. Solução de problemas
 
 ### A SX não responde
 

@@ -1,30 +1,53 @@
 # Roadmap — SX Time Tasks
 
-**Última revisão técnica:** 18/07/2026 (Início v2.1)
-**Status:** ✅ PRODUÇÃO READY + DESENVOLVIMENTO v2.1
+**Última revisão técnica:** 18/07/2026 (v2.1 Fase 12 completa)
+**Status:** ✅ v2.0 PRODUÇÃO + ✅ v2.1 DESENVOLVIMENTO COMPLETO
 
-## Versão 2.1 — em desenvolvimento
+## Versão 2.1 — ✅ COMPLETA (Fase 12 — 18/07/2026)
 
-**Fase 12: Integrações + Triggers + Performance**
-- 12.1 Frontend UI Calendários (Google + Apple connect buttons) — 👈 COMEÇANDO
-- 12.2 Executor de Triggers (cronograma, notificações) — ⏳ Próximo
-- 12.3 Otimizações de Performance (cache, bundle, assets) — ⏳ Próximo
-- Tag: v2.1.0 | Branch: `develop` | Prazo: 25/07/2026
+**Fase 12: Integrações + Triggers + Performance — ✅ TODAS CONCLUÍDAS**
+
+### 12.1 — Frontend UI Calendários ✅
+- [x] Componente calendar-integrations-ui.js
+- [x] Google Calendar connect button
+- [x] Apple Calendar connect button
+- [x] Status badges (Conectado/Desconectado)
+- [x] Sync info display
+- [x] Handlers connect/disconnect
+- [x] Endpoints: /api/calendar/status, /api/auth/google|apple/disconnect
+- Commit: `67e63bf`
+
+### 12.2 — Executor de Triggers ✅
+- [x] TriggerExecutor class (trigger-executor.js)
+- [x] 3 tipos de triggers:
+  - Weather (monitorar temperatura)
+  - Summary (resumo da agenda)
+  - Reminder (notificações customizadas)
+- [x] Modal de UI (triggers-modal-ui.js)
+- [x] Notificações automáticas
+- [x] Open-Meteo integração
+- [x] Endpoint: /api/triggers/create
+- Commit: `3409cc6`
+
+### 12.3 — Performance Optimization ✅
+- [x] PerformanceOptimizer class
+- [x] 4 Cache Strategies (Network First, Cache First, Stale While Revalidate)
+- [x] Lazy Loading (code splitting, image optimization)
+- [x] Bundle Analysis tool
+- [x] Web Vitals Monitoring (LCP, FID, CLS)
+- [x] GZIP compression config
+- [x] PERFORMANCE_GUIDE.md
+- Commit: `29c750c`
+
+**v2.1 Targets:**
+- Bundle: 450KB → 350KB (-22%)
+- Initial load: 2.5s → 1.8s (-28%)
+- Lighthouse: 85/100 → 92/100
+- TTI: 3.2s → 2.5s
 
 ---
 
-## Versão 2.0 — entregue
-
-**Status completo:**
-- Fases 1–11 ✅ concluídas
-- SX 2.1 (memória + gestão + baixa) ✅ entregue
-- PWA (offline, installable, notificações) ✅ v2.0
-- Voice Commands (fala → agenda) ✅ v2.0
-- Integrações calendários (Google + Apple backend) ✅ v2.0
-- Executor triggers ⏳ v2.1
-- Performance ⏳ v2.1
-
-## Versão 2.0 — entregue
+## Versão 2.0 — ✅ ENTREGUE
 
 ### Produto e identidade
 
