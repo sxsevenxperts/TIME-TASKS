@@ -80,33 +80,50 @@ function configureInitialLayout() {
  * Ativa voice input por padrão (mobile)
  */
 function setupVoiceInputDefault() {
+  // Funciona em mobile E desktop
   const isMobile = window.innerWidth <= 768;
+  const isDesktop = window.innerWidth > 768;
 
-  if (!isMobile) return;
-
-  // Inicializar voice assistant
+  // Inicializar voice assistant (sempre)
   const voiceSupported = initVoiceAssistant();
 
-  // Setup atalho de voz (Ctrl+Shift+V)
+  // Setup atalho de voz (Ctrl+Shift+V) — funciona em ambos
   setupVoiceShortcut();
 
-  // Focar no campo de voz
+  // Setup UI
   setTimeout(() => {
     const voiceButton = document.getElementById('sx-voice-button');
     const inputField = document.querySelector('[data-sx-input]');
 
-    if (voiceButton) {
-      // Mostrar placeholder sugerindo voz
-      if (inputField) {
-        inputField.placeholder = voiceSupported ? '🎤 Fale com a SX (toque ou Ctrl+Shift+V)...' : 'Escreva com a SX...';
-      }
+    if (!voiceButton || !inputField) return;
 
-      // Se tiver permissão e voice suportado, botão pronto
-      if ('Notification' in window && Notification.permission === 'granted' && voiceSupported) {
-        console.log('💬 Voice ready - toque 🎤 ou Ctrl+Shift+V');
-        voiceButton.style.cursor = 'pointer';
+    // Placeholder adaptado
+    if (voiceSupported) {
+      if (isMobile) {
+        inputField.placeholder = '🎤 Fale ou escreva...';
+      } else if (isDesktop) {
+        inputField.placeholder = '💬 Digitar / 🎤 Ctrl+Shift+V para falar';
+      }
+    } else {
+      inputField.placeholder = 'Escreva seu comando...';
+    }
+
+    // Botão de voice pronto
+    if (voiceSupported) {
+      voiceButton.style.cursor = 'pointer';
+      voiceButton.title = isMobile ? 'Tocar para falar' : 'Ctrl+Shift+V para falar';
+      
+      // Desktop: mostrar atalho visualmente
+      if (isDesktop) {
+        voiceButton.innerHTML = '🎤 (Ctrl+Shift+V)';
+        voiceButton.style.fontSize = '11px';
+        voiceButton.style.display = 'flex';
+        voiceButton.style.alignItems = 'center';
+        voiceButton.style.gap = '4px';
       }
     }
+
+    console.log(`✅ Voice ready ${isMobile ? '(mobile)' : '(desktop)'}`);
   }, 500);
 }
 

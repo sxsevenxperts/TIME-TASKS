@@ -506,3 +506,79 @@
     <script type="module" src="/js/app.js"></script>
   </body>
 </html>
+
+<style>
+  /* Voice Assistant Desktop Styles */
+  @keyframes pulse {
+    0% {
+      opacity: 1;
+    }
+    50% {
+      opacity: 0.5;
+    }
+    100% {
+      opacity: 1;
+    }
+  }
+
+  @keyframes listening-glow {
+    0%, 100% {
+      box-shadow: 0 0 0 0 rgba(155, 232, 0, 0.7);
+    }
+    50% {
+      box-shadow: 0 0 0 6px rgba(155, 232, 0, 0);
+    }
+  }
+
+  #sx-voice-button[data-voice-state='listening'] {
+    animation: listening-glow 1.5s infinite;
+  }
+
+  /* Desktop: melhorar botão de voice */
+  @media (min-width: 769px) {
+    #sx-voice-button {
+      position: relative;
+      display: inline-flex !important;
+      align-items: center;
+      gap: 6px;
+      padding: 8px 12px;
+      background: rgba(155, 232, 0, 0.08);
+      border: 1px solid rgba(155, 232, 0, 0.2);
+      border-radius: 6px;
+      font-size: 12px;
+      font-weight: 500;
+      cursor: pointer;
+      transition: all 0.2s ease;
+    }
+
+    #sx-voice-button:hover {
+      background: rgba(155, 232, 0, 0.15);
+      border-color: rgba(155, 232, 0, 0.4);
+    }
+
+    #sx-voice-button[data-voice-state='listening'] {
+      background: rgba(155, 232, 0, 0.3);
+      border-color: rgba(155, 232, 0, 0.8);
+      color: #9be800;
+    }
+
+    #sx-voice-button[data-voice-state='processing'] {
+      background: rgba(155, 232, 0, 0.15);
+      opacity: 0.7;
+    }
+
+    #sx-voice-button[data-voice-state='error'] {
+      background: rgba(255, 0, 0, 0.15);
+      border-color: rgba(255, 0, 0, 0.5);
+      color: #ff6666;
+    }
+  }
+
+  /* Mobile: botão compacto */
+  @media (max-width: 768px) {
+    #sx-voice-button {
+      font-size: 20px;
+      padding: 8px 12px;
+    }
+  }
+</style>

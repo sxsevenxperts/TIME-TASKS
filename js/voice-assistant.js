@@ -151,12 +151,42 @@ function setupVoiceUI() {
   const voiceButton = document.getElementById('sx-voice-button');
   if (!voiceButton) return;
 
+  const isDesktop = window.innerWidth > 768;
+
   voiceButton.addEventListener('click', (e) => {
     e.preventDefault();
     startListening();
   });
 
   voiceButton.setAttribute('data-voice-state', 'idle');
+
+  // Desktop: adicionar estilos
+  if (isDesktop) {
+    voiceButton.style.cssText = `
+      padding: 6px 10px;
+      background: rgba(155, 232, 0, 0.1);
+      border: 1px solid rgba(155, 232, 0, 0.3);
+      border-radius: 4px;
+      cursor: pointer;
+      font-size: 11px;
+      transition: all 0.2s;
+      display: flex;
+      align-items: center;
+      gap: 4px;
+    `;
+
+    voiceButton.addEventListener('mouseenter', () => {
+      voiceButton.style.background = 'rgba(155, 232, 0, 0.2)';
+      voiceButton.style.borderColor = 'rgba(155, 232, 0, 0.6)';
+    });
+
+    voiceButton.addEventListener('mouseleave', () => {
+      if (voiceButton.getAttribute('data-voice-state') === 'idle') {
+        voiceButton.style.background = 'rgba(155, 232, 0, 0.1)';
+        voiceButton.style.borderColor = 'rgba(155, 232, 0, 0.3)';
+      }
+    });
+  }
 }
 
 /**
@@ -164,22 +194,54 @@ function setupVoiceUI() {
  */
 function updateVoiceUI(state, transcript = '') {
   const voiceButton = document.getElementById('sx-voice-button');
+  const sxInput = document.querySelector('[data-sx-input]');
+  const isDesktop = window.innerWidth > 768;
+
   if (!voiceButton) return;
 
   voiceButton.setAttribute('data-voice-state', state);
 
   switch (state) {
     case 'listening':
-      voiceButton.style.background = 'rgba(155, 232, 0, 0.7)';
+      voiceButton.style.background = 'rgba(155, 232, 0, 0.8)';
+      voiceButton.style.borderColor = 'rgba(155, 232, 0, 1)';
+      voiceButton.style.animation = 'pulse 1s infinite';
+      if (isDesktop && sxInput) {
+        sxInput.placeholder = '🎤 Ouvindo...';
+        sxInput.style.borderColor = '#9be800';
+      }
       break;
+
+    case 'interim':
+      if (sxInput) {
+        sxInput.value = transcript;
+      }
+      break;
+
     case 'processing':
-      voiceButton.style.background = 'rgba(155, 232, 0, 0.3)';
+      voiceButton.style.background = 'rgba(155, 232, 0, 0.4)';
+      if (isDesktop && sxInput) {
+        sxInput.placeholder = '⏳ Processando...';
+      }
       break;
+
     case 'error':
       voiceButton.style.background = 'rgba(255, 0, 0, 0.7)';
+      voiceButton.style.borderColor = 'rgba(255, 0, 0, 1)';
+      if (isDesktop && sxInput) {
+        sxInput.placeholder = '❌ Erro ao reconhecer. Tente novamente.';
+        sxInput.style.borderColor = '#ff0000';
+      }
       break;
+
     default:
-      voiceButton.style.background = '';
+      voiceButton.style.background = 'rgba(155, 232, 0, 0.1)';
+      voiceButton.style.borderColor = 'rgba(155, 232, 0, 0.3)';
+      voiceButton.style.animation = '';
+      if (isDesktop && sxInput) {
+        sxInput.placeholder = '💬 Digitar / 🎤 Ctrl+Shift+V para falar';
+        sxInput.style.borderColor = '';
+      }
   }
 }
 
