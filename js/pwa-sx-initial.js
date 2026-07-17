@@ -6,6 +6,13 @@
 
 import { supabase } from './supabase.js';
 import { silentAutoLogin } from './persistent-auth.js';
+import {
+  initVoiceAssistant,
+  setupVoiceShortcut,
+  isVoiceSupported,
+  speakText,
+  startListening
+} from './voice-assistant.js';
 
 /**
  * Inicializa tela SX para PWA
@@ -77,6 +84,12 @@ function setupVoiceInputDefault() {
 
   if (!isMobile) return;
 
+  // Inicializar voice assistant
+  const voiceSupported = initVoiceAssistant();
+
+  // Setup atalho de voz (Ctrl+Shift+V)
+  setupVoiceShortcut();
+
   // Focar no campo de voz
   setTimeout(() => {
     const voiceButton = document.getElementById('sx-voice-button');
@@ -85,12 +98,13 @@ function setupVoiceInputDefault() {
     if (voiceButton) {
       // Mostrar placeholder sugerindo voz
       if (inputField) {
-        inputField.placeholder = '🎤 Fale com a SX...';
+        inputField.placeholder = voiceSupported ? '🎤 Fale com a SX (toque ou Ctrl+Shift+V)...' : 'Escreva com a SX...';
       }
 
-      // Se tiver permissão, ativar voz automaticamente após 2s
-      if ('Notification' in window && Notification.permission === 'granted') {
-        console.log('💬 Voice ready');
+      // Se tiver permissão e voice suportado, botão pronto
+      if ('Notification' in window && Notification.permission === 'granted' && voiceSupported) {
+        console.log('💬 Voice ready - toque 🎤 ou Ctrl+Shift+V');
+        voiceButton.style.cursor = 'pointer';
       }
     }
   }, 500);

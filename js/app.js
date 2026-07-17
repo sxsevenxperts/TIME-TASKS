@@ -18,6 +18,7 @@ import { initVerseAccess } from './verse-access.js';
 import { initWeather } from './weather.js';
 import { initTriggers, renderNotifications } from './triggers.js';
 import { initPWASXInitial, setupSXModeToggle } from './pwa-sx-initial.js';
+import { initVoiceAssistant, setupVoiceShortcut } from './voice-assistant.js';
 
 /**
  * Inicializa toda a aplicação
@@ -63,6 +64,13 @@ function init() {
   // Inicializar PWA SX (após auth)
   setupSXModeToggle();
   initPWASXInitial();
+
+  // Inicializar Voice Assistant
+  const voiceSupported = initVoiceAssistant();
+  if (voiceSupported) {
+    setupVoiceShortcut();
+    console.log('🎤 Voice Assistant ativo (Ctrl+Shift+V)');
+  }
 
   console.log('🕐 Time Tasks inicializado com sucesso!');
 }
