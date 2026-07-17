@@ -548,6 +548,141 @@ import {
 
 **Commit:** `0789526` — feat: login permanente para PWA JWS
 
+### 11.3 — Web Push + Background Sync + Periodic Sync (✅ 16/07/2026)
+
+**PEDIDO**
+- Web Push — notificações mesmo com app fechado
+- Background Sync — sincronizar eventos/tarefas criados offline
+- Periodic Sync — atualizar calendários a cada 24h
+
+**Arquivos criados:**
+
+1. **`js/push-notifications.js`** — Gerenciador de notificações push (233 linhas)
+   - `subscribeToPush()` — registra subscription
+   - `unsubscribeFromPush()` — remove subscription
+   - `getPushSubscription()` — verifica status
+   - `sendTestNotification()` — notificação de teste
+   - `notifyUpcomingEvent()` — evento próximo
+   - `notifyTaskReminder()` — tarefa
+   - `notifySyncStatus()` — status de sync
+
+2. **`js/background-sync.js`** — Sincronização offline (268 linhas)
+   - `registerBackgroundSync()` — registra sync tag
+   - `setupSyncListener()` — escuta online/offline
+   - `syncEvents()` — sincroniza eventos
+   - `syncTasks()` — sincroniza tarefas
+   - `syncCalendars()` — sincroniza calendários
+   - `forceSync()` — sincronização manual
+   - `savePendingEvent()` — salva evento offline
+   - `savePendingTask()` — salva tarefa offline
+
+3. **`js/periodic-sync.js`** — Sincronização periódica (252 linhas)
+   - `registerPeriodicSync()` — registra 24h + 12h
+   - `getPeriodicSyncTags()` — obtém status
+   - `unregisterPeriodicSync()` — cancela
+   - `handlePeriodicSync()` — handler do SW
+   - `getPeriodicSyncInterval()` — intervalo configurado
+
+4. **`JWS_NOTIFICATIONS_AND_SYNC.md`** — Documentação (554 linhas)
+   - Setup de Web Push com VAPID keys
+   - APIs e exemplos de uso
+   - Schema do banco de dados
+   - Endpoints do servidor necessários
+   - Fluxos e testes locais
+
+**Atualizações: `public/service-worker.js`** (+176 linhas)
+- `push` event listener — recebe notificações
+- `notificationclick` listener — abre app ao clicar
+- `sync` event listener — background sync
+- `periodicsync` event listener — 24h calendários, 12h lembretes
+
+**Atualizações: `public/pwa-register.js`** (+98 linhas)
+- Registra background sync
+- Registra periodic sync (24h)
+- Integração com push notifications
+- `PWA.subscribeToPush()` — registra push
+- `PWA.forceSync()` — força sync manual
+
+**Web Push Fluxo**
+```
+User Online → Permite notificações
+              ↓
+App registra subscription → Salva em DB
+                           ↓
+Servidor envia push → Web Push API
+                      ↓
+SW intercepta → Mostra notificação
+                ↓
+User clica → Abre app
+```
+
+**Background Sync Fluxo**
+```
+User Offline → Cria evento
+              ↓
+savePendingEvent() → localStorage
+                    ↓
+User reconecta → Online event
+                ↓
+SW dispara sync → POST /api/events/sync
+                 ↓
+Servidor salva → ✅ Sincronizado
+```
+
+**Periodic Sync Fluxo**
+```
+App instalado → registerPeriodicSync()
+               ↓
+A cada 24h → SW dispara event
+            ↓
+POST /api/calendar/sync → Busca Google + Apple
+                          ↓
+Salva eventos → ✅ Calendários atualizados
+```
+
+**Schema Banco**
+```sql
+-- Subscrições push
+CREATE TABLE time_tasks_push_subscriptions (
+  id BIGSERIAL PRIMARY KEY,
+  user_id UUID NOT NULL,
+  endpoint TEXT NOT NULL UNIQUE,
+  auth TEXT NOT NULL,
+  p256dh TEXT NOT NULL,
+  subscribed_at TIMESTAMP DEFAULT NOW()
+);
+```
+
+**Endpoints Necessários (servidor)**
+- `POST /api/push/subscribe` — salva subscription
+- `POST /api/push/send` — envia notificação (backend)
+- `POST /api/events/sync` — sincroniza eventos offline
+- `POST /api/calendar/sync` — sincroniza calendários
+- `GET /api/reminders?days=1` — busca lembretes próximos
+
+**Suporte Navegador**
+| Feature | Chrome | Edge | Firefox | Safari |
+|---------|--------|------|---------|--------|
+| Web Push | ✅ | ✅ | ⚠️ | ❌ |
+| Background Sync | ✅ | ✅ | ❌ | ❌ |
+| Periodic Sync | ✅ | ✅ | ❌ | ❌ |
+
+**Features**
+✓ Notificações push com app fechado
+✓ Sincronizar offline (eventos, tarefas)
+✓ Calendários sincronizados 24h
+✓ Lembretes verificados 12h
+✓ Fallback gracioso (sem suporte)
+✓ Notificações de sync sucesso/erro
+
+**Próximos: Implementar endpoints no servidor**
+1. VAPID keys geradas e configuradas
+2. Endpoint POST /api/push/subscribe
+3. Endpoint POST /api/push/send (cronômetro de eventos)
+4. Endpoint POST /api/calendar/sync (calendario-sync.js)
+
+**Commit:** `fe305f5` — feat: Web Push + Background Sync + Periodic Sync
+
 ---
 
 **Status das fases (até Fase 11):**
