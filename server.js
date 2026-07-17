@@ -5,6 +5,7 @@ import { fileURLToPath } from 'node:url';
 import { buildGoogleAuthUrl, exchangeGoogleCode, refreshGoogleToken, fetchGoogleCalendars } from './js/google-calendar-handler.js';
 import { discoverAppleCalDAV, fetchAppleCalendars, fetchAppleEvents, parseICS } from './js/apple-calendar-handler.js';
 import { startCalendarSync } from './js/calendar-sync.js';
+import TriggerExecutor from './js/trigger-executor.js';
 
 const port = Number(process.env.PORT || 3000);
 const distDir = fileURLToPath(new URL('./dist/', import.meta.url));
@@ -396,6 +397,34 @@ async function handleAppleDisconnect(response, user) {
   }
 }
 
+async function handleCreateTrigger(request, response, user) {
+  try {
+    const body = await readJson(request);
+    const { name, type, condition, enabled } = body;
+
+    if (!name || !type) {
+      return sendJson(response, 400, { error: 'INVALID_TRIGGER' });
+    }
+
+    // TODO: Salvar trigger em Supabase tabela time_tasks_triggers
+    // Por enquanto retornar sucesso
+    return sendJson(response, 201, {
+      success: true,
+      trigger: {
+        id: Math.random().toString(36).substr(2, 9),
+        name,
+        type,
+        condition,
+        enabled,
+        user_id: user.id
+      }
+    });
+  } catch (error) {
+    console.error('Create trigger error:', error);
+    return sendJson(response, 500, { error: 'TRIGGER_ERROR' });
+  }
+}
+
 async function handleSx(request, response, user) {
   if (!geminiApiKey) return sendJson(response, 503, { error: 'SX_NOT_CONFIGURED' });
   if (!allowRequest(user.id)) return sendJson(response, 429, { error: 'RATE_LIMITED' });
@@ -579,6 +608,7 @@ const server = createServer(async (request, response) => {
       if (url.pathname === '/api/calendar/status' && request.method === 'GET') return handleCalendarStatus(response, user);
       if (url.pathname === '/api/auth/google/disconnect' && request.method === 'POST') return handleGoogleDisconnect(response, user);
       if (url.pathname === '/api/auth/apple/disconnect' && request.method === 'POST') return handleAppleDisconnect(response, user);
+      if (url.pathname === '/api/triggers/create' && request.method === 'POST') return handleCreateTrigger(request, response, user);
       if (url.pathname === '/api/sx' && request.method === 'POST') return handleSx(request, response, user);
       if (url.pathname === '/api/verse' && request.method === 'GET') return handleVerse(response, user);
       return sendJson(response, 404, { error: 'NOT_FOUND' });
@@ -602,4 +632,11 @@ if (supabaseUrl && supabaseAnonKey) {
   startCalendarSync(supabaseUrl, supabaseAnonKey).catch(err => {
     console.error('Erro ao inicializar sincronização de calendários:', err);
   });
+}
+
+// Iniciar executor de triggers em background
+if (supabaseUrl && supabaseAnonKey) {
+  const triggerExecutor = new TriggerExecutor(supabaseUrl, supabaseAnonKey, process.env.SUPABASE_SERVICE_ROLE_KEY || '');
+  triggerExecutor.start(60000); // Executar a cada 1 minuto
+  console.log('✅ Trigger Executor iniciado');
 }
