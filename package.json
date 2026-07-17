@@ -8,11 +8,13 @@
   },
   "scripts": {
     "dev": "vite",
-    "build": "vite build",
+    "build": "node scripts/generate-pwa-icons.js && vite build",
     "preview": "vite preview",
-    "start": "node server.js"
+    "start": "node server.js",
+    "pwa:icons": "node scripts/generate-pwa-icons.js"
   },
   "devDependencies": {
+    "sharp": "^0.33.5",
     "vite": "^6.0.0"
   },
   "dependencies": {

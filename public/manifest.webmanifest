@@ -1,17 +1,99 @@
 {
-  "name": "SX Time Tasks",
+  "name": "SX Time Tasks — Agenda Inteligente",
   "short_name": "Time Tasks",
-  "description": "Agenda, tarefas e lembretes inteligentes com a assistente SX.",
+  "description": "Agenda, tarefas, lembretes e reservas com IA. Integração com Google Calendar e Apple Calendar.",
   "start_url": "/",
+  "scope": "/",
   "display": "standalone",
+  "orientation": "portrait-primary",
   "background_color": "#050705",
   "theme_color": "#9be800",
+  "categories": ["productivity", "utilities"],
+  "screenshots": [
+    {
+      "src": "/sx-time-tasks-logo.png",
+      "sizes": "540x720",
+      "type": "image/png",
+      "form_factor": "narrow"
+    },
+    {
+      "src": "/sx-time-tasks-logo.png",
+      "sizes": "1280x720",
+      "type": "image/png",
+      "form_factor": "wide"
+    }
+  ],
   "icons": [
+    {
+      "src": "/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/icon-192-maskable.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "maskable"
+    },
+    {
+      "src": "/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/icon-512-maskable.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "maskable"
+    },
     {
       "src": "/sx-time-tasks-logo.png",
       "sizes": "1536x1536",
       "type": "image/png",
-      "purpose": "any maskable"
+      "purpose": "any"
+    }
+  ],
+  "shortcuts": [
+    {
+      "name": "Novo Evento",
+      "short_name": "Evento",
+      "description": "Criar um novo evento rapidamente",
+      "url": "/?action=new-event",
+      "icons": [
+        {
+          "src": "/icon-192.png",
+          "sizes": "192x192",
+          "type": "image/png"
+        }
+      ]
+    },
+    {
+      "name": "Minha Agenda",
+      "short_name": "Agenda",
+      "description": "Ver sua agenda",
+      "url": "/?action=agenda",
+      "icons": [
+        {
+          "src": "/icon-192.png",
+          "sizes": "192x192",
+          "type": "image/png"
+        }
+      ]
+    },
+    {
+      "name": "Tarefas",
+      "short_name": "Tarefas",
+      "description": "Visualizar tarefas",
+      "url": "/?action=tarefas",
+      "icons": [
+        {
+          "src": "/icon-192.png",
+          "sizes": "192x192",
+          "type": "image/png"
+        }
+      ]
     }
   ]
 }
