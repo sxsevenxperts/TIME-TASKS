@@ -1,14 +1,28 @@
 # Roadmap — SX Time Tasks
 
-**Última revisão técnica:** 16/07/2026 (PWA + Voice)
-**Status:** ✅ PRODUÇÃO READY
-- Fases 1–9 do planner ✅ concluídas
+**Última revisão técnica:** 18/07/2026 (Início v2.1)
+**Status:** ✅ PRODUÇÃO READY + DESENVOLVIMENTO v2.1
+
+## Versão 2.1 — em desenvolvimento
+
+**Fase 12: Integrações + Triggers + Performance**
+- 12.1 Frontend UI Calendários (Google + Apple connect buttons) — 👈 COMEÇANDO
+- 12.2 Executor de Triggers (cronograma, notificações) — ⏳ Próximo
+- 12.3 Otimizações de Performance (cache, bundle, assets) — ⏳ Próximo
+- Tag: v2.1.0 | Branch: `develop` | Prazo: 25/07/2026
+
+---
+
+## Versão 2.0 — entregue
+
+**Status completo:**
+- Fases 1–11 ✅ concluídas
 - SX 2.1 (memória + gestão + baixa) ✅ entregue
-- PWA (offline, installable, notificações) ✅ NOVO
-- Voice Commands (fala → agenda) ✅ NOVO
-- Integrações calendários (Google + Apple) ✅ concluídas
-- Fase 6.2 (executor triggers) ⏳ pendente (opcional)
-- Fase 11 (PWA JWS) ✅ COMPLETA
+- PWA (offline, installable, notificações) ✅ v2.0
+- Voice Commands (fala → agenda) ✅ v2.0
+- Integrações calendários (Google + Apple backend) ✅ v2.0
+- Executor triggers ⏳ v2.1
+- Performance ⏳ v2.1
 
 ## Versão 2.0 — entregue
 
