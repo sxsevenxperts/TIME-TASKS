@@ -1,6 +1,13 @@
 import { supabase, supabaseConfigError } from './supabase.js';
 import { loadEventsFromServer } from './events.js';
 import { refreshCalendar } from './calendar.js';
+import {
+  savePersistentSession,
+  silentAutoLogin,
+  startAutoRefresh,
+  setupAuthSyncListener,
+  getPersistedSessionInfo
+} from './persistent-auth.js';
 
 let currentUser = null;
 
@@ -164,7 +171,11 @@ export async function initAuth() {
       registering = false;
       lastSessionId = session.user.id;
       currentUser = session.user;
-      
+
+      // Salvar sessão persistentemente e agendar refresh
+      savePersistentSession(session);
+      startAutoRefresh(session);
+
       // Hide Auth UI, Show App
       authOverlay.style.display = 'none';
       appLayout.style.visibility = 'visible';
@@ -201,16 +212,45 @@ export async function initAuth() {
 
   supabase.auth.onAuthStateChange((_event, session) => {
     // O callback não fica bloqueado por uma consulta ao banco.
+    if (session) {
+      savePersistentSession(session);
+      startAutoRefresh(session);
+    }
     void applySession(session);
   });
 
-  const { data, error: sessionError } = await supabase.auth.getSession();
-  if (sessionError) {
-    authError.textContent = 'Não foi possível restaurar sua sessão. Faça login novamente.';
-    finishLoading();
-  } else {
-    await applySession(data.session);
+  // Tentar auto-login silencioso (para PWA JWS com login permanente)
+  let sessionToRestore = null;
+  try {
+    sessionToRestore = await silentAutoLogin();
+  } catch (error) {
+    console.warn('Auto-login silencioso falhou:', error);
   }
+
+  // Se não conseguiu auto-login, tentar restaurar sessão normal
+  if (!sessionToRestore) {
+    const { data, error: sessionError } = await supabase.auth.getSession();
+    if (sessionError) {
+      authError.textContent = 'Não foi possível restaurar sua sessão. Faça login novamente.';
+      finishLoading();
+    } else {
+      sessionToRestore = data.session;
+      if (sessionToRestore) {
+        savePersistentSession(sessionToRestore);
+        startAutoRefresh(sessionToRestore);
+      }
+    }
+  }
+
+  // Aplicar a sessão restaurada
+  if (sessionToRestore) {
+    await applySession(sessionToRestore);
+  } else {
+    finishLoading();
+  }
+
+  // Sincronizar auth entre abas/janelas
+  setupAuthSyncListener();
 
   // Bind Logout Button
   const logoutBtn = document.getElementById('btn-logout');

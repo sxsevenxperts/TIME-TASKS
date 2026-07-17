@@ -10,6 +10,15 @@
         setInterval(() => {
           registration.update();
         }, 60000); // Check every minute
+
+        // Verificar autenticação periodicamente no SW
+        setInterval(() => {
+          if (navigator.serviceWorker.controller) {
+            navigator.serviceWorker.controller.postMessage({
+              type: 'CHECK_AUTH'
+            });
+          }
+        }, 5 * 60 * 1000); // A cada 5 minutos
       })
       .catch((error) => {
         console.error('Service Worker registration failed:', error);

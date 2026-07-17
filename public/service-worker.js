@@ -139,7 +139,41 @@ self.addEventListener('fetch', (event) => {
 
 // Handle messages from clients
 self.addEventListener('message', (event) => {
-  if (event.data && event.data.type === 'CLEAR_CACHE') {
-    caches.delete(DYNAMIC_CACHE);
+  if (event.data) {
+    switch (event.data.type) {
+      case 'CLEAR_CACHE':
+        caches.delete(DYNAMIC_CACHE);
+        break;
+
+      case 'CHECK_AUTH':
+        // Verificar se há token válido no localStorage
+        const authKey = 'timetasks_auth_persistent';
+        const authData = localStorage.getItem ? (() => {
+          try {
+            const stored = localStorage.getItem(authKey);
+            return stored ? JSON.parse(stored) : null;
+          } catch {
+            return null;
+          }
+        })() : null;
+
+        if (authData && authData.expiresAt) {
+          const now = Date.now();
+          const expiresAtMs = authData.expiresAt * 1000;
+
+          // Se expirou, limpar
+          if (now > expiresAtMs) {
+            if (localStorage.removeItem) {
+              localStorage.removeItem(authKey);
+            }
+            event.ports[0]?.postMessage({ authenticated: false, reason: 'expired' });
+          } else {
+            event.ports[0]?.postMessage({ authenticated: true });
+          }
+        } else {
+          event.ports[0]?.postMessage({ authenticated: false, reason: 'no-session' });
+        }
+        break;
+    }
   }
 });
