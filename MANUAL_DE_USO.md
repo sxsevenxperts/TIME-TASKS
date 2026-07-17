@@ -2,7 +2,7 @@
 
 ## 1. Acesso
 
-Abra [o SX Time Tasks em produção](https://startups-timetasks.qfotry.easypanel.host/).
+Abra [o SX Time Tasks em produção](https://timetasks.sevenxperts.solutions/).
 
 ### Entrar
 
@@ -275,6 +275,33 @@ Os atalhos não são executados enquanto o foco estiver em campo de texto, sele�
 - O Supabase atual é compartilhado fisicamente, mas o Time Tasks possui isolamento lógico de dados e acesso. Uma instância dedicada está prevista se for necessário isolamento físico.
 
 ## 15. Modo PWA (Progressive Web App)
+
+
+
+### Voice Commands (Reconhecer Fala)
+
+Você pode **falar com a SX** para agendar eventos e tarefas:
+
+#### Desktop
+- Pressione **Ctrl+Shift+V** (ou **⌘+Shift+V** no Mac)
+- Fale claramente (ex: "Agende reunião amanhã às 14h")
+- App transcreve e SX cria automaticamente
+- Confirma com áudio
+
+#### Mobile
+- Toque no ícone 🎤 (abaixo do chat)
+- Fale seu comando
+- App reconhece e SX agenda
+- Recebe confirmação por áudio
+
+#### Exemplos de Voz
+
+- "Agende reunião segunda às 10 horas"
+- "Crie tarefa comprar leite amanhã"
+- "Marca médico quarta 14 horas"
+- "Lembrete enviar relatório sexta"
+
+**Nota:** Voice funciona se seu navegador suporta Web Speech API (Chrome, Edge, Firefox). Se não suportar, use o teclado normalmente.
 
 ### Login Permanente (JWS)
 
