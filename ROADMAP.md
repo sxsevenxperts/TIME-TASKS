@@ -287,16 +287,16 @@ Uma entrega só é considerada concluída quando passa por build, banco/RLS, aut
 
 ---
 
-### Fase 10.2 — Apple Calendar CalDAV (⏳ Próxima)
+### Fase 10.2 — Apple Calendar CalDAV (✅ CONCLUÍDO - 16/07/2026)
 
 **Objetivo:** Integração CalDAV com Apple Calendar (iCloud, macOS, iOS).
 
 **Scope:**
-- [ ] Módulo `js/apple-calendar-handler.js` com CalDAV discovery e autenticação.
-- [ ] Endpoint GET `/api/auth/apple/connect` → setup formulário de credenciais.
-- [ ] Endpoint POST `/api/auth/apple/setup` → salva credenciais encriptadas.
-- [ ] Parse de eventos `.ics` e mapeamento para schema interno.
-- [ ] Teste com iCloud calendário público.
+- [x] Módulo `js/apple-calendar-handler.js` com CalDAV discovery e autenticação.
+- [x] Endpoint GET `/api/auth/apple/connect` → setup formulário de credenciais.
+- [x] Endpoint POST `/api/auth/apple/setup` → salva credenciais encriptadas.
+- [x] Parse de eventos `.ics` e mapeamento para schema interno.
+- [x] Teste com iCloud calendário público.
 
 ---
 

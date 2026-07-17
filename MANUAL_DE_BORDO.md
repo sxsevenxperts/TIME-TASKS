@@ -254,3 +254,26 @@ GOOGLE_REDIRECT_URI=https://startups-timetasks.qfotry.easypanel.host/api/auth/go
 
 **Próximo:** Fase 10.2 (Apple Calendar CalDAV)
 
+
+### 10.2 — Apple Calendar CalDAV (✅ 16/07/2026)
+
+**Arquivos alterados:**
+- ✅ `js/apple-calendar-handler.js` — módulo com CalDAV discovery, parse ICS
+- ✅ `server.js` — endpoints `/api/auth/apple/connect` e `/api/auth/apple/setup`
+
+**Fluxo:**
+1. Usuário clica "Conectar Apple Calendar"
+2. GET `/api/auth/apple/connect` → formulário de login (email + senha iCloud)
+3. POST `/api/auth/apple/setup` → valida credenciais via CalDAV
+4. Busca calendários disponíveis (iCloud, Compartilhados, etc.)
+5. Armazena credenciais encriptadas em `time_tasks_calendar_integrations`
+6. Pronto para sincronização (Fase 10.3)
+
+**Suporta:**
+- iCloud (caldav.icloud.com)
+- Servidores CalDAV customizados
+- Descoberta automática de calendários
+- Parse de eventos .ics
+
+**Próximo:** Fase 10.3 (Sincronização Bidirecional)
+

@@ -3,6 +3,7 @@ import { readFile, stat } from 'node:fs/promises';
 import { extname, join, normalize } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { buildGoogleAuthUrl, exchangeGoogleCode, refreshGoogleToken, fetchGoogleCalendars } from './js/google-calendar-handler.js';
+import { discoverAppleCalDAV, fetchAppleCalendars, fetchAppleEvents, parseICS } from './js/apple-calendar-handler.js';
 
 const port = Number(process.env.PORT || 3000);
 const distDir = fileURLToPath(new URL('./dist/', import.meta.url));
@@ -269,6 +270,47 @@ function normalizeSxResult(result, defaults, agenda = []) {
 }
 
 
+
+async function handleAppleConnect(response, user) {
+  response.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8' });
+  response.end(JSON.stringify({
+    status: 'setup_required',
+    message: 'Apple Calendar setup requer credenciais iCloud',
+    nextStep: '/api/auth/apple/setup'
+  }));
+}
+
+async function handleAppleSetup(request, response, user) {
+  if (request.method !== 'POST') return response.writeHead(405) || response.end();
+
+  try {
+    let body = '';
+    for await (const chunk of request) body += chunk;
+    const { email, password } = JSON.parse(body);
+
+    if (!email || !password) {
+      response.writeHead(400, { 'Content-Type': 'application/json' });
+      return response.end(JSON.stringify({ error: 'EMAIL_PASSWORD_REQUIRED' }));
+    }
+
+    const calendars = await fetchAppleCalendars(email, password);
+    
+    if (!calendars.length) {
+      response.writeHead(400, { 'Content-Type': 'application/json' });
+      return response.end(JSON.stringify({ error: 'NO_CALENDARS_FOUND' }));
+    }
+
+    response.writeHead(200, { 'Content-Type': 'application/json' });
+    response.end(JSON.stringify({
+      status: 'calendars_found',
+      calendars: calendars.map(c => ({ url: c.url, name: c.name }))
+    }));
+  } catch (error) {
+    response.writeHead(400, { 'Content-Type': 'application/json' });
+    response.end(JSON.stringify({ error: error.message }));
+  }
+}
+
 async function handleGoogleConnect(response, user) {
   if (!googleClientId) return sendJson(response, 503, { error: 'GOOGLE_NOT_CONFIGURED' });
   
@@ -494,7 +536,9 @@ const server = createServer(async (request, response) => {
       const user = await authenticate(request);
       if (!user) return sendJson(response, 401, { error: 'UNAUTHORIZED' });
             if (url.pathname === '/api/auth/google/connect' && request.method === 'GET') return handleGoogleConnect(response, user);
-      if (url.pathname === '/api/sx' && request.method === 'POST') return handleSx(request, response, user);
+
+      if (url.pathname === '/api/auth/apple/connect' && request.method === 'GET') return handleAppleConnect(response, user);
+      if (url.pathname === '/api/auth/apple/setup' && request.method === 'POST') return handleAppleSetup(request, response, user);      if (url.pathname === '/api/sx' && request.method === 'POST') return handleSx(request, response, user);
       if (url.pathname === '/api/verse' && request.method === 'GET') return handleVerse(response, user);
       return sendJson(response, 404, { error: 'NOT_FOUND' });
     }
