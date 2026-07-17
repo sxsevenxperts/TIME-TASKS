@@ -277,3 +277,31 @@ GOOGLE_REDIRECT_URI=https://startups-timetasks.qfotry.easypanel.host/api/auth/go
 
 **Próximo:** Fase 10.3 (Sincronização Bidirecional)
 
+
+### 10.3 — Sincronização Bidirecional (✅ 16/07/2026)
+
+**Arquivos alterados:**
+- ✅ `js/calendar-sync.js` — engine de sincronização (pull + push)
+- ✅ `server.js` — inicialização do job de sync
+- ✅ `migrations/008_calendar_sync_logs.sql` — tabela de logs
+
+**Job de sincronização:**
+- Executa a cada 5 minutos (configurável)
+- Percorre integrações ativas (Google + Apple)
+- Busca eventos de 7 dias atrás até 30 dias adiante
+- Dedup por `external_id` (não duplica)
+- Renova tokens Google se expirados
+- Registra status, erros e contadores em `time_tasks_sync_logs`
+
+**Push automático:**
+- Novo evento criado em SX → tenta publicar em Google/Apple
+- Atualiza `external_id` com ID do evento criado
+- Falha silenciosa não bloqueia criação local
+
+**Monitoramento:**
+- Verifique `time_tasks_sync_logs` para status de cada sincronização
+- Campo `error_message` captura problemas (token expirado, calendário removido, etc.)
+- Dashboard poderá mostrar último sync, próximo sync, status
+
+**Próximo:** Fase 10.4 (Testes, UI, Deploy)
+

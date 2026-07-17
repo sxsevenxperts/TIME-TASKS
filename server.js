@@ -4,6 +4,7 @@ import { extname, join, normalize } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { buildGoogleAuthUrl, exchangeGoogleCode, refreshGoogleToken, fetchGoogleCalendars } from './js/google-calendar-handler.js';
 import { discoverAppleCalDAV, fetchAppleCalendars, fetchAppleEvents, parseICS } from './js/apple-calendar-handler.js';
+import { startCalendarSync } from './js/calendar-sync.js';
 
 const port = Number(process.env.PORT || 3000);
 const distDir = fileURLToPath(new URL('./dist/', import.meta.url));
@@ -555,3 +556,10 @@ const server = createServer(async (request, response) => {
 server.listen(port, '0.0.0.0', () => {
   console.log(`Time Tasks disponível na porta ${port}`);
 });
+
+// Iniciar sincronização de calendários em background
+if (supabaseUrl && supabaseAnonKey) {
+  startCalendarSync(supabaseUrl, supabaseAnonKey).catch(err => {
+    console.error('Erro ao inicializar sincronização de calendários:', err);
+  });
+}

@@ -325,3 +325,41 @@ Uma entrega só é considerada concluída quando passa por build, banco/RLS, aut
 - [ ] Tratamento de erros: token expirado, calendário removido, conflito.
 - [ ] Documentação em MANUAL_DE_USO.md.
 - [ ] Deploy em produção com healthcheck.
+
+---
+
+### Fase 10.3 — Sincronização Bidirecional (✅ CONCLUÍDO - 16/07/2026)
+
+**Objetivo:** Puxar eventos de Google/Apple e criar/editar/deletar no Time Tasks.
+
+**Alterações:**
+- [x] Módulo `js/calendar-sync.js` com job de sincronização a cada 5 minutos.
+- [x] Funções: `startCalendarSync`, `syncAllIntegrations`, `syncGoogleCalendar`, `syncAppleCalendar`.
+- [x] Dedup por `external_id` (busca evento existente antes de criar).
+- [x] Renovação automática de tokens Google via `refreshGoogleToken`.
+- [x] Mapeamento de eventos: Google → Trabalho (categoria).
+- [x] Push events: novo evento SX → criado em Google + Apple (via `pushEventToCalendars`).
+- [x] Tabela `time_tasks_sync_logs` para rastreamento de sincronizações.
+- [x] Migração SQL: `migrations/008_calendar_sync_logs.sql`.
+- [x] Inicialização automática em `server.js` (background job).
+
+**Fluxo Pull (Google/Apple → SX):**
+1. Job dispara a cada 5 min
+2. Busca integrações ativas
+3. Renova tokens se expirados
+4. Busca eventos de 7 dias atrás até 30 dias adiante
+5. Para cada evento: verifica se existe pelo `external_id`
+6. Se não existe: cria novo evento em `time_tasks_events`
+7. Se existe: atualiza com dados mais recentes
+8. Registra status em `time_tasks_sync_logs`
+
+**Fluxo Push (SX → Google/Apple):**
+1. Usuário cria evento via SX ou UI
+2. Trigger salva em `time_tasks_events`
+3. Função `pushEventToCalendars` ativa
+4. Percorre integrações ativas do usuário
+5. Cria evento em Google/Apple
+6. Atualiza `external_id` e `external_source`
+
+**Status:** ✅ Sincronização bidirecional pronta. Próximo: Testes e Deploy (Fase 10.4).
+
