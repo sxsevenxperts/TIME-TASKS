@@ -514,6 +514,11 @@ npm audit → 0 vulnerabilidades (mesmo nível de antes)
 - [x] Chat fullscreen mobile com `width: 100%` (remove overflow horizontal de `100vw`)
 - [x] `overscroll-behavior: contain` no histórico do chat (sem scroll encadeado da página atrás)
 
+### 12.5 — Bate-papo SX como tela inicial no mobile (✅ 18/07/2026)
+- [x] Ao restaurar a sessão, a SX abre automaticamente também no mobile (antes só no desktop)
+- [x] Calendário permanece como view ativa por baixo — fechar o chat leva direto a ele
+- [x] Guard de `lastSessionId` impede reabertura em refresh de token (abre 1x por sessão)
+
 ---
 
 ## 📊 Resumo Final — Entregas Completadas

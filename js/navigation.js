@@ -119,7 +119,10 @@ export function initNavigation() {
   });
 
   document.addEventListener('timetasks:session', event => {
-    if (event.detail?.user && isDesktopViewport()) setChatOpen(true);
+    // Bate-papo é a tela inicial após o login em qualquer viewport: no
+    // desktop a SX fica sempre aberta ao lado; no mobile ela abre por cima
+    // do calendário, que permanece como view ativa por baixo.
+    if (event.detail?.user) setChatOpen(true);
   });
 
   document.querySelectorAll('.ai-header-tab[data-ai-tab]').forEach(button => {

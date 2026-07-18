@@ -1038,3 +1038,23 @@ performanceOptimizer.initialize()
 
 **RISCO (lição registrada):**
 - Deploy automático na `main` sem gate de boot: adicionar ao processo um teste mínimo de inicialização (`node server.js` + curl no `/api/health`) antes de qualquer merge para `main`, como já previsto no critério permanente de pronto do ROADMAP.
+
+---
+
+## Registros de 18/07/2026 — Bate-papo SX como tela inicial no mobile (12.5)
+
+**PEDIDO:** No celular, a tela inicial do app deve ser o bate-papo da SX (hoje abre no calendário; o chat só abria automaticamente no desktop).
+
+**DECISÃO:** Mudança mínima em `js/navigation.js`: o listener de `timetasks:session` passa a chamar `setChatOpen(true)` em qualquer viewport, não apenas no desktop. O calendário continua como view ativa por baixo do chat — ao fechar a SX, o usuário cai direto nele. O guard `lastSessionId` em `auth.js` garante que o evento dispara uma vez por sessão (refresh de token não reabre o chat no meio do uso).
+
+**FALHA (observada durante a análise, não corrigida nesta rodada):**
+- `js/pwa-sx-initial.js` (`configureInitialLayout`) referencia `#sx-panel` e `.navigation-bottom`, elementos que não existem no DOM atual — a feature "SX fullscreen no PWA" da Fase 11.4 é um no-op silencioso. A tela inicial real era decidida por `navigation.js`.
+- Os botões do cabeçalho mobile do chat (`btn-ai-profile` e `btn-ai-more`) não têm handler algum — são botões mortos. A única saída do chat fullscreen no mobile é o botão do relógio ("Ver Sementes"), já que a tabbar fica coberta pela SX (z-index 300 vs 250).
+
+**VALIDAÇÃO:**
+- ✅ `npm run build` sem erros; bundle novo `index-Bks5GR2D.js`.
+
+**PENDÊNCIA:**
+- Avaliar deixar a tabbar visível sob o chat no mobile (chat com `bottom` acima da tabbar + fechar SX ao tocar em outra aba), dando saída direta do chat para Calendário/Seed/Trigger sem passar por Sementes.
+- Decidir o destino de `pwa-sx-initial.js`: corrigir os seletores ou remover o módulo (a abertura automática agora é responsabilidade do `navigation.js`).
+- Dar função (ou remover) os botões `btn-ai-profile` e `btn-ai-more` do cabeçalho mobile do chat.
