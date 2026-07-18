@@ -2,8 +2,6 @@
 
 import { parseString } from 'xml2js';
 
-const ics = await import('ics');
-
 export function buildAppleCalDAVUrl(email, domain = 'caldav.icloud.com') {
   return `https://${domain}/`;
 }

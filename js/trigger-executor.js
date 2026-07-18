@@ -1,8 +1,7 @@
 // Trigger Executor — Fase 12.2
 // Worker Node.js para executar triggers em cronograma
 // Tipos: weather, summary, reminder
-
-import fetch from 'node-fetch';
+// Usa o fetch global do Node 22 — sem dependência externa.
 
 export class TriggerExecutor {
   constructor(supabaseUrl, supabaseAnonKey, serviceRoleKey) {

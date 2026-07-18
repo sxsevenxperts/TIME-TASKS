@@ -1013,3 +1013,28 @@ performanceOptimizer.initialize()
 **PENDÊNCIA:**
 - Testar em aparelho físico iOS (standalone) e Android: foco no input do chat sem zoom, barra de digitação visível com teclado aberto, notch/home indicator respeitados.
 - Se o teclado do iOS ainda cobrir o input em standalone, avaliar ajuste via `window.visualViewport` (JS) — não incluído nesta rodada por ser necessário só se o CSS não bastar.
+
+---
+
+## Registros de 18/07/2026 — INCIDENTE: produção fora do ar (502 Bad Gateway)
+
+**FALHA (incidente em produção):**
+- ~21:39 UTC: `timetasks.sevenxperts.solutions` respondendo **502 Bad Gateway** (Cloudflare OK, host de origem com erro). Confirmado também no host direto do EasyPanel (`startups-timetasks.qfotry.easypanel.host`) — ou seja, o container do app estava caído, não era problema de Cloudflare/DNS.
+- Causa raiz: os commits das Fases 10/12 adicionaram ao `server.js` imports de `js/trigger-executor.js` (que importava `node-fetch`) e `js/apple-calendar-handler.js` (que importava `ics` em top-level `await import`). **Nenhum dos dois pacotes está no `package.json`** — `npm ci` no Docker nunca os instalou. Ao chegarem à `main` hoje (`d9867d8` → `d077317`), o auto-deploy do EasyPanel publicou o código e o `node server.js` passou a morrer no boot com `ERR_MODULE_NOT_FOUND`, gerando loop de crash e 502.
+- A `main` anterior (`d9867d8`) não importava esses módulos no `server.js` — por isso a produção funcionava até este deploy.
+
+**CORREÇÃO:**
+- `js/trigger-executor.js` — removido `import fetch from 'node-fetch'`; o Node 22 tem `fetch` global nativo (nenhuma dependência nova).
+- `js/apple-calendar-handler.js` — removido `const ics = await import('ics')`; era código morto (a variável nunca é usada no arquivo).
+
+**VALIDAÇÃO:**
+- ✅ `node server.js` local: boot limpo, `/api/health` → `{"status":"ok","service":"time-tasks"}`, `/` → HTTP 200.
+- ✅ Varredura de imports em `server.js`, `google-calendar-handler.js`, `apple-calendar-handler.js`, `calendar-sync.js`, `trigger-executor.js`: nenhum outro pacote fora do `package.json`.
+- ✅ `npm run build` inalterado (módulos do servidor não entram no bundle do cliente).
+
+**PENDÊNCIA (restauração da produção):**
+- O fix precisa chegar à `main` para o auto-deploy do EasyPanel republicar — reiniciar o container sem o fix NÃO resolve (o código na `main` continua quebrando no boot).
+- Após deploy: verificar `/api/health` com `sx: true` e `supabase: true` e logs `✅ Trigger Executor iniciado` / sync de calendários.
+
+**RISCO (lição registrada):**
+- Deploy automático na `main` sem gate de boot: adicionar ao processo um teste mínimo de inicialização (`node server.js` + curl no `/api/health`) antes de qualquer merge para `main`, como já previsto no critério permanente de pronto do ROADMAP.
