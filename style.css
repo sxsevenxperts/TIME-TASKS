@@ -112,6 +112,10 @@
 
 html {
   font-size: 16px;
+  /* Impede o iOS de inflar o texto (Dynamic Type/autosizing) — o app deve
+     renderizar sempre em escala 1:1, sem "zoom" aparente. */
+  -webkit-text-size-adjust: 100%;
+  text-size-adjust: 100%;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
 }

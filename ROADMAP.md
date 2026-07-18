@@ -519,6 +519,11 @@ npm audit → 0 vulnerabilidades (mesmo nível de antes)
 - [x] Calendário permanece como view ativa por baixo — fechar o chat leva direto a ele
 - [x] Guard de `lastSessionId` impede reabertura em refresh de token (abre 1x por sessão)
 
+### 12.6 — Conversa sempre em escala 1:1 no mobile (zoom travado) (✅ 18/07/2026)
+- [x] Viewport com `maximum-scale=1` + `user-scalable=no` (iOS nunca amplia a página sozinho)
+- [x] `text-size-adjust: 100%` no `html` (bloqueia inflação de texto do iOS/Dynamic Type)
+- [x] Foco automático do input do chat restrito ao desktop (no mobile, o teclado não sobe sozinho na entrada e não há gatilho de zoom de foco)
+
 ---
 
 ## 📊 Resumo Final — Entregas Completadas

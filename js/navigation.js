@@ -67,7 +67,10 @@ export function setChatOpen(open) {
     button.classList.toggle('active', resolved);
     button.setAttribute('aria-expanded', String(resolved));
   });
-  if (resolved) document.getElementById('ai-input')?.focus();
+  // Focar o input só no desktop: no mobile o foco automático levanta o
+  // teclado por cima da conversa e pode disparar o zoom de foco do iOS —
+  // a conversa deve abrir enquadrada, em escala 1:1.
+  if (resolved && isDesktopViewport()) document.getElementById('ai-input')?.focus();
   return resolved;
 }
 
