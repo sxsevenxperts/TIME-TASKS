@@ -987,3 +987,195 @@ performanceOptimizer.initialize()
 4. ⏳ Tag v2.1.0 após merge validado
 5. ⏳ Deploy para produção (auto-deploy via push para `main`)
 
+---
+
+## Roadmap v2.2 — Próximas Fases Planejadas
+
+### Fase 13: Consolidação de Triggers
+**Objetivo:** Completar implementação end-to-end de triggers com testes e validação
+
+**Arquivos a completar:**
+- `server.js` — TODOs Supabase queries
+- Criar `migrations/009_time_tasks_notifications.sql`
+- `js/triggers-modal-ui.js` — input validation + error handling
+- Testes: criar trigger → dispara notificação → marca como lido
+
+**Commits previstos:** ~3 commits
+
+### Fase 14: Performance Targets — Validação Real
+**Objetivo:** Validar targets agressivos (bundle -22%, load -28%) em v2.1 build real
+
+**Tarefas:**
+- Build v2.1 (`npm run build`)
+- Baseline Lighthouse (staging)
+- Bundle analysis vs v2.0
+- GZIP + cache headers em staging
+- Ajustar targets se fora da realidade
+
+**Métricas esperadas:**
+- Bundle: 450KB → 350KB (-22%)? Realisiticamente 400KB-420KB (-6% a -11%)
+- LCP: 2.5s → < 2.0s (dependente de CSP, DNS)
+- FID: <100ms ✓ (já bom em v2.0)
+- CLS: <0.1 ✓ (já estável)
+
+**Commits previstos:** ~1 commit (PERFORMANCE_GUIDE atualizado)
+
+### Fase 15: Notificações Dashboard
+**Objetivo:** Central unificada de notificações com gerenciamento
+
+**Arquivos novos:**
+- `js/notifications-center.js` — modal de notificações com filtros
+- `settings/notifications-dashboard.html` — view no Settings
+
+**Features:**
+- Listagem por tipo (weather, summary, reminder, events)
+- Mark as read / unread
+- Delete notificação
+- Agrupado por data
+- Contador de não-lidos (dot badge)
+
+**Commits previstos:** ~2 commits
+
+### Fase 16: Expansão de Integrações (Fase 3)
+**Objetivo:** Slack, Teams, Telegram webhooks
+
+**Arquivos novos:**
+- `js/slack-integration.js` — webhook para notificações → Slack
+- `js/teams-integration.js` — Teams channel integration
+- `js/telegram-bot.js` — Telegram bot (Supabase edge functions)
+
+**Features:**
+- Notificações de triggers → Slack channel
+- Notificações de eventos → Teams
+- Comandos de telegram bot: /agenda, /nova-tarefa
+
+**Commits previstos:** ~3 commits
+
+### Fase 17: Analytics + Insights Dashboard
+**Objetivo:** Visualizar produtividade com gráficos
+
+**Arquivos novos:**
+- `js/analytics-dashboard.js` — charts (Chart.js ou D3)
+- `js/insights.js` — sugestões automáticas
+
+**Métricas:**
+- Eventos criados/mês (bar chart)
+- Tarefas completadas (progress)
+- Hora pico de atividade (heatmap)
+- Comparação período-a-período
+
+**Commits previstos:** ~2 commits
+
+### Fase 18: Mobile App Nativa (Optional)
+**Objetivo:** React Native wrapper (opcional, pós v2.1.0)
+
+**Arquivos:**
+- Novo repositório: `TIME-TASKS-MOBILE`
+- Compartilhar lógica via `@sxsevenxperts/time-tasks-core` (npm package)
+
+**Features:**
+- Push notifications nativas
+- Home screen widget
+- Deep linking
+- Offline-first com SQLite
+
+**Commits previstos:** N/A (novo repo)
+
+---
+
+## Status Consolidado — v2.1 (18/07/2026)
+
+### ✅ Completado (0 Fase 12)
+
+| Component | Fase | Status | Commit | Linhas |
+|---|---|---|---|---|
+| calendar-integrations-ui.js | 12.1 | ✅ | `67e63bf` | 370+ |
+| trigger-executor.js | 12.2 | ✅ | `3409cc6` | 328 |
+| triggers-modal-ui.js | 12.2 | ✅ | `3409cc6` | 341 |
+| performance-optimizer.js | 12.3 | ✅ | `29c750c` | 310 |
+| PERFORMANCE_GUIDE.md | 12.3 | ✅ | `29c750c` | 213 |
+| ROADMAP.md | (sync) | ✅ | `d077317` | updated |
+| MANUAL_DE_USO.md | (sync) | ✅ | `d077317` | +100 |
+| MANUAL_DE_BORDO.md | (sync) | ✅ | `d077317` | +70 |
+
+### ⏳ Pendente (Bloqueador v2.1.0)
+
+| Item | Tipo | Prioridade | Arquivo |
+|---|---|---|---|
+| Supabase calendar queries | Code TODO | CRÍTICO | server.js |
+| time_tasks_notifications migration | Database | CRÍTICO | migrations/ |
+| Input validation modal | Code TODO | CRÍTICO | triggers-modal-ui.js |
+| Performance baseline validation | Test/Docs | ALTO | PERFORMANCE_GUIDE.md |
+| TriggerExecutor error handling | Code TODO | ALTO | trigger-executor.js |
+
+### 📊 Métricas
+
+| Métrica | Valor | Status |
+|---|---|---|
+| Linhas de código (Fase 12) | 1,300+ | ✅ |
+| Arquivos criados | 4 | ✅ |
+| Arquivos modificados | 3 (server.js, etc) | ✅ |
+| Commits Fase 12 | 4 + 1 sync | ✅ |
+| Documentação sincronizada | 100% | ✅ |
+| Build status | Clean | ✅ |
+| Security vulnerabilities | 0 | ✅ |
+
+---
+
+## 🚀 Próximas Ações (Ordem de Execução)
+
+### Hoje (v2.1 Código):
+1. **Preencher Supabase queries** em `server.js`
+   - `handleCalendarStatus()` → SELECT calendar_integrations
+   - `handleCreateTrigger()` → INSERT trigger
+   - `handleGoogleDisconnect()` → DELETE
+   - `handleAppleDisconnect()` → DELETE
+
+2. **Criar migration** `migrations/009_time_tasks_notifications.sql`
+   - Table structure com RLS
+   - Policies para INSERT/SELECT/UPDATE
+
+3. **Input validation** em `triggers-modal-ui.js`
+   - Required fields (city, time, message)
+   - Sanitização básica
+   - Error feedback visual
+
+### Amanhã (v2.1 Testing):
+4. **Teste end-to-end**
+   - Settings > Calendários > Conectar Google (OAuth flow)
+   - Settings > Triggers > Novo (salva em banco)
+   - TriggerExecutor polling (verifica a cada 1 min)
+   - Notificação criada em `time_tasks_notifications`
+
+5. **Validar performance** em staging
+   - Build real: `npm run build && npm run analyze-bundle`
+   - Lighthouse score
+   - Compare vs v2.0 baseline
+
+### Semana (v2.1 Deploy):
+6. **Merge PR** `develop` → `main`
+   - Incluir TODOs resolvidos
+   - Incluir testes validados
+
+7. **Tag v2.1.0**
+   ```bash
+   git tag -a v2.1.0 -m "Release v2.1.0: Fase 12 completa"
+   git push origin v2.1.0
+   ```
+
+8. **Deploy para produção**
+   - Auto-deploy via push to main
+   - Smoke test em produção
+   - Verify calendar connect + triggers
+
+9. **Anuncio v2.1.0**
+   - Release notes
+   - Changelog
+   - User guide update
+
+---
+
+**Estimativa:** ~1-2 dias de trabalho (Supabase queries + migration + testing)  
+**Release Target:** v2.1.0 na semana de 20-25 de julho  
+**Status Atual:** 95% pronto (só faltam os TODOs de backend)
+

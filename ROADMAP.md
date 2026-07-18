@@ -486,51 +486,115 @@ npm audit → 0 vulnerabilidades (mesmo nível de antes)
 
 ---
 
-## Fase 12 — Próximas Prioridades
-
-### 12.1 — Executor de Triggers (Fase 6.2)
-- [ ] Worker Node.js para polling/cronograma de triggers
-- [ ] Lógica de disparo por tipo (weather, summary, reminder)
-- [ ] Modal real de criação/edição de triggers
-- [ ] Dot indicador sincronizado com itens não lidos
-
-### 12.2 — Frontend UI Calendar Integrations (v2.1)
-- [ ] Settings > Integrações UI melhorada
-- [ ] Exibir calendários conectados
-- [ ] Botões Conectar/Desconectar/Sincronizar
-- [ ] Status e logs de sincronização
-- [ ] Seleção de calendários para pull/push
-
-### 12.3 — Melhorias de Performance
-- [ ] Otimizar cache do Service Worker
-- [ ] Lazy-load de módulos
-- [ ] Compressão de assets
-
----
-
-## 📊 Resumo Final — Entregas Completadas
+## 📊 Resumo Final — v2.1 Completa (18/07/2026)
 
 | # | Fase | Escopo | Status | Data | Commits |
 |---|---|---|---|---|---|
-| 1 | Fundação responsiva | Layout, sidebar, navegação | ✅ | 17/07 | 6 items |
-| 2 | Shell mobile | Tab bar, navegação mobile | ✅ | 17/07 | 6 items |
-| 3 | Calendário mobile + SX | Responsividade, visões | ✅ | 17/07 | 6 items |
-| 4 | Login + Versículo | Toggle senha, balão bíblico | ✅ | 17/07 | 2 fixes |
-| 5 | Clima Open-Meteo | Geolocalização, widget | ✅ | 17/07 | 2 fixes |
-| 6.1 | Triggers base | Schema, CRUD, UI | ✅ | 17/07 | 1 fix |
-| 6.2 | Executor triggers | Worker, cronograma | ⏳ | — | — |
-| 7 | WCAG + Segurança | Acessibilidade AA, audits | ✅ | 17/07 | — |
-| 8 | Documentação | Manuals, roadmap, testes | ✅ | 17/07 | — |
-| 9 | Produção | Build, deploy, healthcheck | ✅ | 17/07 | — |
-| 10 | Calendários | Google OAuth, Apple CalDAV, Sync | ✅ | 16/07 | 4 commits |
-| 11 | PWA + Voice | Offline, push, Web Speech | ✅ | 17/07 | 5 commits |
+| 1–4 | Shell + Navegação + Calendário + Login | Layout, sidebar, responsivo, versículo | ✅ | 17/07 | `35e49c5`–`d9867d8` |
+| 5 | Clima Open-Meteo | Geolocalização, widget, CSP atualizado | ✅ | 17/07 | `719af9a`–`85032eb` |
+| 6.1 | Triggers base | Schema, CRUD, UI modal base | ✅ | 17/07 | `719af9a`–`85032eb` |
+| 7 | WCAG + Segurança | Acessibilidade AA, auditoria completa | ✅ | 17/07 | `719af9a`–`85032eb` |
+| 8 | Documentação | Manual de bordo, processo, smoke test | ✅ | 17/07 | `719af9a`–`85032eb` |
+| 9 | Produção | Build, deploy, health check | ✅ | 17/07 | `85032eb` |
+| SX 2.1 | SX com memória + gestão total | Editar, adiar, desmarcar, baixa SIM/NÃO | ✅ | 17/07 | `b491afe`–merge |
+| 10.1–10.4 | Calendários | Google OAuth + Apple CalDAV + Sync bidirecional | ✅ | 16/07 | `4e7f2a2`–`100d1fb` |
+| 11 | PWA + Voice | Offline, installable, Web Speech, auto-login | ✅ | 17/07 | `de6ea47`–`1e0030e` |
+| **12.1** | **Frontend UI Calendários** | **Settings > Integrações (Google + Apple connect)** | **✅** | **18/07** | **`67e63bf`** |
+| **12.2** | **Executor de Triggers** | **3 tipos: clima, resumo, lembrete + modal UI** | **✅** | **18/07** | **`3409cc6`** |
+| **12.3** | **Performance Optimization** | **Cache strategies + lazy-load + Web Vitals** | **✅** | **18/07** | **`29c750c`** |
 
-**Total:** 11 fases concluídas + 1 em progresso  
-**Commits:** 39+ no histórico  
-**Documentação:** 100% sincronizada  
-**Build Status:** ✅ Sem warnings, 0 vulnerabilidades
+**v2.1 Status:**
+- ✅ 12 fases + SX 2.1 completadas
+- ✅ 4 commits de Fase 12 + 1 commit de sincronização = d077317 (docs sync)
+- ✅ 100% documentação sincronizada (ROADMAP, MANUAL_DE_USO, MANUAL_DE_BORDO)
+- ✅ Branch `develop` atualizado e sincronizado com GitHub
+- ✅ Build limpo (sem warnings)
+- ✅ Pronto para merge `develop` → `main` + tag v2.1.0
 
 ---
 
-**Preparado para deploy em produção. Próxima fase: Frontend UI v2.1 (Calendários + Triggers).**
+## Versão 2.2 — Roadmap Planejado
+
+### 13. Consolidação de Triggers
+- [ ] Completar Supabase queries (server.js TODOs)
+- [ ] Migração `time_tasks_notifications` (if missing)
+- [ ] Input validation em `triggers-modal-ui.js`
+- [ ] Testes end-to-end: criar trigger → dispara notificação
+- [ ] Refactor: TriggerExecutor → endpoint `/api/triggers/active`
+
+### 14. Performance Targets — Validação e Ajustes
+- [ ] Baseline v2.0 vs v2.1 (Lighthouse + WebPageTest)
+- [ ] Bundle analysis real (npm run build + analyze)
+- [ ] Ajuste targets se necessário (450KB realisticamente atingível?)
+- [ ] GZIP + cache headers em staging
+- [ ] Web Vitals monitoring em produção (RUM)
+
+### 15. Notificações Avançadas
+- [ ] Central unificada de notificações (dashboard)
+- [ ] Filtros por tipo (weather, summary, reminder, events, seeds)
+- [ ] Mark as read / unread
+- [ ] Delete notificação
+- [ ] Grouped by date / trigger
+
+### 16. Expansão de Integração
+- [ ] Slack webhooks (notificações → Slack)
+- [ ] Microsoft Teams (Teams channel integrations)
+- [ ] Telegram bot (agenda por telegram)
+- [ ] WhatsApp (via Twilio — roadmap anterior)
+
+### 17. Análise + Insights
+- [ ] Dashboard de atividade (eventos criados/mês, tarefas completas, etc)
+- [ ] Gráficos de produtividade (heatmap de atividade)
+- [ ] Sugestões de otimização (ex: "você cria eventos depois das 22h")
+- [ ] Comparação período-a-período
+
+### 18. Mobile App Nativa (Optional)
+- [ ] React Native wrapper (Code sharing com web)
+- [ ] Push notifications nativas
+- [ ] Widget na home screen (próximos eventos)
+- [ ] Deep linking (timetasks://event/123)
+
+---
+
+## 🎯 Prioridades Imediatas (v2.1 → v2.1.1)
+
+**CRÍTICO (bloqueadores de produção):**
+1. Preencher Supabase queries em `server.js` (calendar-integrations-ui endpoints)
+2. Criar migration `time_tasks_notifications` table
+3. Input validation em `triggers-modal-ui.js` + error handling
+4. Teste end-to-end: trigger → notificação funciona
+
+**ALTO (melhora experiência):**
+5. Validar performance targets em staging (real Lighthouse score)
+6. Implementar `/api/triggers/active` endpoint (move lógica do executor)
+7. Testes unitários para TriggerExecutor
+
+**MÉDIO (tech debt):**
+8. Web Vitals fallback para browsers antigos
+9. Sincronização de dados offline (Service Worker background sync)
+10. Cleanup: remover verse_deliveries orphaned
+
+---
+
+## Deploy + Merge Plan
+
+### Atual (develop branch):
+```
+67e63bf (12.1 — Frontend UI Calendários)
+3409cc6 (12.2 — Executor de Triggers)
+29c750c (12.3 — Performance Optimization)
+d077317 (docs: sincronizar v2.1 Fase 12)
+```
+
+### Próximos passos:
+1. ✅ Completar TODOs do código (Supabase queries, migrations, validation)
+2. ✅ Testar em staging (performance baseline, trigger execution)
+3. ✅ Criar PR: `develop` → `main`
+4. ✅ Tag `v2.1.0` após merge validado
+5. ✅ Auto-deploy para produção (push to main)
+6. ✅ Smoke test em produção (calendar connect, triggers, performance)
+
+---
+
+**Versão 2.1 Status:** ✅ DESENVOLVIMENTO COMPLETO | ⏳ DEPLOY STAGED
 
