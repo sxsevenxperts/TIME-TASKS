@@ -2,7 +2,7 @@
 <html lang="pt-BR">
   <head>
     <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover, interactive-widget=resizes-content" />
     <title>SX Time Tasks — Agenda Inteligente</title>
     <meta name="description" content="SX Time Tasks organiza eventos, tarefas, lembretes e agendamentos com inteligência artificial." />
     <meta name="theme-color" content="#9be800" />
@@ -20,19 +20,14 @@
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet" />
-    <script>
-      window.addEventListener('error', function(e) {
-        const el = document.getElementById('loading-overlay');
-        if (el) el.innerHTML = '<div style="color:white; text-align:center; padding: 20px;"><b>Erro Crítico:</b><br>' + e.message + '<br><br><button onclick="localStorage.clear(); window.location.reload(true);" style="padding:10px; cursor:pointer;">Limpar Dados e Recarregar</button></div>';
-      });
-      window.addEventListener('unhandledrejection', function(e) {
-        const el = document.getElementById('loading-overlay');
-        if (el) el.innerHTML = '<div style="color:white; text-align:center; padding: 20px;"><b>Erro de Conexão:</b><br>' + (e.reason && e.reason.message ? e.reason.message : e.reason) + '<br><br><button onclick="localStorage.clear(); window.location.reload(true);" style="padding:10px; cursor:pointer;">Limpar Dados e Recarregar</button></div>';
-      });
-    </script>
+    <!-- Handler de erro em arquivo externo: a CSP (script-src 'self') bloqueia
+         scripts inline, então a versão embutida nunca executava. -->
+    <script src="/error-overlay.js"></script>
     <link rel="stylesheet" href="/style.css" />
     <link rel="stylesheet" href="/layout.css" />
-    <script src="/pwa-register.js"></script>
+    <!-- ?v=2 fura o cache immutable de 1 ano que a versão antiga (bugada)
+         recebeu de navegadores e do Cloudflare antes do fix de Cache-Control -->
+    <script src="/pwa-register.js?v=2"></script>
   </head>
   <body>
     <!-- Loading Overlay -->

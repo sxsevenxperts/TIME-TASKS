@@ -1,8 +1,37 @@
 // Trigger Executor — Fase 12.2
 // Worker Node.js para executar triggers em cronograma
 // Tipos: weather, summary, reminder
+// Usa o fetch global do Node 22 — sem dependência externa.
+// Fase 12.8: também varre lembretes de eventos/tarefas devidos e envia
+// Web Push, para os avisos chegarem com o app fechado.
 
-import fetch from 'node-fetch';
+import { sendPushToUser } from './push-sender.js';
+
+const DB_NOTIFICATION_TYPES = new Set(['trigger', 'reminder', 'verse', 'system']);
+const DEFAULT_TIMEZONE = 'America/Fortaleza';
+
+/**
+ * Interpreta 'YYYY-MM-DD' + 'HH:MM' como horário de parede no fuso IANA dado
+ * e devolve o instante UTC correspondente (mesma semântica do
+ * zonedDateTimeToDate usado pelo cliente em reminders.js).
+ */
+function zonedDateTimeToUtc(dateStr, timeStr, timeZone) {
+  const naive = new Date(`${dateStr}T${String(timeStr).slice(0, 5)}:00Z`);
+  const offsetAt = (utcDate) => {
+    const parts = new Intl.DateTimeFormat('en-US', {
+      timeZone,
+      hourCycle: 'h23',
+      year: 'numeric', month: '2-digit', day: '2-digit',
+      hour: '2-digit', minute: '2-digit', second: '2-digit'
+    }).formatToParts(utcDate);
+    const get = (type) => Number(parts.find(part => part.type === type).value);
+    return Date.UTC(get('year'), get('month') - 1, get('day'), get('hour'), get('minute'), get('second')) - utcDate.getTime();
+  };
+  // Duas iterações convergem inclusive perto de trocas de offset.
+  let ts = naive.getTime() - offsetAt(naive);
+  ts = naive.getTime() - offsetAt(new Date(ts));
+  return new Date(ts);
+}
 
 export class TriggerExecutor {
   constructor(supabaseUrl, supabaseAnonKey, serviceRoleKey) {
@@ -20,10 +49,15 @@ export class TriggerExecutor {
 
     console.log('🎯 Trigger Executor iniciado (intervalo: ' + intervalMs + 'ms)');
 
-    this.interval = setInterval(() => this.checkAndExecuteTriggers(), intervalMs);
+    this.interval = setInterval(() => this.tick(), intervalMs);
 
     // Executar imediatamente na primeira vez
+    this.tick();
+  }
+
+  tick() {
     this.checkAndExecuteTriggers();
+    this.checkDueReminders();
   }
 
   stop() {
@@ -267,21 +301,30 @@ export class TriggerExecutor {
     }
   }
 
-  async createNotification(userId, triggerId, title, message, type) {
+  sbHeaders(extra = {}) {
+    return {
+      'Authorization': `Bearer ${this.serviceRoleKey}`,
+      'apikey': this.serviceRoleKey,
+      ...extra
+    };
+  }
+
+  async createNotification(userId, triggerId, title, message, type, data = {}) {
+    // A tabela só aceita trigger|reminder|verse|system — os tipos de trigger
+    // (weather/summary/...) entram como 'trigger' para o insert não ser
+    // rejeitado pelo CHECK.
+    const dbType = DB_NOTIFICATION_TYPES.has(type) ? type : 'trigger';
+    let created = false;
     try {
       const response = await fetch(
         `${this.supabaseUrl}/rest/v1/time_tasks_notifications`,
         {
           method: 'POST',
-          headers: {
-            'Authorization': `Bearer ${this.serviceRoleKey}`,
-            'apikey': this.serviceRoleKey,
-            'Content-Type': 'application/json'
-          },
+          headers: this.sbHeaders({ 'Content-Type': 'application/json' }),
           body: JSON.stringify({
             user_id: userId,
             trigger_id: triggerId,
-            type: type,
+            type: dbType,
             title: title,
             message: message,
             read: false,
@@ -290,17 +333,140 @@ export class TriggerExecutor {
         }
       );
 
-      if (!response.ok) {
+      if (response.ok) {
+        created = true;
+        console.log(`✅ Notificação criada: ${title}`);
+      } else {
         console.error('Erro ao criar notificação:', await response.text());
-        return false;
       }
-
-      console.log(`✅ Notificação criada: ${title}`);
-      return true;
     } catch (error) {
       console.error('Erro ao criar notificação:', error);
+    }
+
+    // Web Push para os aparelhos inscritos — mesmo se o insert falhar, o
+    // aviso ainda chega ao aparelho.
+    try {
+      await sendPushToUser(this.supabaseUrl, this.serviceRoleKey, userId, {
+        title,
+        body: message,
+        tag: dbType,
+        data
+      });
+    } catch (error) {
+      console.error('Erro no envio de push:', error);
+    }
+
+    return created;
+  }
+
+  /**
+   * Varredura de lembretes devidos (eventos e tarefas), com a mesma
+   * semântica do cliente (reminders.js): devido há menos de 24h e ainda não
+   * notificado. O claim de notified_at é atômico — quem marca primeiro
+   * (app aberto ou este worker) é quem avisa; nunca há duplicata.
+   */
+  async checkDueReminders() {
+    try {
+      const now = new Date();
+      await this.checkEventReminders(now);
+      await this.checkSeedReminders(now);
+    } catch (error) {
+      console.error('Erro na varredura de lembretes:', error);
+    }
+  }
+
+  async checkEventReminders(now) {
+    const iso = (d) => d.toISOString().split('T')[0];
+    const from = iso(new Date(now.getTime() - 86_400_000));
+    const to = iso(new Date(now.getTime() + 86_400_000));
+    const response = await fetch(
+      `${this.supabaseUrl}/rest/v1/time_tasks_events?notified_at=is.null&completed=eq.false&all_day=eq.false&start_time=not.is.null&date=gte.${from}&date=lte.${to}&select=id,user_id,title,date,start_time,reminder_minutes`,
+      { headers: this.sbHeaders() }
+    );
+    if (!response.ok) return;
+    const events = await response.json();
+    if (!events.length) return;
+
+    const timezones = await this.fetchUserTimezones([...new Set(events.map(e => e.user_id))]);
+
+    for (const event of events) {
+      const timeZone = timezones.get(event.user_id) || DEFAULT_TIMEZONE;
+      const occurrence = zonedDateTimeToUtc(event.date, event.start_time, timeZone);
+      const target = new Date(occurrence.getTime() - Number(event.reminder_minutes || 0) * 60_000);
+      if (now < target || now.getTime() - occurrence.getTime() >= 86_400_000) continue;
+      if (!(await this.claimNotified('time_tasks_events', event.id))) continue;
+      await this.createNotification(
+        event.user_id,
+        null,
+        '⏰ Lembrete de evento',
+        `${event.title} às ${String(event.start_time).slice(0, 5)}`,
+        'reminder',
+        { eventId: event.id }
+      );
+    }
+  }
+
+  async checkSeedReminders(now) {
+    const response = await fetch(
+      `${this.supabaseUrl}/rest/v1/time_tasks_seeds?notified_at=is.null&completed=eq.false&select=id,user_id,title,due_at,reminder_at`,
+      { headers: this.sbHeaders() }
+    );
+    if (!response.ok) return;
+    const seeds = await response.json();
+
+    for (const seed of seeds) {
+      const targetValue = seed.reminder_at || seed.due_at;
+      if (!targetValue) continue;
+      const target = new Date(targetValue);
+      if (now < target || now.getTime() - target.getTime() >= 86_400_000) continue;
+      if (!(await this.claimNotified('time_tasks_seeds', seed.id))) continue;
+      await this.createNotification(
+        seed.user_id,
+        null,
+        '⏰ Lembrete de tarefa',
+        seed.title,
+        'reminder',
+        { taskId: seed.id }
+      );
+    }
+  }
+
+  async claimNotified(table, id) {
+    try {
+      const response = await fetch(
+        `${this.supabaseUrl}/rest/v1/${table}?id=eq.${id}&notified_at=is.null`,
+        {
+          method: 'PATCH',
+          headers: this.sbHeaders({ 'Content-Type': 'application/json', 'Prefer': 'return=representation' }),
+          body: JSON.stringify({ notified_at: new Date().toISOString() })
+        }
+      );
+      if (!response.ok) return false;
+      const rows = await response.json();
+      return rows.length > 0;
+    } catch (error) {
+      console.error('Erro ao reivindicar lembrete:', error);
       return false;
     }
+  }
+
+  async fetchUserTimezones(userIds) {
+    const map = new Map();
+    if (!userIds.length) return map;
+    try {
+      const response = await fetch(
+        `${this.supabaseUrl}/rest/v1/time_tasks_settings?user_id=in.(${userIds.join(',')})&select=user_id,timezone`,
+        { headers: this.sbHeaders() }
+      );
+      if (response.ok) {
+        for (const row of await response.json()) {
+          if (row.timezone) map.set(row.user_id, row.timezone);
+        }
+      }
+    } catch (error) {
+      console.error('Erro ao buscar fusos dos usuários:', error);
+    }
+    return map;
   }
 
   async updateTriggerNextRun(triggerId) {

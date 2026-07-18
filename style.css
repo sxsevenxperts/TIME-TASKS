@@ -112,6 +112,10 @@
 
 html {
   font-size: 16px;
+  /* Impede o iOS de inflar o texto (Dynamic Type/autosizing) — o app deve
+     renderizar sempre em escala 1:1, sem "zoom" aparente. */
+  -webkit-text-size-adjust: 100%;
+  text-size-adjust: 100%;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
 }
@@ -123,6 +127,7 @@ body {
   line-height: 1.5;
   overflow: hidden;
   height: 100vh;
+  height: 100dvh;
   transition: background-color var(--transition-normal), color var(--transition-normal);
 }
 
@@ -1305,4 +1310,18 @@ input, select, textarea {
 .allday-chip.event-done,
 .month-grid__event.event-done {
   text-decoration: line-through;
+}
+
+/* ── Mobile: campos com 16px para não disparar auto-zoom ───── */
+/* O iOS Safari amplia a página automaticamente ao focar campos
+   com fonte menor que 16px, desenquadrando o app no PWA. */
+@media (max-width: 900px) {
+  input, select, textarea,
+  .form-input, .form-select, .form-textarea {
+    font-size: 16px;
+  }
+
+  .form-input--title {
+    font-size: 1.125rem;
+  }
 }
