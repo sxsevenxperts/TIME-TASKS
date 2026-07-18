@@ -6,6 +6,7 @@ import { buildGoogleAuthUrl, exchangeGoogleCode, refreshGoogleToken, fetchGoogle
 import { discoverAppleCalDAV, fetchAppleCalendars, fetchAppleEvents, parseICS } from './js/apple-calendar-handler.js';
 import { startCalendarSync } from './js/calendar-sync.js';
 import TriggerExecutor from './js/trigger-executor.js';
+import { initPushSender } from './js/push-sender.js';
 
 const port = Number(process.env.PORT || 3000);
 const distDir = fileURLToPath(new URL('./dist/', import.meta.url));
@@ -633,6 +634,9 @@ if (supabaseUrl && supabaseAnonKey) {
     console.error('Erro ao inicializar sincronização de calendários:', err);
   });
 }
+
+// Web Push (VAPID) — desativado sem as chaves, sem quebrar o boot
+initPushSender();
 
 // Iniciar executor de triggers em background
 if (supabaseUrl && supabaseAnonKey) {

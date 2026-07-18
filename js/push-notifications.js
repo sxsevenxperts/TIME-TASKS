@@ -5,7 +5,46 @@
 
 import { supabase } from './supabase.js';
 
-const VAPID_PUBLIC_KEY = process.env.VITE_VAPID_PUBLIC_KEY || '';
+// No navegador a env é injetada pelo Vite via import.meta.env (process.env
+// não existe no bundle do cliente).
+const VAPID_PUBLIC_KEY = import.meta.env.VITE_VAPID_PUBLIC_KEY || '';
+
+/**
+ * Garante a inscrição push deste aparelho: exige suporte do navegador,
+ * permissão de notificação já concedida e chave VAPID no build.
+ * Idempotente — reaproveita a inscrição existente e re-salva no banco.
+ */
+export async function ensurePushSubscription() {
+  if (!('serviceWorker' in navigator) || !('PushManager' in window)) return null;
+  if (!('Notification' in window) || Notification.permission !== 'granted') return null;
+  if (!VAPID_PUBLIC_KEY) {
+    console.warn('Push indisponível: VITE_VAPID_PUBLIC_KEY ausente do build.');
+    return null;
+  }
+
+  try {
+    const registration = await navigator.serviceWorker.ready;
+    const existing = await registration.pushManager.getSubscription();
+    if (existing) {
+      await savePushSubscription(existing);
+      return existing;
+    }
+    return await subscribeToPush(registration);
+  } catch (error) {
+    console.error('Erro ao garantir inscrição push:', error);
+    return null;
+  }
+}
+
+/**
+ * Inscreve o aparelho automaticamente a cada sessão (se a permissão já foi
+ * concedida) — mantém a inscrição viva e sincronizada com o banco.
+ */
+export function initPushNotifications() {
+  document.addEventListener('timetasks:session', event => {
+    if (event.detail?.user) void ensurePushSubscription();
+  });
+}
 
 /**
  * Registra notificação push

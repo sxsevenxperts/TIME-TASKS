@@ -1101,3 +1101,33 @@ performanceOptimizer.initialize()
 
 **PENDÊNCIA:**
 - Teste real de reabertura após >1h no aparelho (confirmar que cai direto no bate-papo sem tela de login).
+
+---
+
+## Registros de 18/07/2026 — Web Push real + bateria de testes (12.8 e 12.9)
+
+**PEDIDO:** (1) Implementar notificações push de verdade (chegam com o app fechado). (2) Testar todas as funcionalidades e forçar múltiplos acessos ao mesmo tempo.
+
+**FALHA (estado encontrado — push era feature fantasma):**
+- `push-notifications.js` nunca era importado por ninguém; lia `process.env` (inexistente no navegador); tabela de inscrições sem migration; servidor sem `web-push` e sem código de envio.
+- `pwa-register.js` usava `registration` fora do escopo do callback — ReferenceError derrubava o script inteiro: background sync, periodic sync e `window.PWA` nunca funcionaram. O bloco de push dele referenciava `supabase` (inexistente no script), `window.__VAPID_PUBLIC_KEY__` (nunca definido) e um endpoint `/api/push/subscribe` que não existe no servidor.
+- Handler de "Erro Crítico" no `index.html` era script inline — a CSP (`script-src 'self'`) sempre o bloqueou; a tela de erro nunca funcionou.
+- Notificações de trigger gravavam `type` `weather`/`summary`, rejeitados pelo CHECK da tabela (`trigger|reminder|verse|system`) — inserts falhavam em silêncio.
+
+**CORREÇÃO/ENTREGA (12.8):**
+- `js/push-sender.js` novo (dep. `web-push`): VAPID do ambiente, envio por usuário, limpeza de inscrições mortas.
+- `trigger-executor.js`: push em todo aviso; varredura por minuto de lembretes de eventos (fuso do usuário via `time_tasks_settings.timezone`, fallback America/Fortaleza) e tarefas (`reminder_at`/`due_at`); claim atômico de `notified_at` (mesma semântica do cliente — quem marca primeiro avisa, sem duplicatas); `type` mapeado para valores válidos.
+- Cliente: `import.meta.env`, `ensurePushSubscription()` idempotente, inscrição a cada sessão (`initPushNotifications` em `app.js`) e após conceder permissão (settings.js); textos da tela de Notificações atualizados.
+- `migrations/009_push_subscriptions.sql` com RLS.
+- `pwa-register.js` reescrito (tudo dentro do `.then`; push delegado ao bundle); `error-overlay.js` externo sem handlers inline.
+
+**VALIDAÇÃO (12.9 — testes):**
+- Boot do servidor testado sem chaves VAPID (aviso, sem quebrar) e com chaves (`✅ Web Push habilitado`).
+- Smoke funcional (19 checagens, HTTP + Chromium mobile 390×844): **19/19 no local**. Foi este smoke que revelou os bugs do `pwa-register.js` e do script inline vs CSP.
+- Carga local: 200 simultâneos × 5 → **1000/1000**, p50 42ms, p99 170ms. Carga produção: 50 simultâneos × 4 → **200/200**, p50 355ms, p99 1030ms. Nenhum erro, nenhum 5xx, sem rate-limit indevido (limite atual só em `/api/sx` e `/api/verse`, por usuário).
+- Limitação de ambiente: o Chromium do sandbox não alcança a produção através do proxy (ERR_CONNECTION_RESET) — camada de navegador validada no local com o mesmo build; camada HTTP validada direto na produção.
+
+**PENDÊNCIA (ativação do push em produção — ações do operador):**
+1. EasyPanel → env do serviço: `VAPID_PUBLIC_KEY`, `VAPID_PRIVATE_KEY`, `VITE_VAPID_PUBLIC_KEY` (mesmo valor da pública) e opcional `VAPID_SUBJECT` (mailto:). Chaves geradas e entregues no chat da sessão — não versionadas, conforme política.
+2. Supabase → SQL Editor: executar `migrations/009_push_subscriptions.sql`.
+3. No aparelho: Ajustes → Notificações → "Solicitar permissão"; testar com o app fechado.
