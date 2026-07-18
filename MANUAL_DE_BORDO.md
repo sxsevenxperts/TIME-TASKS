@@ -1131,3 +1131,17 @@ performanceOptimizer.initialize()
 1. EasyPanel → env do serviço: `VAPID_PUBLIC_KEY`, `VAPID_PRIVATE_KEY`, `VITE_VAPID_PUBLIC_KEY` (mesmo valor da pública) e opcional `VAPID_SUBJECT` (mailto:). Chaves geradas e entregues no chat da sessão — não versionadas, conforme política.
 2. Supabase → SQL Editor: executar `migrations/009_push_subscriptions.sql`.
 3. No aparelho: Ajustes → Notificações → "Solicitar permissão"; testar com o app fechado.
+
+---
+
+## Registros de 18/07/2026 — Cache de estáticos corrigido (12.10)
+
+**FALHA (achada ao verificar o deploy da 12.8):** o servidor enviava `Cache-Control: public, max-age=31536000, immutable` para TODOS os estáticos, inclusive arquivos de nome fixo que mudam entre deploys (`pwa-register.js`, `service-worker.js`, `manifest.webmanifest`, `error-overlay.js`). Navegadores e Cloudflare seguravam versões antigas por até 1 ano — foi assim que o `pwa-register.js` bugado continuou sendo servido pelo edge mesmo após o deploy do fix.
+
+**CORREÇÃO:**
+- `server.js`: `immutable` de 1 ano só para bundles com hash (`/assets/*`); arquivos de nome fixo passam a `max-age=300, must-revalidate`; `index.html` segue `no-cache`.
+- `index.html`: referência `pwa-register.js?v=2` para furar o cache antigo já distribuído.
+
+**VALIDAÇÃO:** headers conferidos por arquivo no ambiente local (fixos=300s, hash=1 ano immutable, index=no-cache).
+
+**PENDÊNCIA (operador):** fazer um purge do cache no painel do Cloudflare (Caching → Purge) para limpar imediatamente as cópias antigas no edge — opcional, pois o `?v=2` já contorna o pior caso.
