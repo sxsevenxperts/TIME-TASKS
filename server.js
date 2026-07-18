@@ -574,9 +574,19 @@ async function serveStatic(request, response) {
 
   const content = await readFile(filePath);
   const extension = extname(filePath).toLowerCase();
+  // "immutable" só vale para bundles com hash no nome (dist/assets/*).
+  // Arquivos de nome fixo (service-worker.js, pwa-register.js, manifest,
+  // error-overlay.js...) mudam entre deploys mantendo a URL — com 1 ano de
+  // cache, navegadores e Cloudflare seguravam versões antigas indefinidamente.
+  const isHashedAsset = /[\\/]assets[\\/]/.test(filePath);
+  const cacheControl = filePath.endsWith('index.html')
+    ? 'no-cache'
+    : isHashedAsset
+      ? 'public, max-age=31536000, immutable'
+      : 'public, max-age=300, must-revalidate';
   response.writeHead(200, {
     'Content-Type': mimeTypes[extension] || 'application/octet-stream',
-    'Cache-Control': filePath.endsWith('index.html') ? 'no-cache' : 'public, max-age=31536000, immutable',
+    'Cache-Control': cacheControl,
     'Content-Security-Policy': contentSecurityPolicy,
     'Permissions-Policy': 'camera=(), geolocation=(self), microphone=(self)',
     'X-Content-Type-Options': 'nosniff',
