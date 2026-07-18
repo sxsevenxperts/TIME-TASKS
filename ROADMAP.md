@@ -524,6 +524,11 @@ npm audit → 0 vulnerabilidades (mesmo nível de antes)
 - [x] `text-size-adjust: 100%` no `html` (bloqueia inflação de texto do iOS/Dynamic Type)
 - [x] Foco automático do input do chat restrito ao desktop (no mobile, o teclado não sobe sozinho na entrada e não há gatilho de zoom de foco)
 
+### 12.7 — Login permanente de verdade (fim do "login toda vez") (✅ 18/07/2026)
+- [x] Sessão salva não é mais descartada quando só o access token (60min) venceu — o refresh token é preservado e usado para renovar
+- [x] `silentAutoLogin` usa primeiro a sessão nativa do supabase-js (refresh token sempre atual; evita revogação por reuso de token rotacionado)
+- [x] Cópia própria em localStorage mantida apenas como reserva
+
 ---
 
 ## 📊 Resumo Final — Entregas Completadas

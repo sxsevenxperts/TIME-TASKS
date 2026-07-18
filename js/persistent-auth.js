@@ -46,16 +46,10 @@ export function restorePersistentSession() {
 
     const data = JSON.parse(stored);
 
-    // Verificar se a sessão não expirou (com margem de 5min)
-    const expiresAt = data.expiresAt * 1000; // converter para ms
-    const now = Date.now();
-    const margin = 5 * 60 * 1000; // 5 minutos
-
-    if (now > expiresAt - margin) {
-      // Sessão expirada, remover
-      localStorage.removeItem(AUTH_KEY);
-      return null;
-    }
+    // O access token expira em ~60min, mas quem mantém o login permanente é
+    // o refresh token, que continua válido. Sessão com access token vencido
+    // NÃO é descartada: o silentAutoLogin renova com o refresh token.
+    // (Descartar aqui forçava novo login a cada reabertura após ~55min.)
 
     return {
       user: data.user,
@@ -75,6 +69,18 @@ export function restorePersistentSession() {
  */
 export async function silentAutoLogin() {
   try {
+    // Fonte primária: a sessão persistida pelo próprio supabase-js
+    // (persistSession + autoRefreshToken), que sempre carrega o refresh
+    // token mais recente. O Supabase rotaciona o refresh token a cada
+    // renovação — renovar com uma cópia antiga é tratado como reuso e pode
+    // revogar a sessão inteira, forçando login sem necessidade.
+    const { data: native } = await supabase.auth.getSession();
+    if (native?.session) {
+      savePersistentSession(native.session);
+      return native.session;
+    }
+
+    // Reserva: cópia própria (ex.: storage do supabase-js foi limpo).
     const persistedSession = restorePersistentSession();
 
     if (!persistedSession) {

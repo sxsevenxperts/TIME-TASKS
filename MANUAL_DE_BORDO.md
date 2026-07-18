@@ -1079,3 +1079,25 @@ performanceOptimizer.initialize()
 
 **VALIDAÇÃO:**
 - ✅ `npm run build` sem erros; bundles `index-CsvMSy_s.css` e `index-ECLSCYeo.js`.
+
+---
+
+## Registros de 18/07/2026 — Login permanente de verdade (12.7)
+
+**PERGUNTA (usuário):** "Vai me notificar se eu tenho que fazer login toda vez?" — preocupação com login repetido e com as notificações.
+
+**FALHA (diagnóstico — dois bugs em `js/persistent-auth.js`):**
+1. `restorePersistentSession()` apagava a sessão salva (incluindo o **refresh token**) sempre que o access token (validade ~60min) estava vencido. Reabrir o app mais de ~55min depois do último uso jogava fora exatamente a credencial de longa duração que sustenta o login permanente → tela de login em praticamente toda reabertura.
+2. `silentAutoLogin()` renovava usando a cópia própria do refresh token, mas o Supabase **rotaciona** o token a cada renovação; usar uma cópia antiga é detectado como reuso e pode revogar a sessão inteira (inclusive a nativa do supabase-js, que teria funcionado) → logins forçados aleatórios.
+
+**CORREÇÃO:**
+- Sessão com access token vencido não é mais descartada — o refresh token é preservado e usado na renovação.
+- `silentAutoLogin` consulta primeiro `supabase.auth.getSession()` (sessão nativa persistida, com o refresh token mais recente); a cópia própria em localStorage virou reserva para o caso de o storage do supabase-js ter sido limpo.
+
+**DECISÃO (resposta sobre notificações, registrada):** O Web Push é vinculado à inscrição do aparelho (service worker), não à sessão ativa — notificações chegam com o app fechado e independem de estar logado no momento da entrega. No iOS, exigem app instalado na tela de início (iOS 16.4+) e permissão concedida. Lembretes in-app (som/toast) continuam exigindo o app aberto.
+
+**VALIDAÇÃO:**
+- ✅ `npm run build` sem erros; bundle `index-Bv--w5in.js`.
+
+**PENDÊNCIA:**
+- Teste real de reabertura após >1h no aparelho (confirmar que cai direto no bate-papo sem tela de login).
