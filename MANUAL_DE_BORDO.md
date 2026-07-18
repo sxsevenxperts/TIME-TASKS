@@ -987,3 +987,29 @@ performanceOptimizer.initialize()
 4. ⏳ Tag v2.1.0 após merge validado
 5. ⏳ Deploy para produção (auto-deploy via push para `main`)
 
+
+---
+
+## Registros de 18/07/2026 — Enquadramento mobile do bate-papo SX no PWA (12.4)
+
+**PEDIDO:** No PWA mobile, o bate-papo deve aparecer enquadrado na proporção correta da tela, sem o usuário precisar ajustar o zoom manualmente.
+
+**FALHA (diagnóstico):**
+1. O campo do chat (`#ai-input`, 0.9rem ≈ 14,4px) e os demais inputs tinham fonte menor que 16px — o iOS Safari aplica zoom automático ao focar campos assim, e a página fica "desenquadrada" até o usuário desfazer o zoom manualmente.
+2. Shell e chat usavam `height: 100vh` — no mobile, 100vh é maior que o viewport visível (browser chrome), cortando a barra de digitação do chat abaixo da dobra.
+3. Sem `viewport-fit=cover`, as variáveis `env(safe-area-inset-*)` não funcionam — conteúdo colado/sob o notch e o home indicator no iPhone em modo standalone.
+4. `.ai-sidebar` mobile com `width: 100vw` pode gerar overflow horizontal (100vw inclui a largura da scrollbar em alguns browsers).
+
+**CORREÇÃO:**
+- `index.html` — viewport atualizada para `width=device-width, initial-scale=1.0, viewport-fit=cover, interactive-widget=resizes-content` (o último faz o teclado do Android redimensionar o viewport, mantendo o input visível).
+- `style.css` — `body` com `height: 100dvh` (fallback `100vh` mantido); media query mobile (≤900px) forçando `font-size: 16px` em `input/select/textarea` e `.form-input/.form-select/.form-textarea` (com `.form-input--title` preservado em 1.125rem).
+- `layout.css` — `100dvh` em `.app-layout`, `.sub-sidebar` e `.ai-sidebar`; no mobile, chat fullscreen com `width: 100%`, `height: 100dvh`, `padding-top: env(safe-area-inset-top)`, barra de input com `padding-bottom: calc(12px + env(safe-area-inset-bottom))` e `#ai-input` com 16px; `.main-content` e `.sub-sidebar` com safe-area no topo (por causa do `viewport-fit=cover` global); `overscroll-behavior: contain` no histórico do chat.
+
+**VALIDAÇÃO:**
+- ✅ `npm run build` sem erros (vite 6.4.3, 69 módulos; warning de dynamic import de `triggers.js` é pré-existente).
+- ✅ Ícones PWA regenerados idênticos (sem diff binário).
+- ✅ Diff restrito a `index.html`, `style.css`, `layout.css` + documentação.
+
+**PENDÊNCIA:**
+- Testar em aparelho físico iOS (standalone) e Android: foco no input do chat sem zoom, barra de digitação visível com teclado aberto, notch/home indicator respeitados.
+- Se o teclado do iOS ainda cobrir o input em standalone, avaliar ajuste via `window.visualViewport` (JS) — não incluído nesta rodada por ser necessário só se o CSS não bastar.

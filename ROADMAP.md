@@ -506,6 +506,14 @@ npm audit → 0 vulnerabilidades (mesmo nível de antes)
 - [ ] Lazy-load de módulos
 - [ ] Compressão de assets
 
+### 12.4 — Enquadramento mobile do bate-papo SX no PWA (✅ 18/07/2026)
+- [x] Viewport com `viewport-fit=cover` + `interactive-widget=resizes-content`
+- [x] Inputs com fonte mínima de 16px no mobile (elimina auto-zoom do iOS ao focar o campo do chat)
+- [x] Altura do shell e do chat em `100dvh` (viewport dinâmico — barra de digitação sempre visível, sem corte pelo browser chrome)
+- [x] Safe-areas (`env(safe-area-inset-*)`) no cabeçalho do chat, na barra de input, no conteúdo principal e na gaveta lateral (notch/home indicator)
+- [x] Chat fullscreen mobile com `width: 100%` (remove overflow horizontal de `100vw`)
+- [x] `overscroll-behavior: contain` no histórico do chat (sem scroll encadeado da página atrás)
+
 ---
 
 ## 📊 Resumo Final — Entregas Completadas
