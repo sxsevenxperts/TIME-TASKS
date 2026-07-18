@@ -529,6 +529,30 @@ npm audit → 0 vulnerabilidades (mesmo nível de antes)
 - [x] `silentAutoLogin` usa primeiro a sessão nativa do supabase-js (refresh token sempre atual; evita revogação por reuso de token rotacionado)
 - [x] Cópia própria em localStorage mantida apenas como reserva
 
+### 12.8 — Web Push real + correções de PWA (✅ 18/07/2026)
+- [x] `js/push-sender.js` (novo): envio de Web Push pelo servidor com chaves VAPID do ambiente; inscrições expiradas (404/410) são limpas do banco
+- [x] Executor de triggers envia push em todo aviso e varre lembretes devidos de eventos/tarefas a cada minuto (claim atômico de `notified_at` — nunca duplica com o app aberto)
+- [x] Correção: notificações de trigger gravavam `type` inválido (`weather`/`summary`), rejeitado pelo CHECK da tabela — agora mapeadas para `trigger`
+- [x] Cliente: `push-notifications.js` corrigido (`import.meta.env`, antes lia `process.env` inexistente no navegador) e finalmente ligado ao app — inscreve o aparelho a cada sessão e imediatamente após conceder permissão
+- [x] `migrations/009_push_subscriptions.sql`: tabela `time_tasks_push_subscriptions` com RLS
+- [x] Correção: `pwa-register.js` usava `registration` fora de escopo — o ReferenceError matava background sync, periodic sync e `window.PWA` desde sempre
+- [x] Correção: handler de "Erro Crítico" era script inline bloqueado pela CSP (`script-src 'self'`) — movido para `/error-overlay.js`, sem onclick inline
+- [ ] **Ações do operador para ativar em produção:** definir `VAPID_PUBLIC_KEY`, `VAPID_PRIVATE_KEY` e `VITE_VAPID_PUBLIC_KEY` no EasyPanel e executar a migration 009 no Supabase
+
+### 12.9 — Bateria de testes: funcionalidades + acessos simultâneos (✅ 18/07/2026)
+- [x] Smoke funcional com 19 verificações (HTTP + navegador mobile 390×844): viewport travada, 100dvh, fonte ≥16px, login, toggle de senha, manifest/SW, endpoints autenticados recusando sem token, CSP/X-Frame-Options, sem overflow, sem erros de JS — **19/19 no local**
+- [x] Carga local: 200 acessos simultâneos × 5 rodadas — **1000/1000 ok**, p50 42ms, p99 170ms
+- [x] Carga produção: 50 acessos simultâneos × 4 rodadas — **200/200 ok**, p50 355ms, p99 1030ms
+- [x] Dois bugs reais encontrados pelo smoke e corrigidos na 12.8 (pwa-register fora de escopo; handler inline vs CSP)
+
+### Próximos passos (atualizado 18/07/2026)
+1. **Ativar push em produção**: colar as chaves VAPID no EasyPanel + rodar `migrations/009_push_subscriptions.sql` no Supabase; depois conceder permissão em Ajustes → Notificações no aparelho e validar push com app fechado.
+2. **Validar login permanente no aparelho**: reabrir o app após >1h sem tela de login (correção 12.7).
+3. **UX mobile do chat**: avaliar tabbar visível sob o chat (saída direta para Calendário/Seed/Trigger sem passar por Sementes).
+4. **Limpeza de código fantasma**: remover/corrigir `pwa-sx-initial.js` (no-op, referencia elementos inexistentes) e dar função aos botões `btn-ai-profile`/`btn-ai-more` do cabeçalho do chat.
+5. **TODOs do server.js**: queries reais de status/disconnect de calendários (12.1).
+6. **Segurança**: rotação das credenciais operacionais compartilhadas (pendência de 16–17/07).
+
 ---
 
 ## 📊 Resumo Final — Entregas Completadas

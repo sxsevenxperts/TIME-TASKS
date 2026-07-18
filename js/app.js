@@ -19,6 +19,7 @@ import { initWeather } from './weather.js';
 import { initTriggers, renderNotifications } from './triggers.js';
 import { initPWASXInitial, setupSXModeToggle } from './pwa-sx-initial.js';
 import { initVoiceAssistant, setupVoiceShortcut } from './voice-assistant.js';
+import { initPushNotifications } from './push-notifications.js';
 
 /**
  * Inicializa toda a aplicação
@@ -54,6 +55,7 @@ function init() {
   initWeather();
   initTriggers();
   initNavigation();
+  initPushNotifications();
   initAI({
     onEventCreated: () => refreshCalendar(),
     onEventChanged: () => refreshCalendar()
