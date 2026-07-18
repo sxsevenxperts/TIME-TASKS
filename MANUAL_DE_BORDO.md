@@ -987,3 +987,54 @@ performanceOptimizer.initialize()
 4. ⏳ Tag v2.1.0 após merge validado
 5. ⏳ Deploy para produção (auto-deploy via push para `main`)
 
+
+---
+
+## Registros de 18/07/2026 — Enquadramento mobile do bate-papo SX no PWA (12.4)
+
+**PEDIDO:** No PWA mobile, o bate-papo deve aparecer enquadrado na proporção correta da tela, sem o usuário precisar ajustar o zoom manualmente.
+
+**FALHA (diagnóstico):**
+1. O campo do chat (`#ai-input`, 0.9rem ≈ 14,4px) e os demais inputs tinham fonte menor que 16px — o iOS Safari aplica zoom automático ao focar campos assim, e a página fica "desenquadrada" até o usuário desfazer o zoom manualmente.
+2. Shell e chat usavam `height: 100vh` — no mobile, 100vh é maior que o viewport visível (browser chrome), cortando a barra de digitação do chat abaixo da dobra.
+3. Sem `viewport-fit=cover`, as variáveis `env(safe-area-inset-*)` não funcionam — conteúdo colado/sob o notch e o home indicator no iPhone em modo standalone.
+4. `.ai-sidebar` mobile com `width: 100vw` pode gerar overflow horizontal (100vw inclui a largura da scrollbar em alguns browsers).
+
+**CORREÇÃO:**
+- `index.html` — viewport atualizada para `width=device-width, initial-scale=1.0, viewport-fit=cover, interactive-widget=resizes-content` (o último faz o teclado do Android redimensionar o viewport, mantendo o input visível).
+- `style.css` — `body` com `height: 100dvh` (fallback `100vh` mantido); media query mobile (≤900px) forçando `font-size: 16px` em `input/select/textarea` e `.form-input/.form-select/.form-textarea` (com `.form-input--title` preservado em 1.125rem).
+- `layout.css` — `100dvh` em `.app-layout`, `.sub-sidebar` e `.ai-sidebar`; no mobile, chat fullscreen com `width: 100%`, `height: 100dvh`, `padding-top: env(safe-area-inset-top)`, barra de input com `padding-bottom: calc(12px + env(safe-area-inset-bottom))` e `#ai-input` com 16px; `.main-content` e `.sub-sidebar` com safe-area no topo (por causa do `viewport-fit=cover` global); `overscroll-behavior: contain` no histórico do chat.
+
+**VALIDAÇÃO:**
+- ✅ `npm run build` sem erros (vite 6.4.3, 69 módulos; warning de dynamic import de `triggers.js` é pré-existente).
+- ✅ Ícones PWA regenerados idênticos (sem diff binário).
+- ✅ Diff restrito a `index.html`, `style.css`, `layout.css` + documentação.
+
+**PENDÊNCIA:**
+- Testar em aparelho físico iOS (standalone) e Android: foco no input do chat sem zoom, barra de digitação visível com teclado aberto, notch/home indicator respeitados.
+- Se o teclado do iOS ainda cobrir o input em standalone, avaliar ajuste via `window.visualViewport` (JS) — não incluído nesta rodada por ser necessário só se o CSS não bastar.
+
+---
+
+## Registros de 18/07/2026 — INCIDENTE: produção fora do ar (502 Bad Gateway)
+
+**FALHA (incidente em produção):**
+- ~21:39 UTC: `timetasks.sevenxperts.solutions` respondendo **502 Bad Gateway** (Cloudflare OK, host de origem com erro). Confirmado também no host direto do EasyPanel (`startups-timetasks.qfotry.easypanel.host`) — ou seja, o container do app estava caído, não era problema de Cloudflare/DNS.
+- Causa raiz: os commits das Fases 10/12 adicionaram ao `server.js` imports de `js/trigger-executor.js` (que importava `node-fetch`) e `js/apple-calendar-handler.js` (que importava `ics` em top-level `await import`). **Nenhum dos dois pacotes está no `package.json`** — `npm ci` no Docker nunca os instalou. Ao chegarem à `main` hoje (`d9867d8` → `d077317`), o auto-deploy do EasyPanel publicou o código e o `node server.js` passou a morrer no boot com `ERR_MODULE_NOT_FOUND`, gerando loop de crash e 502.
+- A `main` anterior (`d9867d8`) não importava esses módulos no `server.js` — por isso a produção funcionava até este deploy.
+
+**CORREÇÃO:**
+- `js/trigger-executor.js` — removido `import fetch from 'node-fetch'`; o Node 22 tem `fetch` global nativo (nenhuma dependência nova).
+- `js/apple-calendar-handler.js` — removido `const ics = await import('ics')`; era código morto (a variável nunca é usada no arquivo).
+
+**VALIDAÇÃO:**
+- ✅ `node server.js` local: boot limpo, `/api/health` → `{"status":"ok","service":"time-tasks"}`, `/` → HTTP 200.
+- ✅ Varredura de imports em `server.js`, `google-calendar-handler.js`, `apple-calendar-handler.js`, `calendar-sync.js`, `trigger-executor.js`: nenhum outro pacote fora do `package.json`.
+- ✅ `npm run build` inalterado (módulos do servidor não entram no bundle do cliente).
+
+**PENDÊNCIA (restauração da produção):**
+- O fix precisa chegar à `main` para o auto-deploy do EasyPanel republicar — reiniciar o container sem o fix NÃO resolve (o código na `main` continua quebrando no boot).
+- Após deploy: verificar `/api/health` com `sx: true` e `supabase: true` e logs `✅ Trigger Executor iniciado` / sync de calendários.
+
+**RISCO (lição registrada):**
+- Deploy automático na `main` sem gate de boot: adicionar ao processo um teste mínimo de inicialização (`node server.js` + curl no `/api/health`) antes de qualquer merge para `main`, como já previsto no critério permanente de pronto do ROADMAP.
