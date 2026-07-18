@@ -1058,3 +1058,24 @@ performanceOptimizer.initialize()
 - Avaliar deixar a tabbar visível sob o chat no mobile (chat com `bottom` acima da tabbar + fechar SX ao tocar em outra aba), dando saída direta do chat para Calendário/Seed/Trigger sem passar por Sementes.
 - Decidir o destino de `pwa-sx-initial.js`: corrigir os seletores ou remover o módulo (a abertura automática agora é responsabilidade do `navigation.js`).
 - Dar função (ou remover) os botões `btn-ai-profile` e `btn-ai-more` do cabeçalho mobile do chat.
+
+---
+
+## Registros de 18/07/2026 — Conversa em escala 1:1 no mobile (12.6)
+
+**PEDIDO:** A conversa tem que abrir no zoom mínimo (1:1) no mobile; estava vindo ampliada, prejudicando a UX.
+
+**FALHA (diagnóstico):** Três vias ainda permitiam a página abrir "ampliada" no iOS mesmo após a 12.4:
+1. Sem `maximum-scale`, o iOS ainda pode aplicar zoom automático em cenários de foco e mantê-lo entre telas.
+2. Com "Tamanho do Texto" do iPhone aumentado (Dynamic Type), o Safari infla o texto do app inteiro — parece zoom maior.
+3. `setChatOpen(true)` focava `#ai-input` também no mobile; com a 12.5 (chat como tela inicial), o foco acontecia logo na entrada — teclado por cima da conversa e gatilho clássico de zoom de foco.
+
+**CORREÇÃO:**
+- `index.html` — viewport com `maximum-scale=1.0, user-scalable=no` (zoom da página travado em 1:1).
+- `style.css` — `-webkit-text-size-adjust: 100%` / `text-size-adjust: 100%` no `html`.
+- `js/navigation.js` — foco automático do input só em viewport desktop; no mobile a conversa abre enquadrada, sem teclado.
+
+**DECISÃO (trade-off registrado):** `user-scalable=no` desabilita o pinch-zoom dentro do PWA — escolha deliberada de UX estilo app nativo, feita a pedido. Se voltar a ser necessário zoom por acessibilidade, remover `user-scalable=no` e manter apenas `maximum-scale=1` (que já bloqueia o auto-zoom de foco no iOS).
+
+**VALIDAÇÃO:**
+- ✅ `npm run build` sem erros; bundles `index-CsvMSy_s.css` e `index-ECLSCYeo.js`.
