@@ -175,16 +175,28 @@ function sxRequest(text, token) {
 async function askSx(text) {
   console.log('[askSx] Iniciando pedido à SX');
   let token = await sessionToken();
+
+  // Primeiro retry: tentar renovação forçada
   if (!token) {
     console.warn('[askSx] Primeiro attempt falhou, forçando renovação...');
     token = await sessionToken(true);
   }
+
+  // Segundo retry: aguardar um pouco e tentar novamente (iOS pode estar retomando do background)
   if (!token) {
-    console.error('[askSx] ✗ Nenhum token disponível mesmo após força de renovação');
+    console.warn('[askSx] Segundo attempt falhou, aguardando e retentando...');
+    await new Promise(r => setTimeout(r, 1000));
+    token = await sessionToken(true);
+  }
+
+  if (!token) {
+    console.error('[askSx] ✗ Nenhum token disponível após retentativas');
     throw new Error('UNAUTHORIZED');
   }
+
   console.log('[askSx] Token obtido, enviando pedido...');
   let response = await sxRequest(text, token);
+
   if (response.status === 401) {
     console.warn('[askSx] Servidor retornou 401, renovando token e repetindo...');
     // Token rejeitado pelo servidor: renovar uma vez e repetir o pedido.
@@ -195,6 +207,7 @@ async function askSx(text) {
     }
     response = await sxRequest(text, token);
   }
+
   const payload = await response.json().catch(() => ({}));
   if (!response.ok) {
     console.error('[askSx] ✗ Resposta erro:', response.status, payload.error);

@@ -22,7 +22,11 @@
     button.textContent = 'Limpar Dados e Recarregar';
     button.style.cssText = 'margin-top:16px; padding:10px; cursor:pointer;';
     button.addEventListener('click', () => {
+      // Preservar token de autenticação ao limpar dados
+      const authKey = 'timetasks_auth_persistent';
+      const savedAuth = localStorage.getItem(authKey);
       localStorage.clear();
+      if (savedAuth) localStorage.setItem(authKey, savedAuth);
       window.location.reload();
     });
 

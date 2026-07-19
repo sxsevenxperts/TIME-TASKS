@@ -186,11 +186,26 @@ export async function syncCalendars() {
   try {
     console.log('Sincronizando calendários...');
 
+    // Obter token com timeout (iOS PWA pode congelar auth calls)
+    const { data: sessionData, error: sessionError } = await Promise.race([
+      supabase.auth.getSession(),
+      new Promise((_, reject) => setTimeout(() => reject(new Error('AUTH_TIMEOUT')), 5000))
+    ]).then(
+      result => ({ data: result, error: null }),
+      error => ({ data: null, error })
+    );
+
+    const token = sessionData?.session?.access_token;
+    if (!token) {
+      console.warn('Token não disponível para sincronização de calendários');
+      throw new Error('No auth token available');
+    }
+
     // Chamar endpoint de sincronização
     const response = await fetch('/api/calendar/sync', {
       method: 'POST',
       headers: {
-        'Authorization': `Bearer ${(await supabase.auth.getSession()).data.session?.access_token}`,
+        'Authorization': `Bearer ${token}`,
         'Content-Type': 'application/json'
       }
     });
