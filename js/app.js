@@ -20,6 +20,7 @@ import { initTriggers, renderNotifications } from './triggers.js';
 import { initPWASXInitial, setupSXModeToggle } from './pwa-sx-initial.js';
 import { initVoiceAssistant, setupVoiceShortcut } from './voice-assistant.js';
 import { initPushNotifications } from './push-notifications.js';
+import { notificationsDashboard } from './notifications-dashboard.js';
 
 /**
  * Inicializa toda a aplicação
@@ -56,6 +57,7 @@ function init() {
   initTriggers();
   initNavigation();
   initPushNotifications();
+  notificationsDashboard.init();
   initAI({
     onEventCreated: () => refreshCalendar(),
     onEventChanged: () => refreshCalendar()
@@ -73,6 +75,11 @@ function init() {
     setupVoiceShortcut();
     console.log('🎤 Voice Assistant ativo (Ctrl+Shift+V)');
   }
+
+  // Botão de notificações
+  document.getElementById('btn-notifications')?.addEventListener('click', () => {
+    notificationsDashboard.open();
+  });
 
   console.log('🕐 Time Tasks inicializado com sucesso!');
 }
