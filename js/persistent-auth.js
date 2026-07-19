@@ -165,30 +165,38 @@ function scheduleTokenRefresh(expiresAt) {
  */
 async function refreshToken() {
   if (refreshPromise) {
+    console.log('refreshToken já em andamento, aguardando...');
     return refreshPromise; // Evitar múltiplas renovações simultâneas
   }
 
   refreshPromise = (async () => {
     try {
+      console.log('[refreshToken] Iniciando renovação de token');
       const { data, error } = await withTimeout(supabase.auth.refreshSession(), 10000);
 
       if (error) {
-        console.error('Erro ao renovar token:', error.message);
+        console.error('[refreshToken] Erro ao renovar:', error.message, error.status);
         // Só derruba a sessão quando o refresh token foi revogado de verdade.
         // Erro transitório (rede, timeout, suspensão do iOS) mantém o login.
-        if (isFatalAuthError(error)) logout();
+        if (isFatalAuthError(error)) {
+          console.error('[refreshToken] Erro fatal — revogando logout');
+          logout();
+        } else {
+          console.warn('[refreshToken] Erro transitório — mantendo sessão');
+        }
         return null;
       }
 
       if (data.session) {
         savePersistentSession(data.session);
-        console.log('Token renovado com sucesso');
+        console.log('[refreshToken] ✓ Token renovado com sucesso, expira em:', new Date(data.session.expires_at * 1000).toLocaleTimeString());
         return data.session;
       }
 
+      console.warn('[refreshToken] Sucesso mas sem session nos dados');
       return null;
     } catch (error) {
-      console.error('Exceção ao renovar token:', error);
+      console.error('[refreshToken] Exceção:', error?.message || error);
       return null;
     } finally {
       refreshPromise = null;
@@ -203,34 +211,64 @@ async function refreshToken() {
  * Nunca revoga a sessão — em caso de falha devolve null e o chamador decide.
  */
 export async function ensureFreshSession(options = {}) {
-  if (!supabase) return null;
+  if (!supabase) {
+    console.warn('[ensureFreshSession] supabase não está pronto');
+    return null;
+  }
   try {
     const { data } = await withTimeout(supabase.auth.getSession(), 10000);
     const session = data?.session || null;
     const nowSeconds = Math.floor(Date.now() / 1000);
     const stillValid = session?.expires_at && session.expires_at - nowSeconds > 120;
-    if (stillValid && !options.force) return session;
+
+    console.log(`[ensureFreshSession] Session válida? ${stillValid}, force=${options.force}, expira em: ${session?.expires_at ? ((session.expires_at - nowSeconds) + 's') : 'N/A'}`);
+
+    if (stillValid && !options.force) {
+      console.log('[ensureFreshSession] ✓ Token válido, devolvendo');
+      return session;
+    }
 
     // Token vencido/perto de vencer (ou renovação forçada após um 401).
+    console.log('[ensureFreshSession] Token fora de validade, tentando renovar...');
     const refreshed = await refreshToken();
-    if (refreshed) return refreshed;
+    if (refreshed) {
+      console.log('[ensureFreshSession] ✓ Renovação bem-sucedida');
+      return refreshed;
+    }
 
     // Reserva: renovar com a cópia própria (storage do supabase-js perdido).
+    console.log('[ensureFreshSession] Primeiro attempt falhou, tentando com persistedSession...');
     const persisted = restorePersistentSession();
     if (persisted?.refresh_token) {
+      console.log('[ensureFreshSession] Usando refresh_token persistido');
       const { data: alt, error } = await withTimeout(
         supabase.auth.refreshSession({ refresh_token: persisted.refresh_token }),
         10000
       ).catch(() => ({ data: null, error: null }));
       if (!error && alt?.session) {
         savePersistentSession(alt.session);
+        console.log('[ensureFreshSession] ✓ Renovação com persistedSession bem-sucedida');
         return alt.session;
+      } else if (error) {
+        console.error('[ensureFreshSession] Falha ao renovar com persistedSession:', error?.message);
       }
+    } else {
+      console.warn('[ensureFreshSession] Nenhuma persistedSession disponível');
     }
 
-    return session; // pode estar vencida ou null; nunca revogamos aqui
+    // Se renovação falhou, NUNCA devolver session vencida. Devolver null
+    // força chamador a tratar como "não autenticado" e pedir novo login.
+    if (session?.expires_at) {
+      const nowSeconds = Math.floor(Date.now() / 1000);
+      if (session.expires_at - nowSeconds <= 120) {
+        console.error('[ensureFreshSession] ✗ Token vencido e renovação falhou, devolvendo null');
+        return null;
+      }
+    }
+    console.log('[ensureFreshSession] Fallback: devolvendo session (pode estar null ou válida)');
+    return session; // null ou válida (quando getSession falhou mas temos fallback)
   } catch (error) {
-    console.warn('ensureFreshSession falhou:', error?.message || error);
+    console.error('[ensureFreshSession] Exceção:', error?.message || error);
     return null;
   }
 }
