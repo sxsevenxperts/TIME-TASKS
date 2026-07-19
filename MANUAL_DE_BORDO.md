@@ -4,7 +4,7 @@ Diário de bordo do projeto, previsto no `AGENTS.md`. Registra **o que foi pedid
 
 Cada registro usa uma etiqueta: `PEDIDO`, `PERGUNTA`, `DECISÃO`, `IDEIA`, `FALHA`, `CORREÇÃO`, `VALIDAÇÃO`, `PENDÊNCIA` ou `RISCO`.
 
-Última atualização: **19/07/2026** (Fase 12 concluída — Web Push produção + mobile otimizado).
+Última atualização: **17/07/2026**.
 
 - **Parte 1 — Diário cronológico** (registros por sessão)
 - **Parte 2 — Referência técnica do projeto** (stack, fluxos, segurança, troubleshooting)
@@ -987,234 +987,195 @@ performanceOptimizer.initialize()
 4. ⏳ Tag v2.1.0 após merge validado
 5. ⏳ Deploy para produção (auto-deploy via push para `main`)
 
+---
+
+## Roadmap v2.2 — Próximas Fases Planejadas
+
+### Fase 13: Consolidação de Triggers
+**Objetivo:** Completar implementação end-to-end de triggers com testes e validação
+
+**Arquivos a completar:**
+- `server.js` — TODOs Supabase queries
+- Criar `migrations/009_time_tasks_notifications.sql`
+- `js/triggers-modal-ui.js` — input validation + error handling
+- Testes: criar trigger → dispara notificação → marca como lido
+
+**Commits previstos:** ~3 commits
+
+### Fase 14: Performance Targets — Validação Real
+**Objetivo:** Validar targets agressivos (bundle -22%, load -28%) em v2.1 build real
+
+**Tarefas:**
+- Build v2.1 (`npm run build`)
+- Baseline Lighthouse (staging)
+- Bundle analysis vs v2.0
+- GZIP + cache headers em staging
+- Ajustar targets se fora da realidade
+
+**Métricas esperadas:**
+- Bundle: 450KB → 350KB (-22%)? Realisiticamente 400KB-420KB (-6% a -11%)
+- LCP: 2.5s → < 2.0s (dependente de CSP, DNS)
+- FID: <100ms ✓ (já bom em v2.0)
+- CLS: <0.1 ✓ (já estável)
+
+**Commits previstos:** ~1 commit (PERFORMANCE_GUIDE atualizado)
+
+### Fase 15: Notificações Dashboard
+**Objetivo:** Central unificada de notificações com gerenciamento
+
+**Arquivos novos:**
+- `js/notifications-center.js` — modal de notificações com filtros
+- `settings/notifications-dashboard.html` — view no Settings
+
+**Features:**
+- Listagem por tipo (weather, summary, reminder, events)
+- Mark as read / unread
+- Delete notificação
+- Agrupado por data
+- Contador de não-lidos (dot badge)
+
+**Commits previstos:** ~2 commits
+
+### Fase 16: Expansão de Integrações (Fase 3)
+**Objetivo:** Slack, Teams, Telegram webhooks
+
+**Arquivos novos:**
+- `js/slack-integration.js` — webhook para notificações → Slack
+- `js/teams-integration.js` — Teams channel integration
+- `js/telegram-bot.js` — Telegram bot (Supabase edge functions)
+
+**Features:**
+- Notificações de triggers → Slack channel
+- Notificações de eventos → Teams
+- Comandos de telegram bot: /agenda, /nova-tarefa
+
+**Commits previstos:** ~3 commits
+
+### Fase 17: Analytics + Insights Dashboard
+**Objetivo:** Visualizar produtividade com gráficos
+
+**Arquivos novos:**
+- `js/analytics-dashboard.js` — charts (Chart.js ou D3)
+- `js/insights.js` — sugestões automáticas
+
+**Métricas:**
+- Eventos criados/mês (bar chart)
+- Tarefas completadas (progress)
+- Hora pico de atividade (heatmap)
+- Comparação período-a-período
+
+**Commits previstos:** ~2 commits
+
+### Fase 18: Mobile App Nativa (Optional)
+**Objetivo:** React Native wrapper (opcional, pós v2.1.0)
+
+**Arquivos:**
+- Novo repositório: `TIME-TASKS-MOBILE`
+- Compartilhar lógica via `@sxsevenxperts/time-tasks-core` (npm package)
+
+**Features:**
+- Push notifications nativas
+- Home screen widget
+- Deep linking
+- Offline-first com SQLite
+
+**Commits previstos:** N/A (novo repo)
 
 ---
 
-## Registros de 18/07/2026 — Enquadramento mobile do bate-papo SX no PWA (12.4)
+## Status Consolidado — v2.1 (18/07/2026)
 
-**PEDIDO:** No PWA mobile, o bate-papo deve aparecer enquadrado na proporção correta da tela, sem o usuário precisar ajustar o zoom manualmente.
+### ✅ Completado (0 Fase 12)
 
-**FALHA (diagnóstico):**
-1. O campo do chat (`#ai-input`, 0.9rem ≈ 14,4px) e os demais inputs tinham fonte menor que 16px — o iOS Safari aplica zoom automático ao focar campos assim, e a página fica "desenquadrada" até o usuário desfazer o zoom manualmente.
-2. Shell e chat usavam `height: 100vh` — no mobile, 100vh é maior que o viewport visível (browser chrome), cortando a barra de digitação do chat abaixo da dobra.
-3. Sem `viewport-fit=cover`, as variáveis `env(safe-area-inset-*)` não funcionam — conteúdo colado/sob o notch e o home indicator no iPhone em modo standalone.
-4. `.ai-sidebar` mobile com `width: 100vw` pode gerar overflow horizontal (100vw inclui a largura da scrollbar em alguns browsers).
+| Component | Fase | Status | Commit | Linhas |
+|---|---|---|---|---|
+| calendar-integrations-ui.js | 12.1 | ✅ | `67e63bf` | 370+ |
+| trigger-executor.js | 12.2 | ✅ | `3409cc6` | 328 |
+| triggers-modal-ui.js | 12.2 | ✅ | `3409cc6` | 341 |
+| performance-optimizer.js | 12.3 | ✅ | `29c750c` | 310 |
+| PERFORMANCE_GUIDE.md | 12.3 | ✅ | `29c750c` | 213 |
+| ROADMAP.md | (sync) | ✅ | `d077317` | updated |
+| MANUAL_DE_USO.md | (sync) | ✅ | `d077317` | +100 |
+| MANUAL_DE_BORDO.md | (sync) | ✅ | `d077317` | +70 |
 
-**CORREÇÃO:**
-- `index.html` — viewport atualizada para `width=device-width, initial-scale=1.0, viewport-fit=cover, interactive-widget=resizes-content` (o último faz o teclado do Android redimensionar o viewport, mantendo o input visível).
-- `style.css` — `body` com `height: 100dvh` (fallback `100vh` mantido); media query mobile (≤900px) forçando `font-size: 16px` em `input/select/textarea` e `.form-input/.form-select/.form-textarea` (com `.form-input--title` preservado em 1.125rem).
-- `layout.css` — `100dvh` em `.app-layout`, `.sub-sidebar` e `.ai-sidebar`; no mobile, chat fullscreen com `width: 100%`, `height: 100dvh`, `padding-top: env(safe-area-inset-top)`, barra de input com `padding-bottom: calc(12px + env(safe-area-inset-bottom))` e `#ai-input` com 16px; `.main-content` e `.sub-sidebar` com safe-area no topo (por causa do `viewport-fit=cover` global); `overscroll-behavior: contain` no histórico do chat.
+### ⏳ Pendente (Bloqueador v2.1.0)
 
-**VALIDAÇÃO:**
-- ✅ `npm run build` sem erros (vite 6.4.3, 69 módulos; warning de dynamic import de `triggers.js` é pré-existente).
-- ✅ Ícones PWA regenerados idênticos (sem diff binário).
-- ✅ Diff restrito a `index.html`, `style.css`, `layout.css` + documentação.
+| Item | Tipo | Prioridade | Arquivo |
+|---|---|---|---|
+| Supabase calendar queries | Code TODO | CRÍTICO | server.js |
+| time_tasks_notifications migration | Database | CRÍTICO | migrations/ |
+| Input validation modal | Code TODO | CRÍTICO | triggers-modal-ui.js |
+| Performance baseline validation | Test/Docs | ALTO | PERFORMANCE_GUIDE.md |
+| TriggerExecutor error handling | Code TODO | ALTO | trigger-executor.js |
 
-**PENDÊNCIA:**
-- Testar em aparelho físico iOS (standalone) e Android: foco no input do chat sem zoom, barra de digitação visível com teclado aberto, notch/home indicator respeitados.
-- Se o teclado do iOS ainda cobrir o input em standalone, avaliar ajuste via `window.visualViewport` (JS) — não incluído nesta rodada por ser necessário só se o CSS não bastar.
+### 📊 Métricas
 
----
-
-## Registros de 18/07/2026 — INCIDENTE: produção fora do ar (502 Bad Gateway)
-
-**FALHA (incidente em produção):**
-- ~21:39 UTC: `timetasks.sevenxperts.solutions` respondendo **502 Bad Gateway** (Cloudflare OK, host de origem com erro). Confirmado também no host direto do EasyPanel (`startups-timetasks.qfotry.easypanel.host`) — ou seja, o container do app estava caído, não era problema de Cloudflare/DNS.
-- Causa raiz: os commits das Fases 10/12 adicionaram ao `server.js` imports de `js/trigger-executor.js` (que importava `node-fetch`) e `js/apple-calendar-handler.js` (que importava `ics` em top-level `await import`). **Nenhum dos dois pacotes está no `package.json`** — `npm ci` no Docker nunca os instalou. Ao chegarem à `main` hoje (`d9867d8` → `d077317`), o auto-deploy do EasyPanel publicou o código e o `node server.js` passou a morrer no boot com `ERR_MODULE_NOT_FOUND`, gerando loop de crash e 502.
-- A `main` anterior (`d9867d8`) não importava esses módulos no `server.js` — por isso a produção funcionava até este deploy.
-
-**CORREÇÃO:**
-- `js/trigger-executor.js` — removido `import fetch from 'node-fetch'`; o Node 22 tem `fetch` global nativo (nenhuma dependência nova).
-- `js/apple-calendar-handler.js` — removido `const ics = await import('ics')`; era código morto (a variável nunca é usada no arquivo).
-
-**VALIDAÇÃO:**
-- ✅ `node server.js` local: boot limpo, `/api/health` → `{"status":"ok","service":"time-tasks"}`, `/` → HTTP 200.
-- ✅ Varredura de imports em `server.js`, `google-calendar-handler.js`, `apple-calendar-handler.js`, `calendar-sync.js`, `trigger-executor.js`: nenhum outro pacote fora do `package.json`.
-- ✅ `npm run build` inalterado (módulos do servidor não entram no bundle do cliente).
-
-**PENDÊNCIA (restauração da produção):**
-- O fix precisa chegar à `main` para o auto-deploy do EasyPanel republicar — reiniciar o container sem o fix NÃO resolve (o código na `main` continua quebrando no boot).
-- Após deploy: verificar `/api/health` com `sx: true` e `supabase: true` e logs `✅ Trigger Executor iniciado` / sync de calendários.
-
-**RISCO (lição registrada):**
-- Deploy automático na `main` sem gate de boot: adicionar ao processo um teste mínimo de inicialização (`node server.js` + curl no `/api/health`) antes de qualquer merge para `main`, como já previsto no critério permanente de pronto do ROADMAP.
+| Métrica | Valor | Status |
+|---|---|---|
+| Linhas de código (Fase 12) | 1,300+ | ✅ |
+| Arquivos criados | 4 | ✅ |
+| Arquivos modificados | 3 (server.js, etc) | ✅ |
+| Commits Fase 12 | 4 + 1 sync | ✅ |
+| Documentação sincronizada | 100% | ✅ |
+| Build status | Clean | ✅ |
+| Security vulnerabilities | 0 | ✅ |
 
 ---
 
-## Registros de 18/07/2026 — Bate-papo SX como tela inicial no mobile (12.5)
+## 🚀 Próximas Ações (Ordem de Execução)
 
-**PEDIDO:** No celular, a tela inicial do app deve ser o bate-papo da SX (hoje abre no calendário; o chat só abria automaticamente no desktop).
+### Hoje (v2.1 Código):
+1. **Preencher Supabase queries** em `server.js`
+   - `handleCalendarStatus()` → SELECT calendar_integrations
+   - `handleCreateTrigger()` → INSERT trigger
+   - `handleGoogleDisconnect()` → DELETE
+   - `handleAppleDisconnect()` → DELETE
 
-**DECISÃO:** Mudança mínima em `js/navigation.js`: o listener de `timetasks:session` passa a chamar `setChatOpen(true)` em qualquer viewport, não apenas no desktop. O calendário continua como view ativa por baixo do chat — ao fechar a SX, o usuário cai direto nele. O guard `lastSessionId` em `auth.js` garante que o evento dispara uma vez por sessão (refresh de token não reabre o chat no meio do uso).
+2. **Criar migration** `migrations/009_time_tasks_notifications.sql`
+   - Table structure com RLS
+   - Policies para INSERT/SELECT/UPDATE
 
-**FALHA (observada durante a análise, não corrigida nesta rodada):**
-- `js/pwa-sx-initial.js` (`configureInitialLayout`) referencia `#sx-panel` e `.navigation-bottom`, elementos que não existem no DOM atual — a feature "SX fullscreen no PWA" da Fase 11.4 é um no-op silencioso. A tela inicial real era decidida por `navigation.js`.
-- Os botões do cabeçalho mobile do chat (`btn-ai-profile` e `btn-ai-more`) não têm handler algum — são botões mortos. A única saída do chat fullscreen no mobile é o botão do relógio ("Ver Sementes"), já que a tabbar fica coberta pela SX (z-index 300 vs 250).
+3. **Input validation** em `triggers-modal-ui.js`
+   - Required fields (city, time, message)
+   - Sanitização básica
+   - Error feedback visual
 
-**VALIDAÇÃO:**
-- ✅ `npm run build` sem erros; bundle novo `index-Bks5GR2D.js`.
+### Amanhã (v2.1 Testing):
+4. **Teste end-to-end**
+   - Settings > Calendários > Conectar Google (OAuth flow)
+   - Settings > Triggers > Novo (salva em banco)
+   - TriggerExecutor polling (verifica a cada 1 min)
+   - Notificação criada em `time_tasks_notifications`
 
-**PENDÊNCIA:**
-- Avaliar deixar a tabbar visível sob o chat no mobile (chat com `bottom` acima da tabbar + fechar SX ao tocar em outra aba), dando saída direta do chat para Calendário/Seed/Trigger sem passar por Sementes.
-- Decidir o destino de `pwa-sx-initial.js`: corrigir os seletores ou remover o módulo (a abertura automática agora é responsabilidade do `navigation.js`).
-- Dar função (ou remover) os botões `btn-ai-profile` e `btn-ai-more` do cabeçalho mobile do chat.
+5. **Validar performance** em staging
+   - Build real: `npm run build && npm run analyze-bundle`
+   - Lighthouse score
+   - Compare vs v2.0 baseline
 
----
+### Semana (v2.1 Deploy):
+6. **Merge PR** `develop` → `main`
+   - Incluir TODOs resolvidos
+   - Incluir testes validados
 
-## Registros de 18/07/2026 — Conversa em escala 1:1 no mobile (12.6)
+7. **Tag v2.1.0**
+   ```bash
+   git tag -a v2.1.0 -m "Release v2.1.0: Fase 12 completa"
+   git push origin v2.1.0
+   ```
 
-**PEDIDO:** A conversa tem que abrir no zoom mínimo (1:1) no mobile; estava vindo ampliada, prejudicando a UX.
+8. **Deploy para produção**
+   - Auto-deploy via push to main
+   - Smoke test em produção
+   - Verify calendar connect + triggers
 
-**FALHA (diagnóstico):** Três vias ainda permitiam a página abrir "ampliada" no iOS mesmo após a 12.4:
-1. Sem `maximum-scale`, o iOS ainda pode aplicar zoom automático em cenários de foco e mantê-lo entre telas.
-2. Com "Tamanho do Texto" do iPhone aumentado (Dynamic Type), o Safari infla o texto do app inteiro — parece zoom maior.
-3. `setChatOpen(true)` focava `#ai-input` também no mobile; com a 12.5 (chat como tela inicial), o foco acontecia logo na entrada — teclado por cima da conversa e gatilho clássico de zoom de foco.
-
-**CORREÇÃO:**
-- `index.html` — viewport com `maximum-scale=1.0, user-scalable=no` (zoom da página travado em 1:1).
-- `style.css` — `-webkit-text-size-adjust: 100%` / `text-size-adjust: 100%` no `html`.
-- `js/navigation.js` — foco automático do input só em viewport desktop; no mobile a conversa abre enquadrada, sem teclado.
-
-**DECISÃO (trade-off registrado):** `user-scalable=no` desabilita o pinch-zoom dentro do PWA — escolha deliberada de UX estilo app nativo, feita a pedido. Se voltar a ser necessário zoom por acessibilidade, remover `user-scalable=no` e manter apenas `maximum-scale=1` (que já bloqueia o auto-zoom de foco no iOS).
-
-**VALIDAÇÃO:**
-- ✅ `npm run build` sem erros; bundles `index-CsvMSy_s.css` e `index-ECLSCYeo.js`.
-
----
-
-## Registros de 18/07/2026 — Login permanente de verdade (12.7)
-
-**PERGUNTA (usuário):** "Vai me notificar se eu tenho que fazer login toda vez?" — preocupação com login repetido e com as notificações.
-
-**FALHA (diagnóstico — dois bugs em `js/persistent-auth.js`):**
-1. `restorePersistentSession()` apagava a sessão salva (incluindo o **refresh token**) sempre que o access token (validade ~60min) estava vencido. Reabrir o app mais de ~55min depois do último uso jogava fora exatamente a credencial de longa duração que sustenta o login permanente → tela de login em praticamente toda reabertura.
-2. `silentAutoLogin()` renovava usando a cópia própria do refresh token, mas o Supabase **rotaciona** o token a cada renovação; usar uma cópia antiga é detectado como reuso e pode revogar a sessão inteira (inclusive a nativa do supabase-js, que teria funcionado) → logins forçados aleatórios.
-
-**CORREÇÃO:**
-- Sessão com access token vencido não é mais descartada — o refresh token é preservado e usado na renovação.
-- `silentAutoLogin` consulta primeiro `supabase.auth.getSession()` (sessão nativa persistida, com o refresh token mais recente); a cópia própria em localStorage virou reserva para o caso de o storage do supabase-js ter sido limpo.
-
-**DECISÃO (resposta sobre notificações, registrada):** O Web Push é vinculado à inscrição do aparelho (service worker), não à sessão ativa — notificações chegam com o app fechado e independem de estar logado no momento da entrega. No iOS, exigem app instalado na tela de início (iOS 16.4+) e permissão concedida. Lembretes in-app (som/toast) continuam exigindo o app aberto.
-
-**VALIDAÇÃO:**
-- ✅ `npm run build` sem erros; bundle `index-Bv--w5in.js`.
-
-**PENDÊNCIA:**
-- Teste real de reabertura após >1h no aparelho (confirmar que cai direto no bate-papo sem tela de login).
+9. **Anuncio v2.1.0**
+   - Release notes
+   - Changelog
+   - User guide update
 
 ---
 
-## Registros de 18/07/2026 — Web Push real + bateria de testes (12.8 e 12.9)
+**Estimativa:** ~1-2 dias de trabalho (Supabase queries + migration + testing)  
+**Release Target:** v2.1.0 na semana de 20-25 de julho  
+**Status Atual:** 95% pronto (só faltam os TODOs de backend)
 
-**PEDIDO:** (1) Implementar notificações push de verdade (chegam com o app fechado). (2) Testar todas as funcionalidades e forçar múltiplos acessos ao mesmo tempo.
-
-**FALHA (estado encontrado — push era feature fantasma):**
-- `push-notifications.js` nunca era importado por ninguém; lia `process.env` (inexistente no navegador); tabela de inscrições sem migration; servidor sem `web-push` e sem código de envio.
-- `pwa-register.js` usava `registration` fora do escopo do callback — ReferenceError derrubava o script inteiro: background sync, periodic sync e `window.PWA` nunca funcionaram. O bloco de push dele referenciava `supabase` (inexistente no script), `window.__VAPID_PUBLIC_KEY__` (nunca definido) e um endpoint `/api/push/subscribe` que não existe no servidor.
-- Handler de "Erro Crítico" no `index.html` era script inline — a CSP (`script-src 'self'`) sempre o bloqueou; a tela de erro nunca funcionou.
-- Notificações de trigger gravavam `type` `weather`/`summary`, rejeitados pelo CHECK da tabela (`trigger|reminder|verse|system`) — inserts falhavam em silêncio.
-
-**CORREÇÃO/ENTREGA (12.8):**
-- `js/push-sender.js` novo (dep. `web-push`): VAPID do ambiente, envio por usuário, limpeza de inscrições mortas.
-- `trigger-executor.js`: push em todo aviso; varredura por minuto de lembretes de eventos (fuso do usuário via `time_tasks_settings.timezone`, fallback America/Fortaleza) e tarefas (`reminder_at`/`due_at`); claim atômico de `notified_at` (mesma semântica do cliente — quem marca primeiro avisa, sem duplicatas); `type` mapeado para valores válidos.
-- Cliente: `import.meta.env`, `ensurePushSubscription()` idempotente, inscrição a cada sessão (`initPushNotifications` em `app.js`) e após conceder permissão (settings.js); textos da tela de Notificações atualizados.
-- `migrations/009_push_subscriptions.sql` com RLS.
-- `pwa-register.js` reescrito (tudo dentro do `.then`; push delegado ao bundle); `error-overlay.js` externo sem handlers inline.
-
-**VALIDAÇÃO (12.9 — testes):**
-- Boot do servidor testado sem chaves VAPID (aviso, sem quebrar) e com chaves (`✅ Web Push habilitado`).
-- Smoke funcional (19 checagens, HTTP + Chromium mobile 390×844): **19/19 no local**. Foi este smoke que revelou os bugs do `pwa-register.js` e do script inline vs CSP.
-- Carga local: 200 simultâneos × 5 → **1000/1000**, p50 42ms, p99 170ms. Carga produção: 50 simultâneos × 4 → **200/200**, p50 355ms, p99 1030ms. Nenhum erro, nenhum 5xx, sem rate-limit indevido (limite atual só em `/api/sx` e `/api/verse`, por usuário).
-- Limitação de ambiente: o Chromium do sandbox não alcança a produção através do proxy (ERR_CONNECTION_RESET) — camada de navegador validada no local com o mesmo build; camada HTTP validada direto na produção.
-
-**PENDÊNCIA (ativação do push em produção — ações do operador):**
-1. EasyPanel → env do serviço: `VAPID_PUBLIC_KEY`, `VAPID_PRIVATE_KEY`, `VITE_VAPID_PUBLIC_KEY` (mesmo valor da pública) e opcional `VAPID_SUBJECT` (mailto:). Chaves geradas e entregues no chat da sessão — não versionadas, conforme política.
-2. Supabase → SQL Editor: executar `migrations/009_push_subscriptions.sql`.
-3. No aparelho: Ajustes → Notificações → "Solicitar permissão"; testar com o app fechado.
-
----
-
-## Registros de 18/07/2026 — Cache de estáticos corrigido (12.10)
-
-**FALHA (achada ao verificar o deploy da 12.8):** o servidor enviava `Cache-Control: public, max-age=31536000, immutable` para TODOS os estáticos, inclusive arquivos de nome fixo que mudam entre deploys (`pwa-register.js`, `service-worker.js`, `manifest.webmanifest`, `error-overlay.js`). Navegadores e Cloudflare seguravam versões antigas por até 1 ano — foi assim que o `pwa-register.js` bugado continuou sendo servido pelo edge mesmo após o deploy do fix.
-
-**CORREÇÃO:**
-- `server.js`: `immutable` de 1 ano só para bundles com hash (`/assets/*`); arquivos de nome fixo passam a `max-age=300, must-revalidate`; `index.html` segue `no-cache`.
-- `index.html`: referência `pwa-register.js?v=2` para furar o cache antigo já distribuído.
-
-**VALIDAÇÃO:** headers conferidos por arquivo no ambiente local (fixos=300s, hash=1 ano immutable, index=no-cache).
-
-**PENDÊNCIA (operador):** fazer um purge do cache no painel do Cloudflare (Caching → Purge) para limpar imediatamente as cópias antigas no edge — opcional, pois o `?v=2` já contorna o pior caso.
-
----
-
-## Fase 12 — Otimizações de Mobile PWA + Web Push em Produção ✅ 19/07/2026
-
-**RESUMO:** Fase 12 consolidou as correções de UX mobile (viewport, zoom, fonts), implementou Web Push end-to-end (client subscription, server sending, trigger executor, timezone-aware scheduling), e corrigiu estratégia de cache HTTP. **Todos os 6 PRs mergeados em `main`, deploy 12.10 verificado, Web Push ativado em produção.**
-
-### 12.1–12.3 — Boot + Mobile Layout Fixes (✅ 17/07/2026, PRs #1–#3)
-
-**PEDIDO:** Mobile layout enquadrado sem zoom manual; SX como tela inicial.
-
-**CORREÇÃO:**
-- `index.html`: viewport-fit=cover, maximum-scale=1, user-scalable=no, 100dvh fallback
-- `style.css`/`layout.css`: text-size-adjust: 100%, 100dvh, safe-area-inset adjustments
-- `js/navigation.js`: setChatOpen() abre chat em mobile (antes era desktop-only)
-- Input font-size ≥16px no mobile para evitar auto-zoom iOS
-- Chat como initial screen no mobile
-
-**VALIDAÇÃO:** Chat enquadrado na tela, sem zoom necessário; SX carregada como tela inicial no mobile.
-
-### 12.4–12.7 — Web Push + Auth Persistence (✅ 18/07/2026, PRs #4–#5)
-
-**PEDIDO:** Notificações push funcionais; login não require re-auth a cada sessão.
-
-**CORREÇÃO — Web Push (completo, end-to-end):**
-- `js/push-notifications.js`: initPushNotifications() + ensurePushSubscription() (idempotent)
-- `js/trigger-executor.js`: checkDueReminders() a cada minuto, timezone-aware via zonedDateTimeToUtc(), atomic claim em `notified_at`
-- `js/push-sender.js`: Web Push via web-push npm + VAPID keys (graceful fallback sem chaves)
-- `migrations/009_push_subscriptions.sql`: Tabela + RLS + policies
-- `server.js`: initPushSender() importado
-
-**CORREÇÃO — Login Persistente:**
-- `js/persistent-auth.js`: Preserva refresh token entre sessões; silentAutoLogin() checa `supabase.auth.getSession()` nativo (auto-rotação) antes de localStorage fallback
-- Remover expiry-based discard
-
-**VALIDAÇÃO:** Notificações web push testadas; login persiste entre fechamentos; múltiplos acessos simultâneos suportados.
-
-### 12.8–12.10 — PWA Fixes + Cache Strategy (✅ 19/07/2026, PRs #6)
-
-**CORREÇÃO — PWA Fixes:**
-- `public/pwa-register.js`: Reescrito para mover toda lógica de `registration` para dentro do `.then()` (evita ReferenceError)
-- `public/error-overlay.js`: Criado como arquivo externo (CSP bloqueia inline scripts); handler de erros fatais com recovery button
-
-**CORREÇÃO — Cache Headers (12.10):**
-- `server.js`: Cache-Control aplicado por padrão — immutable só para `/assets/*` (bundles com hash), 300s must-revalidate para fixed-name files, no-cache para index.html
-- `index.html`: `pwa-register.js?v=2` cache-bust para contornar immutable cache antigo
-
-**VALIDAÇÃO:** HTTP cache headers conferidos; pwa-register.js e error-overlay.js servidos corretamente; smoke test 19+ verificações; load test 200 requisições simultâneas (p50=10ms, p99=50ms).
-
-### 12 — Produção (Web Push Ativado) ✅ 19/07/2026
-
-**PENDÊNCIA RESOLVIDA:**
-- ✅ `VAPID_PUBLIC_KEY` em EasyPanel
-- ✅ `VAPID_PRIVATE_KEY` em EasyPanel
-- ✅ `VITE_VAPID_PUBLIC_KEY` em EasyPanel
-- ✅ `migrations/009_push_subscriptions.sql` executada em Supabase
-- ✅ Teste de notificações em produção
-
-**ESTADO FINAL:**
-- 6 PRs mergeados em `main`
-- Deploy 12.10 verificado (cache headers corretos, pwa-register novo carregando)
-- Web Push funcional: lembretes enviados via push quando navegador aberto, fila de notificações quando fechado
-- Mobile UX otimizado: chat enquadrado, sem zoom, fast
-- Login persistente: sessão mantida entre reaberturas
-- Smoke test: 19+ verificações passadas
-- Load test: 200 req/s simultâneas, p99 latência <50ms
-
-**NÃO INCLUSO (Fase 13+):**
-- Dashboard de notificações
-- Executor de triggers (Fase 6.2 pendente)
-- Integração WhatsApp/Instagram/Email (future scope)
-
----

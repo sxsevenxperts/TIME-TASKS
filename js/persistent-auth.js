@@ -11,6 +11,26 @@ const TOKEN_REFRESH_INTERVAL = 55 * 60 * 1000; // 55 minutos (token expira em 60
 let refreshIntervalId = null;
 let refreshPromise = null;
 
+// No iOS o PWA é suspenso e as chamadas de auth do supabase-js podem ficar
+// presas no navigator.locks ao retomar — todo await de auth precisa de teto.
+function withTimeout(promise, ms) {
+  return Promise.race([
+    promise,
+    new Promise((_, reject) => setTimeout(() => reject(new Error('AUTH_TIMEOUT')), ms))
+  ]);
+}
+
+// Erros que significam "refresh token realmente inválido/revogado". Só nesses
+// casos a sessão local deve ser descartada; erro de rede NUNCA derruba login.
+function isFatalAuthError(error) {
+  const message = String(error?.message || '').toLowerCase();
+  return message.includes('invalid refresh token')
+    || message.includes('refresh token not found')
+    || message.includes('refresh_token_not_found')
+    || message.includes('already used')
+    || error?.status === 400;
+}
+
 /**
  * Salva sessão persistentemente no localStorage
  */
@@ -74,7 +94,7 @@ export async function silentAutoLogin() {
     // token mais recente. O Supabase rotaciona o refresh token a cada
     // renovação — renovar com uma cópia antiga é tratado como reuso e pode
     // revogar a sessão inteira, forçando login sem necessidade.
-    const { data: native } = await supabase.auth.getSession();
+    const { data: native } = await withTimeout(supabase.auth.getSession(), 10000);
     if (native?.session) {
       savePersistentSession(native.session);
       return native.session;
@@ -88,13 +108,16 @@ export async function silentAutoLogin() {
     }
 
     // Tentar restaurar com o refresh token
-    const { data, error } = await supabase.auth.refreshSession({
-      refresh_token: persistedSession.refresh_token
-    });
+    const { data, error } = await withTimeout(
+      supabase.auth.refreshSession({ refresh_token: persistedSession.refresh_token }),
+      10000
+    );
 
     if (error) {
       console.warn('Falha ao renovar sessão:', error.message);
-      localStorage.removeItem(AUTH_KEY);
+      // Só descarta a cópia local se o token foi de fato revogado.
+      // Erro de rede/timeout mantém a cópia para a próxima tentativa.
+      if (isFatalAuthError(error)) localStorage.removeItem(AUTH_KEY);
       return null;
     }
 
@@ -142,30 +165,38 @@ function scheduleTokenRefresh(expiresAt) {
  */
 async function refreshToken() {
   if (refreshPromise) {
+    console.log('refreshToken já em andamento, aguardando...');
     return refreshPromise; // Evitar múltiplas renovações simultâneas
   }
 
   refreshPromise = (async () => {
     try {
-      const { data, error } = await supabase.auth.refreshSession();
+      console.log('[refreshToken] Iniciando renovação de token');
+      const { data, error } = await withTimeout(supabase.auth.refreshSession(), 10000);
 
       if (error) {
-        console.error('Erro ao renovar token:', error.message);
-        // Sessão inválida, fazer logout
-        logout();
+        console.error('[refreshToken] Erro ao renovar:', error.message, error.status);
+        // Só derruba a sessão quando o refresh token foi revogado de verdade.
+        // Erro transitório (rede, timeout, suspensão do iOS) mantém o login.
+        if (isFatalAuthError(error)) {
+          console.error('[refreshToken] Erro fatal — revogando logout');
+          logout();
+        } else {
+          console.warn('[refreshToken] Erro transitório — mantendo sessão');
+        }
         return null;
       }
 
       if (data.session) {
         savePersistentSession(data.session);
-        console.log('Token renovado com sucesso');
+        console.log('[refreshToken] ✓ Token renovado com sucesso, expira em:', new Date(data.session.expires_at * 1000).toLocaleTimeString());
         return data.session;
       }
 
+      console.warn('[refreshToken] Sucesso mas sem session nos dados');
       return null;
     } catch (error) {
-      console.error('Exceção ao renovar token:', error);
-      logout();
+      console.error('[refreshToken] Exceção:', error?.message || error);
       return null;
     } finally {
       refreshPromise = null;
@@ -173,6 +204,93 @@ async function refreshToken() {
   })();
 
   return refreshPromise;
+}
+
+/**
+ * Garante uma sessão com access token válido, renovando se necessário.
+ * Nunca revoga a sessão — em caso de falha devolve null e o chamador decide.
+ */
+export async function ensureFreshSession(options = {}) {
+  if (!supabase) {
+    console.warn('[ensureFreshSession] supabase não está pronto');
+    return null;
+  }
+  try {
+    const { data } = await withTimeout(supabase.auth.getSession(), 10000);
+    const session = data?.session || null;
+    const nowSeconds = Math.floor(Date.now() / 1000);
+    const stillValid = session?.expires_at && session.expires_at - nowSeconds > 120;
+
+    console.log(`[ensureFreshSession] Session válida? ${stillValid}, force=${options.force}, expira em: ${session?.expires_at ? ((session.expires_at - nowSeconds) + 's') : 'N/A'}`);
+
+    if (stillValid && !options.force) {
+      console.log('[ensureFreshSession] ✓ Token válido, devolvendo');
+      return session;
+    }
+
+    // Token vencido/perto de vencer (ou renovação forçada após um 401).
+    console.log('[ensureFreshSession] Token fora de validade, tentando renovar...');
+    const refreshed = await refreshToken();
+    if (refreshed) {
+      console.log('[ensureFreshSession] ✓ Renovação bem-sucedida');
+      return refreshed;
+    }
+
+    // Reserva: renovar com a cópia própria (storage do supabase-js perdido).
+    console.log('[ensureFreshSession] Primeiro attempt falhou, tentando com persistedSession...');
+    const persisted = restorePersistentSession();
+    if (persisted?.refresh_token) {
+      console.log('[ensureFreshSession] Usando refresh_token persistido');
+      const { data: alt, error } = await withTimeout(
+        supabase.auth.refreshSession({ refresh_token: persisted.refresh_token }),
+        10000
+      ).catch(() => ({ data: null, error: null }));
+      if (!error && alt?.session) {
+        savePersistentSession(alt.session);
+        console.log('[ensureFreshSession] ✓ Renovação com persistedSession bem-sucedida');
+        return alt.session;
+      } else if (error) {
+        console.error('[ensureFreshSession] Falha ao renovar com persistedSession:', error?.message);
+      }
+    } else {
+      console.warn('[ensureFreshSession] Nenhuma persistedSession disponível');
+    }
+
+    // Se renovação falhou, NUNCA devolver session vencida. Devolver null
+    // força chamador a tratar como "não autenticado" e pedir novo login.
+    if (session?.expires_at) {
+      const nowSeconds = Math.floor(Date.now() / 1000);
+      if (session.expires_at - nowSeconds <= 120) {
+        console.error('[ensureFreshSession] ✗ Token vencido e renovação falhou, devolvendo null');
+        return null;
+      }
+    }
+    console.log('[ensureFreshSession] Fallback: devolvendo session (pode estar null ou válida)');
+    return session; // null ou válida (quando getSession falhou mas temos fallback)
+  } catch (error) {
+    console.error('[ensureFreshSession] Exceção:', error?.message || error);
+    return null;
+  }
+}
+
+/**
+ * Renova a sessão quando o PWA volta do background (iOS congela timers:
+ * o refresh agendado nunca dispara durante a suspensão — ao retomar,
+ * renovamos na hora em vez de esperar o próximo tick).
+ */
+export function setupResumeRefresh() {
+  let lastRun = 0;
+  const onResume = () => {
+    const now = Date.now();
+    if (now - lastRun < 5000) return; // visibilitychange+pageshow+focus juntos
+    lastRun = now;
+    void ensureFreshSession();
+  };
+  document.addEventListener('visibilitychange', () => {
+    if (document.visibilityState === 'visible') onResume();
+  });
+  window.addEventListener('pageshow', onResume);
+  window.addEventListener('focus', onResume);
 }
 
 /**
@@ -192,7 +310,9 @@ function clearTokenRefresh() {
 export async function logout() {
   clearTokenRefresh();
   localStorage.removeItem(AUTH_KEY);
-  await supabase.auth.signOut();
+  // scope local: encerra só este aparelho. O scope global (padrão) revogava o
+  // refresh token de TODOS os aparelhos — um erro no iPhone derrubava o desktop.
+  await supabase.auth.signOut({ scope: 'local' });
 
   // Despachar evento para UI atualizar
   document.dispatchEvent(new CustomEvent('timetasks:logout', {
@@ -274,6 +394,8 @@ export default {
   savePersistentSession,
   restorePersistentSession,
   silentAutoLogin,
+  ensureFreshSession,
+  setupResumeRefresh,
   logout,
   getPersistedSessionInfo,
   notifySessionUpdate,

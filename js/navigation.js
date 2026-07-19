@@ -116,6 +116,12 @@ export function initNavigation() {
     button.addEventListener('click', () => setChatOpen());
   });
 
+  // Profile button: open settings
+  document.getElementById('btn-ai-profile')?.addEventListener('click', () => {
+    setChatOpen(false);
+    activateView('settings', { keepChatState: true });
+  });
+
   document.getElementById('btn-ai-history')?.addEventListener('click', () => {
     setChatOpen(false);
     activateView('seeds', { keepChatState: true });

@@ -8,37 +8,12 @@
       .then((registration) => {
         console.log('Service Worker registered:', registration);
 
-        // Check for updates periodically
+        // Verificar atualizações do SW a cada minuto (descobre novos deploys)
         setInterval(() => {
           registration.update();
-        }, 60000); // Check every minute
+        }, 60000);
 
-        // Verificar autenticação periodicamente no SW
-        setInterval(() => {
-          if (navigator.serviceWorker.controller) {
-            navigator.serviceWorker.controller.postMessage({
-              type: 'CHECK_AUTH'
-            });
-          }
-        }, 5 * 60 * 1000); // A cada 5 minutos
-
-        // Background sync
-        if ('sync' in registration) {
-          registration.sync.register('sync-events').catch((err) => {
-            console.warn('Background sync não disponível:', err.message);
-          });
-        }
-
-        // Periodic sync (24h)
-        if ('periodicSync' in registration) {
-          registration.periodicSync
-            .register('sync-calendars-24h', {
-              minInterval: 24 * 60 * 60 * 1000
-            })
-            .catch((err) => {
-              console.warn('Periodic sync não disponível:', err.message);
-            });
-        }
+        // Auth check não é necessário no SW (sem localStorage); client gerencia
       })
       .catch((error) => {
         console.error('Service Worker registration failed:', error);
