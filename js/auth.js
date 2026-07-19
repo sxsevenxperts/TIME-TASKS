@@ -6,6 +6,7 @@ import {
   silentAutoLogin,
   startAutoRefresh,
   setupAuthSyncListener,
+  setupResumeRefresh,
   getPersistedSessionInfo
 } from './persistent-auth.js';
 
@@ -157,15 +158,17 @@ export async function initAuth() {
       try {
         allowed = await ensureAppMembership(session.user.id, registering);
       } catch (error) {
-        authError.style.color = 'var(--color-danger)';
-        authError.textContent = error.message || 'Não foi possível validar este acesso.';
-        await supabase.auth.signOut();
-        return;
+        // Erro de consulta (rede fora, token em renovação, iOS retomando do
+        // background) NÃO significa falta de acesso — antes isso chamava
+        // signOut() e revogava o login a cada instabilidade. A RLS do banco
+        // continua protegendo os dados; seguimos com a sessão.
+        console.warn('Validação de membership adiada (erro transitório):', error.message);
+        allowed = true;
       }
       if (!allowed) {
         authError.style.color = 'var(--color-danger)';
         authError.textContent = 'Esta conta não possui acesso ao Time Tasks. Use “Criar conta” para cadastrar este acesso.';
-        await supabase.auth.signOut();
+        await supabase.auth.signOut({ scope: 'local' });
         return;
       }
       registering = false;
@@ -211,12 +214,16 @@ export async function initAuth() {
   };
 
   supabase.auth.onAuthStateChange((_event, session) => {
-    // O callback não fica bloqueado por uma consulta ao banco.
-    if (session) {
-      savePersistentSession(session);
-      startAutoRefresh(session);
-    }
-    void applySession(session);
+    // setTimeout(0): o supabase-js segura o lock de auth (navigator.locks)
+    // enquanto o callback roda. Chamar .from()/getSession() dentro dele trava
+    // o app no Safari/iOS (deadlock documentado). Saímos do callback antes.
+    setTimeout(() => {
+      if (session) {
+        savePersistentSession(session);
+        startAutoRefresh(session);
+      }
+      void applySession(session);
+    }, 0);
   });
 
   // Tentar auto-login silencioso (para PWA JWS com login permanente)
@@ -252,6 +259,9 @@ export async function initAuth() {
   // Sincronizar auth entre abas/janelas
   setupAuthSyncListener();
 
+  // iOS congela timers em background: renovar token ao retomar o PWA
+  setupResumeRefresh();
+
   // Bind Logout Button
   const logoutBtn = document.getElementById('btn-logout');
   if (logoutBtn) {
@@ -266,5 +276,6 @@ export function getCurrentUser() {
 }
 
 export async function signOut() {
-  if (supabase) await supabase.auth.signOut();
+  // scope local: sair aqui não derruba a sessão dos outros aparelhos
+  if (supabase) await supabase.auth.signOut({ scope: 'local' });
 }

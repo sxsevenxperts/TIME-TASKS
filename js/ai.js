@@ -1,5 +1,6 @@
 import { supabase } from './supabase.js';
 import { getCurrentUser } from './auth.js';
+import { ensureFreshSession } from './persistent-auth.js';
 import { createEvent, detectConflicts, deleteEvent, getEventById, loadEvents, patchEvent, setEventCompleted } from './events.js';
 import { createSeed } from './seeds.js';
 import { getSettings } from './settings.js';
@@ -116,10 +117,12 @@ async function loadHistory() {
   renderWelcome();
 }
 
-async function sessionToken() {
+async function sessionToken(forceRefresh = false) {
   if (!supabase) return null;
-  const { data } = await supabase.auth.getSession();
-  return data.session?.access_token || null;
+  // ensureFreshSession renova o token vencido (iOS suspende o app e o token
+  // morre em ~60min) em vez de devolver null e acusar "sessão expirou".
+  const session = await ensureFreshSession({ force: forceRefresh });
+  return session?.access_token || null;
 }
 
 function errorMessage(code) {
@@ -138,18 +141,17 @@ function errorMessage(code) {
   return errors[code] || 'Não foi possível concluir o pedido agora.';
 }
 
-async function askSx(text) {
-  const token = await sessionToken();
-  if (!token) throw new Error('UNAUTHORIZED');
+function sxRequest(text, token) {
   const settings = getSettings();
   const userName = String(settings.displayName || '').trim()
     || String(getCurrentUser()?.email || '').split('@')[0];
-  const response = await fetch('/api/sx', {
+  return fetch('/api/sx', {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
       Authorization: `Bearer ${token}`
     },
+    signal: AbortSignal.timeout(45_000),
     body: JSON.stringify({
       text,
       now: new Date().toISOString(),
@@ -165,6 +167,19 @@ async function askSx(text) {
       }
     })
   });
+}
+
+async function askSx(text) {
+  let token = await sessionToken();
+  if (!token) token = await sessionToken(true);
+  if (!token) throw new Error('UNAUTHORIZED');
+  let response = await sxRequest(text, token);
+  if (response.status === 401) {
+    // Token rejeitado pelo servidor: renovar uma vez e repetir o pedido.
+    token = await sessionToken(true);
+    if (!token) throw new Error('UNAUTHORIZED');
+    response = await sxRequest(text, token);
+  }
   const payload = await response.json().catch(() => ({}));
   if (!response.ok) throw new Error(payload.error || 'SX_REQUEST_FAILED');
   return payload;

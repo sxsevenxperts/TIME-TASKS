@@ -116,6 +116,21 @@ export function initNavigation() {
     button.addEventListener('click', () => setChatOpen());
   });
 
+  // Profile button: open settings
+  document.getElementById('btn-ai-profile')?.addEventListener('click', () => {
+    setChatOpen(false);
+    activateView('settings', { keepChatState: true });
+  });
+
+  // More options button
+  document.getElementById('btn-ai-more')?.addEventListener('click', (e) => {
+    e.stopPropagation();
+    const menu = document.getElementById('ai-header-menu');
+    if (menu) {
+      menu.style.display = menu.style.display === 'none' ? 'block' : 'none';
+    }
+  });
+
   document.getElementById('btn-ai-history')?.addEventListener('click', () => {
     setChatOpen(false);
     activateView('seeds', { keepChatState: true });

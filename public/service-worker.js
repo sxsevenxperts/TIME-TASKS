@@ -84,7 +84,27 @@ self.addEventListener('fetch', (event) => {
     return;
   }
 
-  // Static assets: cache-first, fallback to network
+  // Hashed assets (dist/assets/*): cache-first (immutable)
+  if (request.method === 'GET' && url.pathname.includes('/assets/')) {
+    event.respondWith(
+      caches.match(request).then((cachedResponse) => {
+        if (cachedResponse) return cachedResponse;
+        return fetch(request).then((response) => {
+          if (!response || response.status !== 200) return response;
+          const responseClone = response.clone();
+          caches.open(DYNAMIC_CACHE).then((cache) => {
+            cache.put(request, responseClone);
+          });
+          return response;
+        });
+      })
+    );
+    return;
+  }
+
+  // Non-hashed assets (.js, .css, images, fonts): network-first
+  // (on deploy, these files change URL but keep the path — SW must not
+  // cache-first them, else old version persists indefinitely)
   if (
     request.method === 'GET' &&
     (url.pathname.endsWith('.js') ||
@@ -97,21 +117,20 @@ self.addEventListener('fetch', (event) => {
       url.pathname.includes('/fonts/'))
   ) {
     event.respondWith(
-      caches.match(request).then((cachedResponse) => {
-        if (cachedResponse) {
-          return cachedResponse;
-        }
-        return fetch(request).then((response) => {
-          if (!response || response.status !== 200 || response.type !== 'basic') {
-            return response;
-          }
+      fetch(request)
+        .then((response) => {
+          if (!response || response.status !== 200) return response;
           const responseClone = response.clone();
           caches.open(DYNAMIC_CACHE).then((cache) => {
             cache.put(request, responseClone);
           });
           return response;
-        });
-      })
+        })
+        .catch(() => {
+          return caches.match(request).then((cachedResponse) => {
+            return cachedResponse || new Response('Offline', { status: 503 });
+          });
+        })
     );
     return;
   }
@@ -144,35 +163,9 @@ self.addEventListener('message', (event) => {
       case 'CLEAR_CACHE':
         caches.delete(DYNAMIC_CACHE);
         break;
-
       case 'CHECK_AUTH':
-        // Verificar se há token válido no localStorage
-        const authKey = 'timetasks_auth_persistent';
-        const authData = localStorage.getItem ? (() => {
-          try {
-            const stored = localStorage.getItem(authKey);
-            return stored ? JSON.parse(stored) : null;
-          } catch {
-            return null;
-          }
-        })() : null;
-
-        if (authData && authData.expiresAt) {
-          const now = Date.now();
-          const expiresAtMs = authData.expiresAt * 1000;
-
-          // Se expirou, limpar
-          if (now > expiresAtMs) {
-            if (localStorage.removeItem) {
-              localStorage.removeItem(authKey);
-            }
-            event.ports[0]?.postMessage({ authenticated: false, reason: 'expired' });
-          } else {
-            event.ports[0]?.postMessage({ authenticated: true });
-          }
-        } else {
-          event.ports[0]?.postMessage({ authenticated: false, reason: 'no-session' });
-        }
+        // noop: verificação de auth foi movida pro client (persistent-auth.js)
+        event.ports[0]?.postMessage({ authenticated: true });
         break;
     }
   }
@@ -233,123 +226,13 @@ self.addEventListener('notificationclick', (event) => {
   );
 });
 
-// Handle background sync
+// Handle background sync (desativado — localStorage não existe em SW)
+// O sync é responsabilidade do client; o SW apenas persiste dados
 self.addEventListener('sync', (event) => {
-  if (event.tag === 'sync-events') {
-    event.waitUntil(
-      (async () => {
-        try {
-          const authData = localStorage.getItem('timetasks_auth_persistent');
-          if (!authData) {
-            console.warn('Sem autenticação para background sync');
-            return;
-          }
-
-          const { accessToken } = JSON.parse(authData);
-
-          // Sincronizar eventos
-          const response = await fetch('/api/events/sync', {
-            method: 'POST',
-            headers: {
-              'Authorization': `Bearer ${accessToken}`,
-              'Content-Type': 'application/json'
-            }
-          });
-
-          if (!response.ok) throw new Error('Sync falhou');
-
-          const result = await response.json();
-          console.log('✅ Background sync concluído:', result);
-
-          // Notificar sucesso
-          self.registration?.showNotification('✅ Eventos sincronizados', {
-            body: 'Seus dados foram atualizados',
-            icon: '/icon-192.png',
-            badge: '/icon-192.png',
-            tag: 'sync-complete',
-            silent: true
-          });
-        } catch (error) {
-          console.error('Erro em background sync:', error);
-
-          // Retry automático (vai disparar novamente em ~5min)
-          throw error;
-        }
-      })()
-    );
-  }
+  // noop: background sync coordination happens on the client side
 });
 
-// Handle periodic sync (calendários 24h, lembretes 12h)
+// Handle periodic sync (desativado — localStorage não existe em SW)
 self.addEventListener('periodicsync', (event) => {
-  if (event.tag === 'sync-calendars-24h') {
-    event.waitUntil(
-      (async () => {
-        try {
-          const authData = localStorage.getItem('timetasks_auth_persistent');
-          if (!authData) {
-            console.warn('Sem autenticação para periodic sync');
-            return;
-          }
-
-          const { accessToken } = JSON.parse(authData);
-
-          const response = await fetch('/api/calendar/sync', {
-            method: 'POST',
-            headers: {
-              'Authorization': `Bearer ${accessToken}`,
-              'Content-Type': 'application/json'
-            },
-            signal: AbortSignal.timeout(60_000)
-          });
-
-          if (!response.ok) throw new Error('Calendar sync falhou');
-
-          const result = await response.json();
-          console.log('✅ Calendários sincronizados (periodic):', result);
-
-          // Notificar apenas se houver mudanças
-          if (result.events_synced > 0) {
-            self.registration?.showNotification('✅ Calendários atualizados', {
-              body: `${result.events_synced} eventos sincronizados`,
-              icon: '/icon-192.png',
-              badge: '/icon-192.png',
-              tag: 'calendar-sync',
-              silent: true
-            });
-          }
-        } catch (error) {
-          console.error('Erro em periodic sync (calendários):', error);
-        }
-      })()
-    );
-  } else if (event.tag === 'sync-reminders-daily') {
-    event.waitUntil(
-      (async () => {
-        try {
-          const authData = localStorage.getItem('timetasks_auth_persistent');
-          if (!authData) return;
-
-          const { accessToken } = JSON.parse(authData);
-
-          const response = await fetch('/api/reminders?days=1', {
-            headers: {
-              'Authorization': `Bearer ${accessToken}`,
-              'Content-Type': 'application/json'
-            },
-            signal: AbortSignal.timeout(30_000)
-          });
-
-          if (!response.ok) return;
-
-          const reminders = await response.json();
-          if (reminders.length > 0) {
-            console.log(`🔔 ${reminders.length} lembretes verificados (periodic)`);
-          }
-        } catch (error) {
-          console.error('Erro em periodic sync (lembretes):', error);
-        }
-      })()
-    );
-  }
+  // noop: periodic sync coordination happens on the client side
 });
