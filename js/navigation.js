@@ -122,15 +122,6 @@ export function initNavigation() {
     activateView('settings', { keepChatState: true });
   });
 
-  // More options button
-  document.getElementById('btn-ai-more')?.addEventListener('click', (e) => {
-    e.stopPropagation();
-    const menu = document.getElementById('ai-header-menu');
-    if (menu) {
-      menu.style.display = menu.style.display === 'none' ? 'block' : 'none';
-    }
-  });
-
   document.getElementById('btn-ai-history')?.addEventListener('click', () => {
     setChatOpen(false);
     activateView('seeds', { keepChatState: true });
