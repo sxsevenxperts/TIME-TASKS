@@ -1,9 +1,9 @@
 # Roadmap — SX Time Tasks
 
-**Última revisão técnica:** 18/07/2026 (v2.1 Fase 12 completa)
-**Status:** ✅ v2.0 PRODUÇÃO + ✅ v2.1 DESENVOLVIMENTO COMPLETO
+**Última revisão técnica:** 19/07/2026 (v2.1 Fase 12 produção, Web Push ativado)
+**Status:** ✅ v2.0 PRODUÇÃO + ✅ v2.1 PRODUÇÃO COMPLETA (6 PRs mergeados)
 
-## Versão 2.1 — ✅ COMPLETA (Fase 12 — 18/07/2026)
+## Versão 2.1 — ✅ COMPLETA EM PRODUÇÃO (Fases 1–12 — 19/07/2026)
 
 **Fase 12: Integrações + Triggers + Performance — ✅ TODAS CONCLUÍDAS**
 

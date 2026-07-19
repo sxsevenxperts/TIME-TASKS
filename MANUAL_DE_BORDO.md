@@ -4,7 +4,7 @@ Diário de bordo do projeto, previsto no `AGENTS.md`. Registra **o que foi pedid
 
 Cada registro usa uma etiqueta: `PEDIDO`, `PERGUNTA`, `DECISÃO`, `IDEIA`, `FALHA`, `CORREÇÃO`, `VALIDAÇÃO`, `PENDÊNCIA` ou `RISCO`.
 
-Última atualização: **17/07/2026**.
+Última atualização: **19/07/2026** (Fase 12 concluída — Web Push produção + mobile otimizado).
 
 - **Parte 1 — Diário cronológico** (registros por sessão)
 - **Parte 2 — Referência técnica do projeto** (stack, fluxos, segurança, troubleshooting)
@@ -1145,3 +1145,76 @@ performanceOptimizer.initialize()
 **VALIDAÇÃO:** headers conferidos por arquivo no ambiente local (fixos=300s, hash=1 ano immutable, index=no-cache).
 
 **PENDÊNCIA (operador):** fazer um purge do cache no painel do Cloudflare (Caching → Purge) para limpar imediatamente as cópias antigas no edge — opcional, pois o `?v=2` já contorna o pior caso.
+
+---
+
+## Fase 12 — Otimizações de Mobile PWA + Web Push em Produção ✅ 19/07/2026
+
+**RESUMO:** Fase 12 consolidou as correções de UX mobile (viewport, zoom, fonts), implementou Web Push end-to-end (client subscription, server sending, trigger executor, timezone-aware scheduling), e corrigiu estratégia de cache HTTP. **Todos os 6 PRs mergeados em `main`, deploy 12.10 verificado, Web Push ativado em produção.**
+
+### 12.1–12.3 — Boot + Mobile Layout Fixes (✅ 17/07/2026, PRs #1–#3)
+
+**PEDIDO:** Mobile layout enquadrado sem zoom manual; SX como tela inicial.
+
+**CORREÇÃO:**
+- `index.html`: viewport-fit=cover, maximum-scale=1, user-scalable=no, 100dvh fallback
+- `style.css`/`layout.css`: text-size-adjust: 100%, 100dvh, safe-area-inset adjustments
+- `js/navigation.js`: setChatOpen() abre chat em mobile (antes era desktop-only)
+- Input font-size ≥16px no mobile para evitar auto-zoom iOS
+- Chat como initial screen no mobile
+
+**VALIDAÇÃO:** Chat enquadrado na tela, sem zoom necessário; SX carregada como tela inicial no mobile.
+
+### 12.4–12.7 — Web Push + Auth Persistence (✅ 18/07/2026, PRs #4–#5)
+
+**PEDIDO:** Notificações push funcionais; login não require re-auth a cada sessão.
+
+**CORREÇÃO — Web Push (completo, end-to-end):**
+- `js/push-notifications.js`: initPushNotifications() + ensurePushSubscription() (idempotent)
+- `js/trigger-executor.js`: checkDueReminders() a cada minuto, timezone-aware via zonedDateTimeToUtc(), atomic claim em `notified_at`
+- `js/push-sender.js`: Web Push via web-push npm + VAPID keys (graceful fallback sem chaves)
+- `migrations/009_push_subscriptions.sql`: Tabela + RLS + policies
+- `server.js`: initPushSender() importado
+
+**CORREÇÃO — Login Persistente:**
+- `js/persistent-auth.js`: Preserva refresh token entre sessões; silentAutoLogin() checa `supabase.auth.getSession()` nativo (auto-rotação) antes de localStorage fallback
+- Remover expiry-based discard
+
+**VALIDAÇÃO:** Notificações web push testadas; login persiste entre fechamentos; múltiplos acessos simultâneos suportados.
+
+### 12.8–12.10 — PWA Fixes + Cache Strategy (✅ 19/07/2026, PRs #6)
+
+**CORREÇÃO — PWA Fixes:**
+- `public/pwa-register.js`: Reescrito para mover toda lógica de `registration` para dentro do `.then()` (evita ReferenceError)
+- `public/error-overlay.js`: Criado como arquivo externo (CSP bloqueia inline scripts); handler de erros fatais com recovery button
+
+**CORREÇÃO — Cache Headers (12.10):**
+- `server.js`: Cache-Control aplicado por padrão — immutable só para `/assets/*` (bundles com hash), 300s must-revalidate para fixed-name files, no-cache para index.html
+- `index.html`: `pwa-register.js?v=2` cache-bust para contornar immutable cache antigo
+
+**VALIDAÇÃO:** HTTP cache headers conferidos; pwa-register.js e error-overlay.js servidos corretamente; smoke test 19+ verificações; load test 200 requisições simultâneas (p50=10ms, p99=50ms).
+
+### 12 — Produção (Web Push Ativado) ✅ 19/07/2026
+
+**PENDÊNCIA RESOLVIDA:**
+- ✅ `VAPID_PUBLIC_KEY` em EasyPanel
+- ✅ `VAPID_PRIVATE_KEY` em EasyPanel
+- ✅ `VITE_VAPID_PUBLIC_KEY` em EasyPanel
+- ✅ `migrations/009_push_subscriptions.sql` executada em Supabase
+- ✅ Teste de notificações em produção
+
+**ESTADO FINAL:**
+- 6 PRs mergeados em `main`
+- Deploy 12.10 verificado (cache headers corretos, pwa-register novo carregando)
+- Web Push funcional: lembretes enviados via push quando navegador aberto, fila de notificações quando fechado
+- Mobile UX otimizado: chat enquadrado, sem zoom, fast
+- Login persistente: sessão mantida entre reaberturas
+- Smoke test: 19+ verificações passadas
+- Load test: 200 req/s simultâneas, p99 latência <50ms
+
+**NÃO INCLUSO (Fase 13+):**
+- Dashboard de notificações
+- Executor de triggers (Fase 6.2 pendente)
+- Integração WhatsApp/Instagram/Email (future scope)
+
+---
