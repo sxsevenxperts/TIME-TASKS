@@ -18,6 +18,7 @@ import { initVerseAccess } from './verse-access.js';
 import { initWeather } from './weather.js';
 import { initTriggers, renderNotifications } from './triggers.js';
 import { initPWASXInitial, setupSXModeToggle } from './pwa-sx-initial.js';
+import './debug-console.js'; // Console visual no app
 import { initVoiceAssistant, setupVoiceShortcut } from './voice-assistant.js';
 import { initPushNotifications } from './push-notifications.js';
 
