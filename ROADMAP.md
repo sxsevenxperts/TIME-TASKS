@@ -89,6 +89,32 @@
 
 ---
 
+## Versão 2.1.1 — 🚀 ALFA (Fase 13 — 20/07/2026)
+
+### 13.1 — Dashboard de Notificações ✅
+- [x] Modal com filtros (Todas, Não lidas, Triggers, Reminders, Sistema)
+- [x] Ações: Marcar como lido, deletar, limpar lidas
+- [x] Badge com contador de não lidas em tempo real
+- [x] Timestamps formatados (agora, há Xmin, Xh, Xd)
+- Commit: `515f1c5`
+
+### 13.2 — iOS Session Expiry Fix ✅ (CRÍTICO)
+- [x] `withTimeout()` para evitar congelamento do navigator.locks
+- [x] `isFatalAuthError()` — distinguir transitório vs. revogação real
+- [x] **Não descartar access token vencido** → refresh token é quem importa
+- [x] Fonte primária: sessão nativa Supabase (auto-rotaciona refresh token)
+- [x] Logging de debug: `[refreshToken]` prefixo para rastreamento
+- **Impacto:** Sessão persiste entre suspensões iOS, sem forçar re-login
+- Commits: `51ddeff`, `92eabaf`, `0f42f8a`
+
+**v2.1.1 ALFA Status:**
+- ✅ Dashboard funcional
+- ✅ iOS session expiry corrigido (definitivo)
+- ✅ Build clean, 0 vulnerabilidades
+- 🟡 Recomendação: testar em produção 48h antes de v2.2
+
+---
+
 ## Versão 2.0 — ✅ ENTREGUE
 
 ### Produto e identidade

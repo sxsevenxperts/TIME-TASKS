@@ -4,7 +4,7 @@ Diário de bordo do projeto, previsto no `AGENTS.md`. Registra **o que foi pedid
 
 Cada registro usa uma etiqueta: `PEDIDO`, `PERGUNTA`, `DECISÃO`, `IDEIA`, `FALHA`, `CORREÇÃO`, `VALIDAÇÃO`, `PENDÊNCIA` ou `RISCO`.
 
-Última atualização: **17/07/2026**.
+Última atualização: **20/07/2026** (Fase 13 ALFA — Dashboard + iOS fix).
 
 - **Parte 1 — Diário cronológico** (registros por sessão)
 - **Parte 2 — Referência técnica do projeto** (stack, fluxos, segurança, troubleshooting)
@@ -1178,4 +1178,68 @@ performanceOptimizer.initialize()
 **Estimativa:** ~1-2 dias de trabalho (Supabase queries + migration + testing)  
 **Release Target:** v2.1.0 na semana de 20-25 de julho  
 **Status Atual:** 95% pronto (só faltam os TODOs de backend)
+
+
+---
+
+## Fase 13 — Dashboard de Notificações + iOS Session Expiry Fix (ALFA — 20/07/2026)
+
+### 13.1 — Dashboard de Notificações (ALFA)
+
+**PEDIDO** — Central de notificações com filtros, ações (marcar lido, deletar), badge em tempo real.
+
+**CORREÇÃO:**
+- `js/notifications-dashboard.js`: Classe NotificationsDashboard com modal, filtros (Todas/Não lidas/Tipo), timestamps formatados (agora/há Xmin/Xh/Xd)
+- `style.css`/`layout.css`: CSS responsivo para modal, badges, overlay
+- `index.html`: Botão 🔔 na nav-strip com `[data-notifications-badge]`
+- `js/app.js`: Integração `notificationsDashboard.init()`, listener no botão
+
+**VALIDAÇÃO:** Modal abre/fecha, filtros funcionam, ações (marcar/deletar) persistem no Supabase, badge atualiza em tempo real.
+
+### 13.2 — iOS Session Expiry Fix (CORREÇÃO)
+
+**FALHA** — Usuários no mobile PWA recebiam "Acesso expirado" mesmo com refresh token válido, forçando re-login a cada ~60 min.
+
+**ROOT CAUSE:**
+1. iOS suspende PWAs → navigator.locks congela → auth promises presas
+2. Access token (60 min) expirava → app descartava sessão inteira (errado)
+3. Refresh token era cópia local desatualizada (Supabase o rotaciona a cada renovação)
+
+**CORREÇÃO** — `js/persistent-auth.js` reescrito:
+- `withTimeout()`: Promise.race para evitar congelamento do iOS
+- `isFatalAuthError()`: Distingue erro transitório (rede/timeout/suspensão) vs. token revogado
+- **Não descartar acesso token vencido** → apenas refresh token inválido força logout
+- Fonte primária: sessão nativa de Supabase (que auto-rotaciona refresh token)
+- Fallback: localStorage cópia (se armazenamento nativo foi limpo)
+- `scheduleTokenRefresh()`: Agenda renovação 5 min antes de expirar
+- Logging de debug: `[refreshToken]` prefixo para rastreamento
+
+**IMPACTO:**
+- ✅ Sessão persiste entre suspensões do iOS
+- ✅ Refresh token sempre atualizado (nunca cópia desatualizada)
+- ✅ Erro de rede ≠ logout (mantém sessão)
+- ✅ Apenas revogação real força re-auth
+- ✅ Logging para diagnosticar ciclos futuros
+
+**VALIDAÇÃO:** 
+- Testar no iOS: abrir app → fechar → esperar 5 min → abrir → sem re-login ✓
+- Testar refresh token rotation: tokens na DevTools mudam a cada renovação ✓
+- Testar timeout: desligar rede durante refresh → mantém login ✓
+
+### 13.3 — Integração Final (ALFA)
+
+**DECISÃO** — Fase 13 ALFA: funcionalidades novas (dashboard) + fixes críticos (iOS) em um único merge.
+
+**STATUS:** Pronto para produção com beta label.
+
+**PRÓXIMAS PRIORIDADES (Fase 13 BETA/RC):**
+1. Modal real de criar/editar triggers (UI completa)
+2. Notificações por WhatsApp/Instagram/Email (fora de escopo atual)
+3. Rotacionar credenciais expostas (GitHub, EasyPanel service-role)
+4. Purge de cache Cloudflare (opcional)
+
+**COMMITS RELACIONADOS:**
+- `515f1c5`: feat: Fase 13.1 — Dashboard + docs
+- `ff39263`: merge: sincronizar origin/main com iOS fixes
+- (commits de iOS: 51ddeff, 92eabaf, 0f42f8a)
 
