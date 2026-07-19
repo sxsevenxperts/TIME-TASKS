@@ -16,8 +16,15 @@ export async function initVerseAccess() {
     if (shownForSession) return;
     shownForSession = true;
     try {
-      const { data } = await supabase.auth.getSession();
-      const token = data.session?.access_token;
+      // Timeout: iOS PWA pode congelar auth calls
+      const { data } = await Promise.race([
+        supabase.auth.getSession(),
+        new Promise((_, reject) => setTimeout(() => reject(new Error('AUTH_TIMEOUT')), 5000))
+      ]).then(
+        result => ({ data: result }),
+        error => ({ data: null, error })
+      );
+      const token = data?.session?.access_token;
       if (!token) return;
       const response = await fetch('/api/verse', {
         headers: { Authorization: `Bearer ${token}` }

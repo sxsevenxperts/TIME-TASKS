@@ -236,12 +236,18 @@ export async function initAuth() {
 
   // Se não conseguiu auto-login, tentar restaurar sessão normal
   if (!sessionToRestore) {
-    const { data, error: sessionError } = await supabase.auth.getSession();
+    const { data, error: sessionError } = await withTimeout(
+      supabase.auth.getSession(),
+      5000
+    ).then(
+      result => ({ data: result, error: null }),
+      error => ({ data: null, error })
+    );
     if (sessionError) {
       authError.textContent = 'Não foi possível restaurar sua sessão. Faça login novamente.';
       finishLoading();
     } else {
-      sessionToRestore = data.session;
+      sessionToRestore = data?.session;
       if (sessionToRestore) {
         savePersistentSession(sessionToRestore);
         startAutoRefresh(sessionToRestore);
