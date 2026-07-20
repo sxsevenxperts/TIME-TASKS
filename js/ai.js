@@ -131,6 +131,10 @@ async function sessionToken(forceRefresh = false) {
 function errorMessage(code) {
   const errors = {
     UNAUTHORIZED: 'Sua sessão expirou. Entre novamente para usar a SX.',
+    TOKEN_INVALID: 'Sua sessão expirou. Entre novamente para usar a SX.',
+    NOT_A_MEMBER: 'Esta conta não tem acesso ao Time Tasks.',
+    AUTH_UPSTREAM_ERROR: 'O serviço de login está instável agora. Tente de novo em instantes.',
+    SERVER_AUTH_NOT_CONFIGURED: 'O login não está configurado no servidor. Avise o administrador.',
     SX_NOT_CONFIGURED: 'A SX ainda não está configurada no servidor.',
     RATE_LIMITED: 'Muitos pedidos em pouco tempo. Aguarde um minuto e tente novamente.',
     INVALID_TEXT: 'O pedido precisa ser mais curto e objetivo.',
@@ -173,55 +177,28 @@ function sxRequest(text, token) {
 }
 
 async function askSx(text) {
-  console.log('[askSx] Iniciando pedido à SX');
-  let token = null;
-  let attempts = 0;
-  const maxAttempts = 5;
+  // 1) Token pelo caminho normal (supabase-js renova sozinho se vencido).
+  let token = await sessionToken();
 
-  // Tentar obter token com múltiplas estratégias
-  while (!token && attempts < maxAttempts) {
-    attempts++;
-    console.log(`[askSx] Tentativa ${attempts}/${maxAttempts}`);
-
-    if (attempts === 1) {
-      // Primeira tentativa: simples
-      token = await sessionToken();
-    } else if (attempts === 2) {
-      // Segunda: forçar renovação
-      console.warn('[askSx] Tentativa 2: forçando renovação...');
-      token = await sessionToken(true);
-    } else if (attempts === 3) {
-      // Terceira: aguardar e tentar novamente
-      console.warn('[askSx] Tentativa 3: aguardando 500ms...');
-      await new Promise(r => setTimeout(r, 500));
-      token = await sessionToken(true);
-    } else if (attempts === 4) {
-      // Quarta: aguardar mais e tentar
-      console.warn('[askSx] Tentativa 4: aguardando 1s...');
-      await new Promise(r => setTimeout(r, 1000));
-      token = await sessionToken(true);
-    } else {
-      // Última: forçar refresh direto no localStorage
-      console.warn('[askSx] Tentativa 5: usando fallback localStorage');
-      const { ensureFreshSession } = await import('./persistent-auth.js');
-      const session = await ensureFreshSession({ force: true });
-      token = session?.access_token;
-    }
+  // 2) Sem token: forçar UMA renovação (storage pode ter sumido no iOS).
+  if (!token) {
+    console.warn('[askSx] Sem token, forçando renovação...');
+    token = await sessionToken(true);
   }
 
   if (!token) {
-    console.error('[askSx] ✗ Nenhum token disponível após 5 tentativas');
+    console.error('[askSx] ✗ Nenhum token disponível');
     throw new Error('UNAUTHORIZED');
   }
 
-  console.log('[askSx] ✓ Token obtido na tentativa', attempts, ', enviando pedido...');
   let response = await sxRequest(text, token);
 
+  // 3) Servidor rejeitou (token vencido em trânsito): renovar 1x e repetir.
   if (response.status === 401) {
-    console.warn('[askSx] Servidor retornou 401, tentando renovação final...');
+    console.warn('[askSx] 401 do servidor, renovando token e repetindo...');
     token = await sessionToken(true);
     if (!token) {
-      console.error('[askSx] ✗ Falha ao renovar após 401');
+      console.error('[askSx] ✗ Não consegui renovar após 401');
       throw new Error('UNAUTHORIZED');
     }
     response = await sxRequest(text, token);
@@ -232,7 +209,6 @@ async function askSx(text) {
     console.error('[askSx] ✗ Resposta erro:', response.status, payload.error);
     throw new Error(payload.error || 'SX_REQUEST_FAILED');
   }
-  console.log('[askSx] ✓ Pedido bem-sucedido');
   return payload;
 }
 

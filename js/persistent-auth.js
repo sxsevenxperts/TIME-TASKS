@@ -1,15 +1,29 @@
 import { supabase } from './supabase.js';
 
 /**
- * Persistent Auth Manager for JWS PWA
- * Mantém login permanente, restaura sessão, renova token automaticamente
+ * Persistent Auth Manager para o PWA do Time Tasks.
+ *
+ * PRINCÍPIO CENTRAL (correção definitiva do "Sua sessão expirou"):
+ * o supabase-js é a ÚNICA fonte de verdade da sessão. Ele já persiste
+ * (persistSession) e renova (autoRefreshToken) sozinho, com deduplicação
+ * interna e rotação correta do refresh token.
+ *
+ * O bug anterior: existiam 5 mecanismos de renovação em paralelo
+ * (autoRefreshToken do supabase, setInterval próprio, silentAutoLogin,
+ * ensureFreshSession e handlers de retomada), vários chamando
+ * refreshSession() com uma CÓPIA do refresh token guardada no localStorage.
+ * Como o refresh token do Supabase é de uso único e rotaciona a cada
+ * renovação, reutilizar uma cópia antiga é detectado como reuso e o
+ * Supabase REVOGA a sessão inteira — quebrando TODAS as requisições
+ * seguintes com 401 ("Sua sessão expirou") mesmo logo após o login.
+ *
+ * Agora o localStorage é apenas um BACKUP de leitura. Quando o storage do
+ * supabase-js some (Safari/iOS pode limpar), restauramos via setSession(),
+ * devolvendo os tokens ao supabase-js para que ELE assuma a rotação.
+ * Nunca mais chamamos refreshSession() com um token explícito em paralelo.
  */
 
 const AUTH_KEY = 'timetasks_auth_persistent';
-const TOKEN_REFRESH_INTERVAL = 55 * 60 * 1000; // 55 minutos (token expira em 60)
-
-let refreshIntervalId = null;
-let refreshPromise = null;
 
 // No iOS o PWA é suspenso e as chamadas de auth do supabase-js podem ficar
 // presas no navigator.locks ao retomar — todo await de auth precisa de teto.
@@ -21,23 +35,24 @@ function withTimeout(promise, ms) {
 }
 
 // Erros que significam "refresh token realmente inválido/revogado". Só nesses
-// casos a sessão local deve ser descartada; erro de rede NUNCA derruba login.
+// casos o backup local deve ser descartado; erro de rede NUNCA derruba login.
 function isFatalAuthError(error) {
   const message = String(error?.message || '').toLowerCase();
   return message.includes('invalid refresh token')
     || message.includes('refresh token not found')
     || message.includes('refresh_token_not_found')
     || message.includes('already used')
+    || message.includes('invalid claim')
     || error?.status === 400;
 }
 
 /**
- * Salva sessão persistentemente no localStorage
+ * Salva um BACKUP da sessão no localStorage. Não agenda renovação própria:
+ * quem renova é o autoRefreshToken do supabase-js (fonte única de verdade).
  */
 export function savePersistentSession(session) {
   if (!session) {
     localStorage.removeItem(AUTH_KEY);
-    clearTokenRefresh();
     return;
   }
 
@@ -50,14 +65,13 @@ export function savePersistentSession(session) {
       savedAt: Date.now()
     };
     localStorage.setItem(AUTH_KEY, JSON.stringify(data));
-    scheduleTokenRefresh(session.expires_at);
   } catch (error) {
-    console.error('Erro ao salvar sessão persistente:', error);
+    console.error('Erro ao salvar backup da sessão:', error);
   }
 }
 
 /**
- * Restaura sessão salva do localStorage
+ * Lê o backup da sessão do localStorage (não faz chamadas de rede).
  */
 export function restorePersistentSession() {
   try {
@@ -65,11 +79,7 @@ export function restorePersistentSession() {
     if (!stored) return null;
 
     const data = JSON.parse(stored);
-
-    // O access token expira em ~60min, mas quem mantém o login permanente é
-    // o refresh token, que continua válido. Sessão com access token vencido
-    // NÃO é descartada: o silentAutoLogin renova com o refresh token.
-    // (Descartar aqui forçava novo login a cada reabertura após ~55min.)
+    if (!data?.accessToken || !data?.refreshToken) return null;
 
     return {
       user: data.user,
@@ -78,58 +88,72 @@ export function restorePersistentSession() {
       expires_at: data.expiresAt
     };
   } catch (error) {
-    console.error('Erro ao restaurar sessão persistente:', error);
+    console.error('Erro ao ler backup da sessão:', error);
     localStorage.removeItem(AUTH_KEY);
     return null;
   }
 }
 
 /**
- * Tenta fazer login silencioso com refresh_token
+ * Restaura o backup entregando os tokens ao supabase-js via setSession().
+ * A partir daí o supabase-js assume a posse e a rotação — sem corrida.
+ * Retorna a sessão resultante ou null. Só descarta o backup em erro fatal.
  */
-export async function silentAutoLogin() {
+async function restoreIntoSupabase(backup) {
+  if (!backup?.refresh_token) return null;
   try {
-    // Fonte primária: a sessão persistida pelo próprio supabase-js
-    // (persistSession + autoRefreshToken), que sempre carrega o refresh
-    // token mais recente. O Supabase rotaciona o refresh token a cada
-    // renovação — renovar com uma cópia antiga é tratado como reuso e pode
-    // revogar a sessão inteira, forçando login sem necessidade.
-    // Timeout curto (5s): iOS PWA suspende o app e bloqueia auth calls.
-    try {
-      const { data: native } = await withTimeout(supabase.auth.getSession(), 5000);
-      if (native?.session) {
-        savePersistentSession(native.session);
-        return native.session;
-      }
-    } catch (nativeError) {
-      console.warn('[silentAutoLogin] Native session timeout/erro:', nativeError.message);
-    }
-
-    // Reserva: cópia própria (ex.: storage do supabase-js foi limpo).
-    const persistedSession = restorePersistentSession();
-
-    if (!persistedSession) {
-      return null;
-    }
-
-    // Tentar restaurar com o refresh token
     const { data, error } = await withTimeout(
-      supabase.auth.refreshSession({ refresh_token: persistedSession.refresh_token }),
-      5000
+      supabase.auth.setSession({
+        access_token: backup.access_token,
+        refresh_token: backup.refresh_token
+      }),
+      8000
     );
 
     if (error) {
-      console.warn('Falha ao renovar sessão:', error.message);
-      // Só descarta a cópia local se o token foi de fato revogado.
-      // Erro de rede/timeout mantém a cópia para a próxima tentativa.
+      console.warn('[restoreIntoSupabase] setSession falhou:', error.message);
+      // Token de fato revogado → limpar backup. Erro de rede/timeout mantém.
       if (isFatalAuthError(error)) localStorage.removeItem(AUTH_KEY);
       return null;
     }
 
-    // Sucesso! Salvar nova sessão
-    if (data.session) {
+    if (data?.session) {
       savePersistentSession(data.session);
       return data.session;
+    }
+    return null;
+  } catch (error) {
+    console.warn('[restoreIntoSupabase] Exceção/timeout:', error?.message || error);
+    return null; // timeout não descarta o backup
+  }
+}
+
+/**
+ * Login silencioso ao abrir o app (PWA com login permanente).
+ * 1) Pergunta a sessão ao supabase-js (ele renova sozinho se preciso).
+ * 2) Se não houver, restaura o backup via setSession().
+ */
+export async function silentAutoLogin() {
+  if (!supabase) return null;
+  try {
+    // Fonte primária: supabase-js. getSession() já renova o access token
+    // vencido usando o refresh token que ELE guarda e rotaciona.
+    try {
+      const { data } = await withTimeout(supabase.auth.getSession(), 6000);
+      if (data?.session) {
+        savePersistentSession(data.session);
+        return data.session;
+      }
+    } catch (nativeError) {
+      console.warn('[silentAutoLogin] getSession timeout/erro:', nativeError.message);
+    }
+
+    // Reserva: storage do supabase-js foi limpo (Safari/iOS). Restaura o
+    // backup entregando os tokens ao supabase-js — sem refresh paralelo.
+    const backup = restorePersistentSession();
+    if (backup) {
+      const restored = await restoreIntoSupabase(backup);
+      if (restored) return restored;
     }
 
     return null;
@@ -140,138 +164,64 @@ export async function silentAutoLogin() {
 }
 
 /**
- * Agenda renovação automática de token
- */
-function scheduleTokenRefresh(expiresAt) {
-  clearTokenRefresh();
-
-  // Renovar 5 minutos antes de expirar
-  const now = Date.now();
-  const expiresAtMs = expiresAt * 1000;
-  const timeUntilRefresh = Math.max(0, expiresAtMs - now - 5 * 60 * 1000);
-
-  if (timeUntilRefresh <= 0) {
-    // Já está próximo de expirar, renovar imediatamente
-    refreshToken();
-    return;
-  }
-
-  refreshIntervalId = setTimeout(() => {
-    refreshToken();
-    // Agendar próxima renovação em 55 minutos
-    refreshIntervalId = setInterval(refreshToken, TOKEN_REFRESH_INTERVAL);
-  }, timeUntilRefresh);
-
-  console.log(`Token refresh agendado para ${new Date(now + timeUntilRefresh).toLocaleTimeString()}`);
-}
-
-/**
- * Renova o token de acesso
- */
-async function refreshToken() {
-  if (refreshPromise) {
-    console.log('refreshToken já em andamento, aguardando...');
-    return refreshPromise; // Evitar múltiplas renovações simultâneas
-  }
-
-  refreshPromise = (async () => {
-    try {
-      console.log('[refreshToken] Iniciando renovação de token');
-      const { data, error } = await withTimeout(supabase.auth.refreshSession(), 10000);
-
-      if (error) {
-        console.error('[refreshToken] Erro ao renovar:', error.message, error.status);
-        // Só derruba a sessão quando o refresh token foi revogado de verdade.
-        // Erro transitório (rede, timeout, suspensão do iOS) mantém o login.
-        if (isFatalAuthError(error)) {
-          console.error('[refreshToken] Erro fatal — revogando logout');
-          logout();
-        } else {
-          console.warn('[refreshToken] Erro transitório — mantendo sessão');
-        }
-        return null;
-      }
-
-      if (data.session) {
-        savePersistentSession(data.session);
-        console.log('[refreshToken] ✓ Token renovado com sucesso, expira em:', new Date(data.session.expires_at * 1000).toLocaleTimeString());
-        return data.session;
-      }
-
-      console.warn('[refreshToken] Sucesso mas sem session nos dados');
-      return null;
-    } catch (error) {
-      console.error('[refreshToken] Exceção:', error?.message || error);
-      return null;
-    } finally {
-      refreshPromise = null;
-    }
-  })();
-
-  return refreshPromise;
-}
-
-/**
- * Garante uma sessão com access token válido, renovando se necessário.
- * ESTRATÉGIA: Prefere localStorage (mais confiável em iOS PWA) que native Supabase.
+ * Garante uma sessão com access token válido.
+ *
+ * Delega ao supabase-js: getSession() devolve a sessão atual e renova o
+ * access token vencido automaticamente (com deduplicação interna — chamadas
+ * concorrentes NÃO disparam refresh duplicado, evitando a revogação por
+ * reuso). Só forçamos refreshSession() (sem token explícito) após um 401.
  */
 export async function ensureFreshSession(options = {}) {
   if (!supabase) {
     console.warn('[ensureFreshSession] supabase não está pronto');
     return null;
   }
+
   try {
-    // PRIORIDADE 1: Restaurar do localStorage (mais confiável em iOS PWA)
-    const persisted = restorePersistentSession();
-    const nowSeconds = Math.floor(Date.now() / 1000);
-
-    if (persisted?.access_token) {
-      const stillValid = persisted.expires_at && persisted.expires_at - nowSeconds > 120;
-      console.log(`[ensureFreshSession] localStorage: ${persisted ? '✓' : '✗'}, válido=${stillValid}, force=${options.force}`);
-
-      if (stillValid && !options.force) {
-        console.log('[ensureFreshSession] ✓ Token localStorage ainda válido');
-        return persisted;
+    // Após um 401 do servidor (options.force): forçar UMA renovação através
+    // do próprio supabase-js, que usa e rotaciona o refresh token dele.
+    if (options.force) {
+      try {
+        const { data, error } = await withTimeout(supabase.auth.refreshSession(), 8000);
+        if (!error && data?.session) {
+          savePersistentSession(data.session);
+          return data.session;
+        }
+        if (error) console.warn('[ensureFreshSession] refresh forçado falhou:', error.message);
+      } catch (e) {
+        console.warn('[ensureFreshSession] refresh forçado timeout:', e.message);
       }
+      // Se o refresh forçado falhou, tenta restaurar do backup (storage sumiu).
+      const backup = restorePersistentSession();
+      if (backup) {
+        const restored = await restoreIntoSupabase(backup);
+        if (restored) return restored;
+      }
+      return null;
     }
 
-    // Token vencido ou forçada renovação. Renovar com refresh_token
-    if (persisted?.refresh_token) {
-      console.log('[ensureFreshSession] Tentando renovar com refresh_token persistido...');
-      const { data: alt, error } = await withTimeout(
-        supabase.auth.refreshSession({ refresh_token: persisted.refresh_token }),
-        5000
-      ).catch(() => ({ data: null, error: null }));
-
-      if (!error && alt?.session) {
-        savePersistentSession(alt.session);
-        console.log('[ensureFreshSession] ✓ Renovação bem-sucedida');
-        return alt.session;
-      } else {
-        console.warn('[ensureFreshSession] Refresh falhou:', error?.message);
-      }
-    }
-
-    // PRIORIDADE 2: Tentar native session como último recurso
+    // Caminho normal: getSession() renova sozinho se o token estiver vencido.
     try {
-      const { data } = await withTimeout(supabase.auth.getSession(), 3000);
-      const nativeSession = data?.session || null;
-      if (nativeSession?.access_token) {
-        savePersistentSession(nativeSession);
-        console.log('[ensureFreshSession] ✓ Usando native session como fallback');
-        return nativeSession;
+      const { data } = await withTimeout(supabase.auth.getSession(), 6000);
+      if (data?.session?.access_token) {
+        savePersistentSession(data.session);
+        return data.session;
       }
     } catch (e) {
-      console.warn('[ensureFreshSession] Native session indisponível:', e.message);
+      console.warn('[ensureFreshSession] getSession timeout/erro:', e.message);
     }
 
-    // Se nada funcionou, devolver session com token vencido (caller trata 401)
-    if (persisted?.access_token) {
-      console.warn('[ensureFreshSession] Devolvendo token vencido (caller tratará 401)');
-      return persisted;
+    // getSession não devolveu sessão (storage limpo ou travado no iOS):
+    // restaura o backup via setSession(), devolvendo posse ao supabase-js.
+    const backup = restorePersistentSession();
+    if (backup) {
+      const restored = await restoreIntoSupabase(backup);
+      if (restored) return restored;
+      // Último recurso: devolver o backup mesmo (o caller trata um eventual
+      // 401 forçando renovação). Melhor tentar do que falhar de imediato.
+      return backup;
     }
 
-    console.error('[ensureFreshSession] ✗ Sem sessão disponível');
     return null;
   } catch (error) {
     console.error('[ensureFreshSession] Exceção:', error?.message || error);
@@ -280,9 +230,9 @@ export async function ensureFreshSession(options = {}) {
 }
 
 /**
- * Renova a sessão quando o PWA volta do background (iOS congela timers:
- * o refresh agendado nunca dispara durante a suspensão — ao retomar,
- * renovamos na hora em vez de esperar o próximo tick).
+ * Renova a sessão quando o PWA volta do background. iOS congela timers, então
+ * ao retomar pedimos ao supabase-js a sessão (ele renova se necessário) em vez
+ * de esperar o próximo tick do autoRefresh. Não força refresh — só sincroniza.
  */
 export function setupResumeRefresh() {
   let lastRun = 0;
@@ -300,34 +250,25 @@ export function setupResumeRefresh() {
 }
 
 /**
- * Limpa agendamento de refresh
- */
-function clearTokenRefresh() {
-  if (refreshIntervalId) {
-    clearTimeout(refreshIntervalId);
-    clearInterval(refreshIntervalId);
-    refreshIntervalId = null;
-  }
-}
-
-/**
- * Logout completo (limpa tudo)
+ * Logout completo (limpa backup e encerra só este aparelho).
  */
 export async function logout() {
-  clearTokenRefresh();
   localStorage.removeItem(AUTH_KEY);
-  // scope local: encerra só este aparelho. O scope global (padrão) revogava o
-  // refresh token de TODOS os aparelhos — um erro no iPhone derrubava o desktop.
-  await supabase.auth.signOut({ scope: 'local' });
+  try {
+    // scope local: encerra só este aparelho. O scope global revogava o refresh
+    // token de TODOS os aparelhos — um erro no iPhone derrubava o desktop.
+    await withTimeout(supabase.auth.signOut({ scope: 'local' }), 6000);
+  } catch (error) {
+    console.warn('[logout] signOut timeout/erro (ignorado):', error?.message || error);
+  }
 
-  // Despachar evento para UI atualizar
   document.dispatchEvent(new CustomEvent('timetasks:logout', {
     detail: { reason: 'session-expired' }
   }));
 }
 
 /**
- * Retorna informações da sessão atual (sem chamadas ao servidor)
+ * Informações da sessão de backup (sem chamadas ao servidor).
  */
 export function getPersistedSessionInfo() {
   try {
@@ -347,13 +288,11 @@ export function getPersistedSessionInfo() {
 }
 
 /**
- * Notifica que a sessão foi atualizada (para sincronizar abas/janelas)
+ * Atualiza o backup e notifica outras abas.
  */
 export function notifySessionUpdate(session) {
   savePersistentSession(session);
-
-  // Notificar outras abas via storage event
-  if (typeof window !== 'undefined') {
+  if (typeof window !== 'undefined' && session) {
     window.dispatchEvent(new StorageEvent('storage', {
       key: AUTH_KEY,
       newValue: JSON.stringify({
@@ -369,28 +308,27 @@ export function notifySessionUpdate(session) {
 }
 
 /**
- * Inicia token refresh automático ao fazer login
+ * Ao logar, apenas guardamos o backup. A renovação automática fica por conta
+ * do autoRefreshToken do supabase-js — não criamos mais timers concorrentes
+ * (era a origem da corrida que revogava a sessão).
  */
 export function startAutoRefresh(session) {
-  if (session?.expires_at) {
-    scheduleTokenRefresh(session.expires_at);
-  }
+  if (session) savePersistentSession(session);
 }
 
 /**
- * Sincroniza auth state entre abas/janelas
+ * Sincroniza o estado de auth entre abas/janelas.
  */
 export function setupAuthSyncListener() {
   window.addEventListener('storage', (event) => {
     if (event.key === AUTH_KEY && event.newValue) {
       try {
         const data = JSON.parse(event.newValue);
-        console.log('Auth sincronizada entre abas');
         document.dispatchEvent(new CustomEvent('timetasks:auth-synced', {
           detail: { user: data.user }
         }));
       } catch (error) {
-        console.error('Erro ao sincronizar auth:', error);
+        console.error('Erro ao sincronizar auth entre abas:', error);
       }
     }
   });
