@@ -19,10 +19,11 @@
     text.textContent = String(message || 'Erro desconhecido');
 
     const button = document.createElement('button');
-    button.textContent = 'Limpar Dados e Recarregar';
+    button.textContent = 'Recarregar Página';
     button.style.cssText = 'margin-top:16px; padding:10px; cursor:pointer;';
     button.addEventListener('click', () => {
-      localStorage.clear();
+      // NUNCA limpar localStorage - apenas recarregar
+      // Preservar tudo: auth, cache, dados locais
       window.location.reload();
     });
 

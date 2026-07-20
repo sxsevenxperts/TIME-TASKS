@@ -77,36 +77,78 @@ async function readJson(request) {
   }
 }
 
+/**
+ * Autentica a requisição e distingue os modos de falha para que o cliente
+ * (e os logs) saibam EXATAMENTE o motivo, em vez de um 401 opaco que sempre
+ * virava "Sua sessão expirou". Retorna { user } em sucesso ou { error, status }.
+ *
+ * Códigos:
+ *  - SERVER_AUTH_NOT_CONFIGURED (503): faltam SUPABASE_URL/ANON_KEY no servidor.
+ *  - UNAUTHORIZED (401): sem header Bearer.
+ *  - TOKEN_INVALID (401): Supabase rejeitou o token (vencido/revogado).
+ *  - AUTH_UPSTREAM_ERROR (503): erro de rede/timeout falando com o Supabase
+ *    (transitório e RETENTÁVEL — NÃO deve deslogar o usuário).
+ *  - NOT_A_MEMBER (403): token válido, mas sem acesso ao Time Tasks.
+ */
 async function authenticate(request) {
   const authorization = request.headers.authorization || '';
-  if (!authorization.startsWith('Bearer ') || !supabaseUrl || !supabaseAnonKey) return null;
 
-  const authResponse = await fetch(`${supabaseUrl}/auth/v1/user`, {
-    headers: {
-      apikey: supabaseAnonKey,
-      Authorization: authorization
-    },
-    signal: AbortSignal.timeout(10_000)
-  });
-  if (!authResponse.ok) return null;
-  const user = await authResponse.json();
-  if (!user?.id) return null;
+  if (!supabaseUrl || !supabaseAnonKey) {
+    console.error('[auth] SUPABASE_URL/ANON_KEY ausentes no servidor');
+    return { error: 'SERVER_AUTH_NOT_CONFIGURED', status: 503 };
+  }
+  if (!authorization.startsWith('Bearer ')) {
+    return { error: 'UNAUTHORIZED', status: 401 };
+  }
 
-  // O Auth é compartilhado no servidor, mas somente membros explícitos do
-  // Time Tasks podem consumir as APIs privadas deste aplicativo.
-  const membershipResponse = await fetch(
-    `${supabaseUrl}/rest/v1/time_tasks_members?user_id=eq.${encodeURIComponent(user.id)}&select=user_id&limit=1`,
-    {
-      headers: {
-        apikey: supabaseAnonKey,
-        Authorization: authorization
-      },
+  // 1) Validar o token no Supabase.
+  let authResponse;
+  try {
+    authResponse = await fetch(`${supabaseUrl}/auth/v1/user`, {
+      headers: { apikey: supabaseAnonKey, Authorization: authorization },
       signal: AbortSignal.timeout(10_000)
-    }
-  );
-  if (!membershipResponse.ok) return null;
-  const membership = await membershipResponse.json();
-  return Array.isArray(membership) && membership.length === 1 ? user : null;
+    });
+  } catch (error) {
+    // Rede/timeout entre servidor e Supabase: transitório, não desloga.
+    console.warn('[auth] Falha de rede ao validar token:', error?.message);
+    return { error: 'AUTH_UPSTREAM_ERROR', status: 503 };
+  }
+
+  if (authResponse.status === 401 || authResponse.status === 403) {
+    return { error: 'TOKEN_INVALID', status: 401 };
+  }
+  if (!authResponse.ok) {
+    console.warn('[auth] Supabase /user respondeu', authResponse.status);
+    return { error: 'AUTH_UPSTREAM_ERROR', status: 503 };
+  }
+
+  const user = await authResponse.json().catch(() => null);
+  if (!user?.id) return { error: 'TOKEN_INVALID', status: 401 };
+
+  // 2) Somente membros explícitos do Time Tasks acessam as APIs privadas.
+  let membershipResponse;
+  try {
+    membershipResponse = await fetch(
+      `${supabaseUrl}/rest/v1/time_tasks_members?user_id=eq.${encodeURIComponent(user.id)}&select=user_id&limit=1`,
+      {
+        headers: { apikey: supabaseAnonKey, Authorization: authorization },
+        signal: AbortSignal.timeout(10_000)
+      }
+    );
+  } catch (error) {
+    console.warn('[auth] Falha de rede ao checar membership:', error?.message);
+    return { error: 'AUTH_UPSTREAM_ERROR', status: 503 };
+  }
+
+  if (!membershipResponse.ok) {
+    console.warn('[auth] Consulta de membership respondeu', membershipResponse.status);
+    return { error: 'AUTH_UPSTREAM_ERROR', status: 503 };
+  }
+  const membership = await membershipResponse.json().catch(() => null);
+  if (Array.isArray(membership) && membership.length === 1) {
+    return { user };
+  }
+  return { error: 'NOT_A_MEMBER', status: 403 };
 }
 
 function allowRequest(userId) {
@@ -610,8 +652,9 @@ const server = createServer(async (request, response) => {
     }
 
     if (url.pathname.startsWith('/api/')) {
-      const user = await authenticate(request);
-      if (!user) return sendJson(response, 401, { error: 'UNAUTHORIZED' });
+      const auth = await authenticate(request);
+      if (!auth.user) return sendJson(response, auth.status || 401, { error: auth.error || 'UNAUTHORIZED' });
+      const user = auth.user;
             if (url.pathname === '/api/auth/google/connect' && request.method === 'GET') return handleGoogleConnect(response, user);
 
       if (url.pathname === '/api/auth/apple/connect' && request.method === 'GET') return handleAppleConnect(response, user);

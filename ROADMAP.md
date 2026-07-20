@@ -3,6 +3,48 @@
 **Última revisão técnica:** 18/07/2026 → 20/07/2026 (v2.1 FINAL COMPLETE)
 **Status:** ✅ v2.0 PRODUÇÃO + ✅ v2.1 DESENVOLVIMENTO FINALIZADO + 🚀 PRONTO PARA v2.2
 
+## Atualização — 2026-07-20 (v2.1.2 — correção definitiva da sessão iOS PWA)
+
+### Concluído
+- [x] **Causa raiz identificada e corrigida:** a sessão era revogada pelo Supabase
+      por *reuso de refresh token*. Havia 5 mecanismos de renovação concorrentes
+      (autoRefreshToken do supabase-js, `setInterval` próprio, `silentAutoLogin`,
+      `ensureFreshSession` e handlers de retomada), vários chamando
+      `refreshSession()` com uma cópia antiga do refresh token guardada no
+      localStorage. Como o refresh token é de uso único e rotaciona, o Supabase
+      detectava reuso e revogava a sessão inteira → "Sua sessão expirou" em toda
+      mensagem, mesmo logo após o login.
+- [x] `js/persistent-auth.js` reescrito: **supabase-js passa a ser a única fonte
+      de verdade**. localStorage vira backup de leitura, restaurado via
+      `setSession()` (devolve a posse da rotação ao supabase-js). Removidos o
+      `setInterval` de refresh e todas as chamadas paralelas de `refreshSession()`
+      com token explícito.
+- [x] `js/ai.js`: fluxo de token simplificado para get → forçar 1x → repetir no 401.
+- [x] `server.js`: `authenticate()` agora distingue os modos de falha
+      (`SERVER_AUTH_NOT_CONFIGURED`, `TOKEN_INVALID`, `AUTH_UPSTREAM_ERROR`,
+      `NOT_A_MEMBER`, `UNAUTHORIZED`) — antes um 401 opaco escondia tudo. Erro de
+      rede servidor↔Supabase agora é 503 retentável e NÃO desloga o usuário.
+- [x] Validado: syntax check dos 6 arquivos, `npm run build` OK, e os 4 caminhos
+      de auth do servidor testados por curl (503/503/401/200 conforme esperado).
+
+### Em andamento / a validar em produção
+- [ ] Confirmar no iPhone real que "Sua sessão expirou" não reaparece após login.
+- [ ] Observar logs de produção para ver se aparece `AUTH_UPSTREAM_ERROR`
+      (indicaria instabilidade de rede servidor↔Supabase, não sessão inválida).
+
+### Próximos passos
+- [ ] Se ainda ocorrer, usar `GET /api/health` e o código de erro específico
+      agora retornado para localizar o ponto exato da falha.
+- [ ] Revisar variáveis `SUPABASE_URL`/`SUPABASE_ANON_KEY` no EasyPanel.
+
+### Riscos e débitos técnicos
+- **Débito (pré-existente, fora do escopo):** em `server.js` o roteamento de
+  `/api/health` aninha por engano a checagem de `/api/auth/google/callback`,
+  deixando essa rota inalcançável. Não afeta a sessão; registrar para correção futura.
+- **Risco:** `applySession` (cliente) trata erro de membership como transitório e
+  libera o app; se o usuário realmente não for membro, o servidor agora responde
+  `NOT_A_MEMBER` (403) com mensagem clara — comportamento correto e diagnosticável.
+
 ## Versão 2.1 — ✅ FINALIZADA (Fases 12.1-12.10 — 20/07/2026)
 
 **Fase 12: Integrações + Triggers + Performance + PWA + Push — ✅ 10 SUB-FASES CONCLUÍDAS**
@@ -86,6 +128,32 @@
 - ✅ Testes de carga validados (1000 acessos simultâneos)
 - ✅ Web Push de ponta a ponta (sem app)
 - ✅ 100% PWA completo (offline + push + auto-login)
+
+---
+
+## Versão 2.1.1 — 🚀 ALFA (Fase 13 — 20/07/2026)
+
+### 13.1 — Dashboard de Notificações ✅
+- [x] Modal com filtros (Todas, Não lidas, Triggers, Reminders, Sistema)
+- [x] Ações: Marcar como lido, deletar, limpar lidas
+- [x] Badge com contador de não lidas em tempo real
+- [x] Timestamps formatados (agora, há Xmin, Xh, Xd)
+- Commit: `515f1c5`
+
+### 13.2 — iOS Session Expiry Fix ✅ (CRÍTICO)
+- [x] `withTimeout()` para evitar congelamento do navigator.locks
+- [x] `isFatalAuthError()` — distinguir transitório vs. revogação real
+- [x] **Não descartar access token vencido** → refresh token é quem importa
+- [x] Fonte primária: sessão nativa Supabase (auto-rotaciona refresh token)
+- [x] Logging de debug: `[refreshToken]` prefixo para rastreamento
+- **Impacto:** Sessão persiste entre suspensões iOS, sem forçar re-login
+- Commits: `51ddeff`, `92eabaf`, `0f42f8a`
+
+**v2.1.1 ALFA Status:**
+- ✅ Dashboard funcional
+- ✅ iOS session expiry corrigido (definitivo)
+- ✅ Build clean, 0 vulnerabilidades
+- 🟡 Recomendação: testar em produção 48h antes de v2.2
 
 ---
 

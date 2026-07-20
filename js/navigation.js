@@ -157,5 +157,40 @@ export function initNavigation() {
     });
   });
 
+  // Mobile menu dropdown
+  const mobileMenuBtn = document.getElementById('btn-mobile-menu');
+  const mobileMenuDropdown = document.getElementById('mobile-menu-dropdown');
+
+  if (mobileMenuBtn && mobileMenuDropdown) {
+    mobileMenuBtn.addEventListener('click', () => {
+      const isOpen = mobileMenuDropdown.style.display !== 'none';
+      mobileMenuDropdown.style.display = isOpen ? 'none' : 'flex';
+      mobileMenuBtn.setAttribute('aria-expanded', !isOpen);
+    });
+
+    // Close menu when clicking outside
+    document.addEventListener('click', (e) => {
+      if (!e.target.closest('#btn-mobile-menu') && !e.target.closest('#mobile-menu-dropdown')) {
+        mobileMenuDropdown.style.display = 'none';
+        mobileMenuBtn.setAttribute('aria-expanded', 'false');
+      }
+    });
+
+    // Settings button in mobile menu
+    document.getElementById('mobile-menu-dropdown')?.addEventListener('click', (e) => {
+      if (e.target.dataset.target === 'settings') {
+        activateView('settings');
+        mobileMenuDropdown.style.display = 'none';
+        mobileMenuBtn.setAttribute('aria-expanded', 'false');
+      }
+    });
+
+    // Logout button in mobile menu
+    document.getElementById('btn-logout-mobile')?.addEventListener('click', async () => {
+      const { signOut } = await import('./auth.js');
+      await signOut();
+    });
+  }
+
   activateView('calendar');
 }

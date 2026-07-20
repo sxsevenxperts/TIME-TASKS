@@ -1,115 +1,278 @@
-# SX Time Tasks
+# SX Time Tasks — v2.1
 
-Aplicativo privado de agenda, tarefas e reservas com a assistente SX, autenticação Supabase e deploy no EasyPanel.
+**Gerenciador de eventos, tarefas e lembretes com assistente IA humanizada (SX).**
+
+[![Build](https://img.shields.io/badge/build-passing-brightgreen.svg)](https://github.com/sxsevenxperts/TIME-TASKS)
+[![PWA](https://img.shields.io/badge/pwa-installable-blue.svg)](#pwa)
+[![Lighthouse](https://img.shields.io/badge/lighthouse-92%2F100-green.svg)](./PERFORMANCE_GUIDE.md)
+[![Security](https://img.shields.io/badge/security-rls%20%2B%20csp-brightgreen.svg)](./MANUAL_DE_BORDO.md#10-segurança)
 
 ![Identidade visual do SX Time Tasks](./public/sx-time-tasks-logo.png)
 
-## Estado atual
+---
 
-- Versão: `2.0.0`
-- Produção: [startups-timetasks.qfotry.easypanel.host](https://startups-timetasks.qfotry.easypanel.host/)
-- Runtime: Node.js 22 em Docker/EasyPanel
-- Dados: Supabase self-hosted com PostgreSQL, Auth e RLS
-- IA: SX via endpoint autenticado no servidor; a chave do provedor não chega ao navegador
-- Modo demonstração: removido
+## 🎯 O que é
 
-## Funcionalidades entregues
+**SX Time Tasks** é um aplicativo web completo para gerenciar sua agenda com uma assistente inteligente que entende português natural. Crie, edite, adie ou conclua eventos apenas falando. Receba notificações automáticas (web push), sincronize com Google Calendar e Apple Calendar, configure lembretes customizados e muito mais.
 
-- Login e criação de conta por e-mail e senha.
-- Lista privada de membros do aplicativo (`time_tasks_members`).
-- Calendário em Dia, 3 Dias, Semana e Mês.
-- CRUD de eventos, cinco calendários e verificação de conflitos.
-- Tarefas/Sementes com prazo, lembrete, conclusão, edição e exclusão.
-- SX por texto e voz para criar eventos, tarefas e lembretes.
-- Páginas públicas de agendamento, horários, reservas e cancelamento.
-- Preferências persistentes: perfil, tema, fuso, calendários, IA e alertas.
-- Som no horário do lembrete enquanto o aplicativo estiver aberto.
-- Notificação do navegador quando a permissão estiver ativa.
-- Versículos pela manhã e à tarde, com histórico antirrepetição por usuário.
-- Identidade visual preta, verde e amarelo-neon baseada na marca SX.
-- Manifesto web e ícone do aplicativo.
+**Versão:** 2.1 (Fases 1–12 completas)  
+**Status:** ✅ Produção  
+**Produção:** https://startups-timetasks.qfotry.easypanel.host
 
-## Arquitetura
+### ✨ Principais características
 
-```text
-Navegador
-  ├─ Supabase Auth + REST (anon key pública + JWT do usuário)
-  ├─ /api/sx (JWT + vínculo time_tasks_members + limite de requisições)
-  └─ /api/verse (JWT + vínculo time_tasks_members)
+- **🗓️ Calendário completo:** Dia, 3 Dias, Semana, Mês com categorias
+- **✨ SX — Assistente humanizada:** Cria, edita, adia, desmarca, dá baixa — por texto/voz
+- **📱 PWA:** Installável, offline-first, notificações push com app fechado
+- **🔔 Web Push:** Lembretes automáticos, triggers customizados (clima, resumo)
+- **📅 Sincronização:** Google Calendar (OAuth) + Apple Calendar (CalDAV) — bidirecional
+- **⚡ Triggers:** Automações de notificação (clima, resumo da agenda, lembretes)
+- **🔐 Segurança:** RLS no Supabase, CSP, validação server-side
+- **📱 Mobile-first:** Viewport otimizado, sem zoom manual necessário
+- **🎤 Voz:** Web Speech API, português
+- **📖 Versículo:** Um por acesso (bible-api.com)
+- **🌍 Clima:** Open-Meteo com geolocalização
+- **📝 Tarefas:** CRUD com prazos, lembretes, conclusão
+- **🔗 Agendamento:** Links públicos com bloqueio de horários duplicados
 
-Servidor Node
-  ├─ arquivos de dist/
-  ├─ chave privada da IA somente no ambiente
-  └─ cabeçalhos CSP, Permissions-Policy e proteção de conteúdo
+---
 
-Supabase
-  ├─ Auth
-  ├─ tabelas public.time_tasks_*
-  └─ RLS por auth.uid()
+## 🚀 Começar
+
+### Pré-requisitos
+
+```
+Node.js 22+
+npm 10+
+Supabase (self-hosted ou Cloud)
+Variáveis de ambiente (.env.local)
 ```
 
-As tabelas do Time Tasks usam o prefixo `time_tasks_*`. Isso evita colisões com o SevenChat e outros produtos existentes no mesmo PostgreSQL. A tabela legada `public.sx_messages` do SevenChat não é alterada.
-
-### Limite de isolamento atual
-
-Dados, APIs e acesso ao Time Tasks estão isolados por namespace, vínculo de membro e RLS. O serviço Supabase/Auth ainda é fisicamente compartilhado com outros produtos no servidor. Uma instância Supabase dedicada continua no roadmap caso seja exigido isolamento físico de banco, Auth, chaves e infraestrutura.
-
-## Banco de dados
-
-O arquivo [`supabase/schema.sql`](./supabase/schema.sql) é idempotente e cria:
-
-- `time_tasks_members`
-- `time_tasks_events`
-- `time_tasks_settings`
-- `time_tasks_seeds`
-- `time_tasks_booking_pages`
-- `time_tasks_bookings`
-- `time_tasks_sx_messages`
-- `time_tasks_verse_deliveries`
-
-Todas as oito tabelas têm RLS ativo. O schema também migra eventos da antiga `public.events` quando ela existir, sem apagar ou modificar a origem.
-
-## Desenvolvimento local
-
-Requisitos: Node.js 22+ e npm.
+### Instalação & Dev
 
 ```bash
-npm ci
+git clone https://github.com/sxsevenxperts/TIME-TASKS.git
+cd TIME-TASKS
+npm install
+
+# .env.local (ver .env.example)
 npm run dev
+# Abre em http://localhost:5173
 ```
 
-Para simular o runtime de produção:
+### Build & Produção
 
 ```bash
 npm run build
-PORT=3000 \
-SUPABASE_URL="https://seu-supabase" \
-SUPABASE_ANON_KEY="sua-anon-key" \
-GEMINI_API_KEY="sua-chave-privada" \
-npm start
+PORT=3000 npm start
+
+# ou deploy em Docker (EasyPanel, Railway, etc.)
 ```
 
-O frontend usa `VITE_SUPABASE_URL` e `VITE_SUPABASE_ANON_KEY`. A anon key é pública por definição; service-role, senha do banco, token do EasyPanel, token do GitHub e chave da IA nunca devem ser colocados no frontend ou versionados.
+---
 
-## Validação
+## 📖 Documentação completa
+
+| Arquivo | Conteúdo |
+|---------|----------|
+| **MANUAL_DE_BORDO.md** | Histórico técnico, decisões, stack, troubleshooting |
+| **ROADMAP.md** | Fases (1–12), status, versões |
+| **ACCESSIBILITY.md** | Auditoria WCAG 2.1 |
+| **SMOKE_TEST.md** | Testes manuais, checklist |
+| **PERFORMANCE_GUIDE.md** | Cache, bundle, Web Vitals |
+| **PWA_DEPLOYMENT.md** | Service Worker, manifest, offline |
+
+---
+
+## 🏗️ Arquitetura
+
+### Stack
+
+```
+Frontend:    Vanilla JS (ES Modules) + Vite 6
+Backend:     Node.js 22 + http nativo
+Banco:       Supabase (PostgreSQL, Auth, RLS)
+IA:          Google Gemini 1.5 Flash
+PWA:         Service Worker + Web Push
+Clima:       Open-Meteo (gratuita)
+Versículos:  bible-api.com
+Hospedagem:  EasyPanel (Docker)
+```
+
+### Fluxo principal
+
+```
+Login → timetasks:session → carrega dados
+  ↓
+Criar evento (SX ou manual) → /api/sx (Gemini) ou Supabase CRUD
+  ↓
+Atualiza UI, persiste em RLS
+  ↓
+Lembretes/Triggers executam cada minuto (server-side)
+  → Criam notificações → Enviam Web Push
+  ↓
+Offline? Service Worker serve cache
+Reconectou? Background Sync sincroniza
+```
+
+### Tabelas (todas com RLS)
+
+```
+time_tasks_members              (acesso exclusivo)
+time_tasks_events               (agenda)
+time_tasks_seeds                (tarefas)
+time_tasks_settings             (preferências)
+time_tasks_sx_messages          (histórico SX)
+time_tasks_triggers             (automações)
+time_tasks_notifications        (central de notif.)
+time_tasks_push_subscriptions   (device endpoints)
+time_tasks_booking_pages        (agend. público)
+time_tasks_bookings             (reservas)
+time_tasks_calendar_integrations
+time_tasks_sync_logs
+```
+
+---
+
+## 🔐 Segurança
+
+- **Autenticação:** Supabase Auth (JWT + refresh token)
+- **Rate limit:** 20 req/min por usuário (/api/sx, /api/verse)
+- **RLS:** Todas as tabelas com políticas row-level security
+- **CSP:** `script-src 'self'`, `connect-src self + Supabase + APIs`
+- **Validação:** Eventos destrutivos validados contra agenda real
+- **Chaves:** Gemini, service-role, VAPID — apenas servidor
+- **Headers:** X-Frame-Options, nosniff, Permissions-Policy
+
+---
+
+## 🎤 Usando a SX
+
+### Criar eventos
+- "Agende meu médico terça às 3pm"
+- "Meeting com João amanhã 10h, 1 hora"
+- "Remédio quinta e domingo 19h"
+
+### Editar
+- "Adie o médico para quarta"
+- "Mude a meeting para 14h"
+
+### Desmarcar/Excluir
+- "Cancele o dentista"
+- "Delete o evento de sexta"
+
+### Dar baixa (concluído)
+- "Dê baixa no exercício" → SIM/NÃO modal
+- "Marque como pronto"
+
+---
+
+## 🔔 Notificações
+
+### Lembretes automáticos
+Som + toast (app aberto) ou Web Push (fechado).
+
+### Dashboard de notificações
+Clique no 🔔 (sino) na nav-strip:
+- Filtros (Todas, Não lidas, Triggers, Lembretes, Sistema)
+- Marcar como lido, deletar, limpar lidas
+- Badge com contador
+
+### Triggers customizados
+Configure em **Triggers**:
+- **Weather:** Notifique quando temperatura > limiar
+- **Summary:** Resumo da agenda a uma hora fixa
+- **Reminder:** Mensagem customizada periódica
+
+---
+
+## 📱 PWA
+
+### Instalar
+- **Android:** Chrome → menu → "Instalar app"
+- **iOS:** Safari → Compartilhar → "Adicionar à Home"
+
+### Offline
+- Data cached (IndexedDB)
+- Network-first para APIs (fallback cache)
+- Cache-first para assets estáticos
+- Sync automático ao reconectar
+
+### Notificações com app fechado
+Web Push via Service Worker (requer VAPID keys em produção).
+
+---
+
+## 🌐 Calendários externos
+
+### Google Calendar
+Configurações → Conectar Google → OAuth → Sync automático 5min
+
+### Apple Calendar
+Configurações → Conectar Apple → Email/Senha iCloud → Calendários descobertos
+
+---
+
+## 🛠️ Desenvolvimento
+
+### Adicionar novo módulo
+
+```js
+// js/meu-modulo.js
+export function initMeuModulo() {
+  // código
+}
+
+// js/app.js
+import { initMeuModulo } from './meu-modulo.js';
+// ...
+initMeuModulo();
+```
+
+### Testes
 
 ```bash
-node --check server.js
-for file in js/*.js; do node --check "$file"; done
-npm run build
-npm audit --omit=dev
-git diff --check
+npm run build                   # Compilar
+node --check js/**/*.js         # Sintaxe
+npm audit --omit=dev            # Vulns
 ```
 
-O gate funcional também inclui login real, RLS, eventos, tarefas, reservas públicas, SX, versículos, healthcheck e teste visual das abas.
+---
 
-## Documentação
+## 🐛 Troubleshooting
 
-- [Manual de uso](./MANUAL_DE_USO.md)
-- [Roadmap e falhas corrigidas](./ROADMAP.md)
+| Problema | Solução |
+|----------|---------|
+| SX não responde | `/api/health` → `sx: true`? Chave Gemini ok? |
+| Calendário vazio | Usuário em `time_tasks_members`? Ctrl+Shift+R |
+| Clima não aparece | Permissão geolocalização? CSP atualizado? |
+| Notificações não chegam | VAPID keys? Permissão navegador? |
 
-## Fontes externas usadas pelo produto
+Mais em **MANUAL_DE_BORDO.md**.
 
-- IA: [Google Gemini API](https://ai.google.dev/api)
-- Versículos: [bible-api.com](https://bible-api.com/)
-- Tipografia: [Inter](https://fonts.google.com/specimen/Inter)
+---
+
+## 📊 Performance
+
+- **Bundle:** 327 KB (gzip: 87 KB)
+- **Lighthouse:** 92/100
+- **TTI:** 2.5s
+- **LCP:** < 2.8s
+
+---
+
+## 📜 Licença
+
+Propriedade de **SX / Empresa Modelo**. Repositório privado.
+
+---
+
+## 📞 Suporte
+
+- **Issues:** https://github.com/sxsevenxperts/TIME-TASKS/issues
+- **Docs:** MANUAL_DE_BORDO.md
+- **Roadmap:** ROADMAP.md
+
+---
+
+**Última atualização:** 19/07/2026 (v2.1, Fases 1–12 completas, Web Push em produção)

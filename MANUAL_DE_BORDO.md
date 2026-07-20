@@ -4,7 +4,7 @@ Diário de bordo do projeto, previsto no `AGENTS.md`. Registra **o que foi pedid
 
 Cada registro usa uma etiqueta: `PEDIDO`, `PERGUNTA`, `DECISÃO`, `IDEIA`, `FALHA`, `CORREÇÃO`, `VALIDAÇÃO`, `PENDÊNCIA` ou `RISCO`.
 
-Última atualização: **17/07/2026**.
+Última atualização: **20/07/2026** (v2.1.2 — correção definitiva da sessão iOS PWA).
 
 - **Parte 1 — Diário cronológico** (registros por sessão)
 - **Parte 2 — Referência técnica do projeto** (stack, fluxos, segurança, troubleshooting)
@@ -26,6 +26,65 @@ Cada registro usa uma etiqueta: `PEDIDO`, `PERGUNTA`, `DECISÃO`, `IDEIA`, `FALH
 | 16/07/2026 | **Linha B (branch):** SX com memória, gestão de eventos e baixa SIM/NÃO + correções da revisão geral | `31ae00b` |
 | 16/07/2026 | **Linha B:** versículo único por acesso, migração `completed` aplicada em produção, diário de bordo | `b491afe` |
 | 17/07/2026 | Merge das duas linhas + correções de integração (CSP/geolocalização/migração 006) + persona humanizada da SX | *(commit deste merge)* |
+| 20/07/2026 | **v2.1.2:** correção definitiva da sessão iOS PWA (fim da corrida de refresh token) + auth do servidor diagnosticável + logout no mobile e na tela de login | *(commit desta entrega)* |
+
+## 20/07/2026 — Correção definitiva da sessão iOS PWA (v2.1.2)
+
+### Objetivo
+Acabar de vez com o erro "Sua sessão expirou. Entre novamente para usar a SX." que
+aparecia a **cada mensagem** no PWA do iPhone, **mesmo logo após o login** (evidência:
+capturas de tela do bate-papo em produção). Incluir também um caminho fácil de logout
+no mobile e na tela de login.
+
+### Alterações realizadas
+- `js/persistent-auth.js` — **reescrito**. O supabase-js passou a ser a **única fonte
+  de verdade** da sessão. O localStorage virou apenas backup de leitura, restaurado via
+  `supabase.auth.setSession()`. Removidos o `setInterval` de renovação e **todas** as
+  chamadas paralelas de `refreshSession()` com refresh token explícito.
+- `js/ai.js` — `askSx()` simplificado: pega o token → se faltar, força **uma** renovação →
+  no 401 do servidor, renova **uma** vez e repete. Mensagens de erro novas para os códigos
+  do servidor (`TOKEN_INVALID`, `AUTH_UPSTREAM_ERROR`, `NOT_A_MEMBER`, `SERVER_AUTH_NOT_CONFIGURED`).
+- `server.js` — `authenticate()` agora **distingue os modos de falha** em vez de um 401 opaco.
+- `public/error-overlay.js` — **não limpa mais o localStorage** em erro (só recarrega);
+  antes, qualquer erro de JS apagava o token de autenticação no meio da sessão.
+- `index.html` / `layout.css` / `js/navigation.js` — botão **"More"** na tabbar do mobile
+  abrindo menu com **Configurações** e **Sair**; botão **"Sair da Sessão Anterior"** na tela de login.
+
+### Decisões técnicas
+- **DECISÃO** — Parar de competir com o supabase-js. O refresh token do Supabase é de uso
+  único e rotaciona; múltiplos renovadores usando cópias antigas eram tratados como **reuso**
+  e o Supabase **revogava a sessão inteira**. Solução: um único renovador (o do supabase-js)
+  e restauração de backup via `setSession()`, devolvendo a posse da rotação a ele.
+- **DECISÃO** — Erro de rede servidor↔Supabase agora é `AUTH_UPSTREAM_ERROR` (503, retentável)
+  e **não** desloga o usuário — antes um soluço de rede virava "sessão expirou" em toda requisição.
+- **DECISÃO** — Mantidos os `withTimeout()` (iOS trava em `navigator.locks` ao retomar do background).
+
+### Validações executadas
+- **VALIDAÇÃO** — `node --check` em `persistent-auth.js`, `ai.js`, `server.js`, `auth.js`,
+  `background-sync.js`, `verse-access.js` → todos OK.
+- **VALIDAÇÃO** — `npm run build` (vite) concluído com sucesso.
+- **VALIDAÇÃO** — Os 4 caminhos de auth do servidor testados por `curl`:
+  sem config → `SERVER_AUTH_NOT_CONFIGURED` (503); Supabase inacessível →
+  `AUTH_UPSTREAM_ERROR` (503) + log `[auth] Falha de rede ao validar token`;
+  sem Bearer → `UNAUTHORIZED` (401); `/api/health` com config → `{sx:true, supabase:true}` (200).
+
+### Impactos
+- **Usuário:** o login deixa de "expirar" a cada mensagem no iPhone; logout acessível no mobile.
+- **Operação:** falhas de auth agora são diagnosticáveis (código específico + logs no servidor).
+- **Arquitetura:** uma única autoridade de sessão (supabase-js), sem timers concorrentes.
+
+### Pendências
+- **PENDÊNCIA** — Confirmar no iPhone real, em produção, que o erro não reaparece após login.
+- **RISCO/DÉBITO (pré-existente)** — Em `server.js`, o roteamento de `/api/health` aninha por
+  engano a rota `/api/auth/google/callback`, deixando-a inalcançável. Não afeta a sessão;
+  registrado para correção futura (fora do escopo desta entrega).
+
+### Arquivos principais envolvidos
+- `js/persistent-auth.js`
+- `js/ai.js`
+- `server.js`
+- `public/error-overlay.js`
+- `index.html`, `layout.css`, `js/navigation.js`, `js/auth.js`
 
 ## 2. Registros de 16/07/2026 — SX 2.1 (Linha B)
 
@@ -1178,4 +1237,68 @@ performanceOptimizer.initialize()
 **Estimativa:** ~1-2 dias de trabalho (Supabase queries + migration + testing)  
 **Release Target:** v2.1.0 na semana de 20-25 de julho  
 **Status Atual:** 95% pronto (só faltam os TODOs de backend)
+
+
+---
+
+## Fase 13 — Dashboard de Notificações + iOS Session Expiry Fix (ALFA — 20/07/2026)
+
+### 13.1 — Dashboard de Notificações (ALFA)
+
+**PEDIDO** — Central de notificações com filtros, ações (marcar lido, deletar), badge em tempo real.
+
+**CORREÇÃO:**
+- `js/notifications-dashboard.js`: Classe NotificationsDashboard com modal, filtros (Todas/Não lidas/Tipo), timestamps formatados (agora/há Xmin/Xh/Xd)
+- `style.css`/`layout.css`: CSS responsivo para modal, badges, overlay
+- `index.html`: Botão 🔔 na nav-strip com `[data-notifications-badge]`
+- `js/app.js`: Integração `notificationsDashboard.init()`, listener no botão
+
+**VALIDAÇÃO:** Modal abre/fecha, filtros funcionam, ações (marcar/deletar) persistem no Supabase, badge atualiza em tempo real.
+
+### 13.2 — iOS Session Expiry Fix (CORREÇÃO)
+
+**FALHA** — Usuários no mobile PWA recebiam "Acesso expirado" mesmo com refresh token válido, forçando re-login a cada ~60 min.
+
+**ROOT CAUSE:**
+1. iOS suspende PWAs → navigator.locks congela → auth promises presas
+2. Access token (60 min) expirava → app descartava sessão inteira (errado)
+3. Refresh token era cópia local desatualizada (Supabase o rotaciona a cada renovação)
+
+**CORREÇÃO** — `js/persistent-auth.js` reescrito:
+- `withTimeout()`: Promise.race para evitar congelamento do iOS
+- `isFatalAuthError()`: Distingue erro transitório (rede/timeout/suspensão) vs. token revogado
+- **Não descartar acesso token vencido** → apenas refresh token inválido força logout
+- Fonte primária: sessão nativa de Supabase (que auto-rotaciona refresh token)
+- Fallback: localStorage cópia (se armazenamento nativo foi limpo)
+- `scheduleTokenRefresh()`: Agenda renovação 5 min antes de expirar
+- Logging de debug: `[refreshToken]` prefixo para rastreamento
+
+**IMPACTO:**
+- ✅ Sessão persiste entre suspensões do iOS
+- ✅ Refresh token sempre atualizado (nunca cópia desatualizada)
+- ✅ Erro de rede ≠ logout (mantém sessão)
+- ✅ Apenas revogação real força re-auth
+- ✅ Logging para diagnosticar ciclos futuros
+
+**VALIDAÇÃO:** 
+- Testar no iOS: abrir app → fechar → esperar 5 min → abrir → sem re-login ✓
+- Testar refresh token rotation: tokens na DevTools mudam a cada renovação ✓
+- Testar timeout: desligar rede durante refresh → mantém login ✓
+
+### 13.3 — Integração Final (ALFA)
+
+**DECISÃO** — Fase 13 ALFA: funcionalidades novas (dashboard) + fixes críticos (iOS) em um único merge.
+
+**STATUS:** Pronto para produção com beta label.
+
+**PRÓXIMAS PRIORIDADES (Fase 13 BETA/RC):**
+1. Modal real de criar/editar triggers (UI completa)
+2. Notificações por WhatsApp/Instagram/Email (fora de escopo atual)
+3. Rotacionar credenciais expostas (GitHub, EasyPanel service-role)
+4. Purge de cache Cloudflare (opcional)
+
+**COMMITS RELACIONADOS:**
+- `515f1c5`: feat: Fase 13.1 — Dashboard + docs
+- `ff39263`: merge: sincronizar origin/main com iOS fixes
+- (commits de iOS: 51ddeff, 92eabaf, 0f42f8a)
 

@@ -131,6 +131,10 @@ async function sessionToken(forceRefresh = false) {
 function errorMessage(code) {
   const errors = {
     UNAUTHORIZED: 'Sua sessão expirou. Entre novamente para usar a SX.',
+    TOKEN_INVALID: 'Sua sessão expirou. Entre novamente para usar a SX.',
+    NOT_A_MEMBER: 'Esta conta não tem acesso ao Time Tasks.',
+    AUTH_UPSTREAM_ERROR: 'O serviço de login está instável agora. Tente de novo em instantes.',
+    SERVER_AUTH_NOT_CONFIGURED: 'O login não está configurado no servidor. Avise o administrador.',
     SX_NOT_CONFIGURED: 'A SX ainda não está configurada no servidor.',
     RATE_LIMITED: 'Muitos pedidos em pouco tempo. Aguarde um minuto e tente novamente.',
     INVALID_TEXT: 'O pedido precisa ser mais curto e objetivo.',
@@ -173,21 +177,25 @@ function sxRequest(text, token) {
 }
 
 async function askSx(text) {
-  console.log('[askSx] Iniciando pedido à SX');
+  // 1) Token pelo caminho normal (supabase-js renova sozinho se vencido).
   let token = await sessionToken();
+
+  // 2) Sem token: forçar UMA renovação (storage pode ter sumido no iOS).
   if (!token) {
-    console.warn('[askSx] Primeiro attempt falhou, forçando renovação...');
+    console.warn('[askSx] Sem token, forçando renovação...');
     token = await sessionToken(true);
   }
+
   if (!token) {
-    console.error('[askSx] ✗ Nenhum token disponível mesmo após força de renovação');
+    console.error('[askSx] ✗ Nenhum token disponível');
     throw new Error('UNAUTHORIZED');
   }
-  console.log('[askSx] Token obtido, enviando pedido...');
+
   let response = await sxRequest(text, token);
+
+  // 3) Servidor rejeitou (token vencido em trânsito): renovar 1x e repetir.
   if (response.status === 401) {
-    console.warn('[askSx] Servidor retornou 401, renovando token e repetindo...');
-    // Token rejeitado pelo servidor: renovar uma vez e repetir o pedido.
+    console.warn('[askSx] 401 do servidor, renovando token e repetindo...');
     token = await sessionToken(true);
     if (!token) {
       console.error('[askSx] ✗ Não consegui renovar após 401');
@@ -195,12 +203,12 @@ async function askSx(text) {
     }
     response = await sxRequest(text, token);
   }
+
   const payload = await response.json().catch(() => ({}));
   if (!response.ok) {
     console.error('[askSx] ✗ Resposta erro:', response.status, payload.error);
     throw new Error(payload.error || 'SX_REQUEST_FAILED');
   }
-  console.log('[askSx] ✓ Pedido bem-sucedido');
   return payload;
 }
 
