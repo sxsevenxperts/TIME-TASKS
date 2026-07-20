@@ -63,9 +63,16 @@
   min-height: 20px;
 }
 
+.auth-footer {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  margin-top: 24px;
+  align-items: center;
+}
+
 .auth-link {
   display: inline-block;
-  margin-top: 24px;
   font-size: 0.9rem;
   color: var(--text-secondary);
   text-decoration: none;
@@ -76,6 +83,23 @@
 }
 .auth-link:hover span {
   text-decoration: underline;
+}
+
+.auth-logout-btn {
+  padding: 8px 16px;
+  font-size: 0.85rem;
+  color: #FF3B30;
+  background: rgba(255, 59, 48, 0.1);
+  border: 1px solid #FF3B30;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: all 150ms;
+  font-weight: 500;
+}
+
+.auth-logout-btn:hover {
+  background: rgba(255, 59, 48, 0.15);
+  color: #e0342b;
 }
 
 /* Password toggle no formulário de login */

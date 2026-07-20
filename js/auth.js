@@ -268,10 +268,19 @@ export async function initAuth() {
   // iOS congela timers em background: renovar token ao retomar o PWA
   setupResumeRefresh();
 
-  // Bind Logout Button
+  // Bind Logout Button (main app)
   const logoutBtn = document.getElementById('btn-logout');
   if (logoutBtn) {
     logoutBtn.addEventListener('click', async () => {
+      await signOut();
+    });
+  }
+
+  // Bind Logout Button (auth screen)
+  const logoutAuthBtn = document.getElementById('auth-logout-btn');
+  if (logoutAuthBtn) {
+    logoutAuthBtn.addEventListener('click', async (e) => {
+      e.preventDefault();
       await signOut();
     });
   }
