@@ -213,7 +213,7 @@ async function refreshToken() {
 
 /**
  * Garante uma sessão com access token válido, renovando se necessário.
- * Nunca revoga a sessão — em caso de falha devolve null e o chamador decide.
+ * ESTRATÉGIA: Prefere localStorage (mais confiável em iOS PWA) que native Supabase.
  */
 export async function ensureFreshSession(options = {}) {
   if (!supabase) {
@@ -221,70 +221,58 @@ export async function ensureFreshSession(options = {}) {
     return null;
   }
   try {
-    let session = null;
-    let nativeSessionFailed = false;
-
-    // Tentar obter sessão nativa do supabase-js (mais confiável pois auto-rotaciona tokens)
-    try {
-      const { data } = await withTimeout(supabase.auth.getSession(), 5000);
-      session = data?.session || null;
-    } catch (timeoutError) {
-      // iOS PWA frequentemente tira o supabase-js do background e o withTimeout(5s)
-      // falha. Não é um erro fatal — prosseguir com backup (localStorage).
-      console.warn('[ensureFreshSession] Native session timeout/erro, usando backup:', timeoutError.message);
-      nativeSessionFailed = true;
-    }
-
-    const nowSeconds = Math.floor(Date.now() / 1000);
-    const stillValid = session?.expires_at && session.expires_at - nowSeconds > 120;
-
-    console.log(`[ensureFreshSession] Native: ${session ? '✓' : '✗'}, valid=${stillValid}, force=${options.force}`);
-
-    if (stillValid && !options.force) {
-      console.log('[ensureFreshSession] ✓ Token válido, devolvendo');
-      return session;
-    }
-
-    // Token vencido/perto de vencer (ou renovação forçada após um 401)
-    // ou native session falhou. Renovar.
-    console.log('[ensureFreshSession] Token fora de validade ou renovação forçada, tentando renovar...');
-    const refreshed = await refreshToken();
-    if (refreshed) {
-      console.log('[ensureFreshSession] ✓ Renovação bem-sucedida');
-      return refreshed;
-    }
-
-    // Renovação via native falhou. Usar a cópia local (localStorage).
-    console.log('[ensureFreshSession] Renovação nativa falhou, tentando com persistedSession...');
+    // PRIORIDADE 1: Restaurar do localStorage (mais confiável em iOS PWA)
     const persisted = restorePersistentSession();
+    const nowSeconds = Math.floor(Date.now() / 1000);
+
+    if (persisted?.access_token) {
+      const stillValid = persisted.expires_at && persisted.expires_at - nowSeconds > 120;
+      console.log(`[ensureFreshSession] localStorage: ${persisted ? '✓' : '✗'}, válido=${stillValid}, force=${options.force}`);
+
+      if (stillValid && !options.force) {
+        console.log('[ensureFreshSession] ✓ Token localStorage ainda válido');
+        return persisted;
+      }
+    }
+
+    // Token vencido ou forçada renovação. Renovar com refresh_token
     if (persisted?.refresh_token) {
-      console.log('[ensureFreshSession] Usando refresh_token persistido');
+      console.log('[ensureFreshSession] Tentando renovar com refresh_token persistido...');
       const { data: alt, error } = await withTimeout(
         supabase.auth.refreshSession({ refresh_token: persisted.refresh_token }),
         5000
       ).catch(() => ({ data: null, error: null }));
+
       if (!error && alt?.session) {
         savePersistentSession(alt.session);
-        console.log('[ensureFreshSession] ✓ Renovação com persistedSession bem-sucedida');
+        console.log('[ensureFreshSession] ✓ Renovação bem-sucedida');
         return alt.session;
-      } else if (error) {
-        console.error('[ensureFreshSession] Falha ao renovar com persistedSession:', error?.message);
+      } else {
+        console.warn('[ensureFreshSession] Refresh falhou:', error?.message);
       }
-    } else {
-      console.warn('[ensureFreshSession] Nenhuma persistedSession disponível');
     }
 
-    // Se renovação falhou, NUNCA devolver session vencida. Devolver null
-    // força chamador a tratar como "não autenticado" e pedir novo login.
-    if (session?.expires_at) {
-      const nowSeconds = Math.floor(Date.now() / 1000);
-      if (session.expires_at - nowSeconds <= 120) {
-        console.error('[ensureFreshSession] ✗ Token vencido e renovação falhou, devolvendo null');
-        return null;
+    // PRIORIDADE 2: Tentar native session como último recurso
+    try {
+      const { data } = await withTimeout(supabase.auth.getSession(), 3000);
+      const nativeSession = data?.session || null;
+      if (nativeSession?.access_token) {
+        savePersistentSession(nativeSession);
+        console.log('[ensureFreshSession] ✓ Usando native session como fallback');
+        return nativeSession;
       }
+    } catch (e) {
+      console.warn('[ensureFreshSession] Native session indisponível:', e.message);
     }
-    console.log('[ensureFreshSession] Fallback: devolvendo session (pode estar null ou válida)');
-    return session; // null ou válida (quando getSession falhou mas temos fallback)
+
+    // Se nada funcionou, devolver session com token vencido (caller trata 401)
+    if (persisted?.access_token) {
+      console.warn('[ensureFreshSession] Devolvendo token vencido (caller tratará 401)');
+      return persisted;
+    }
+
+    console.error('[ensureFreshSession] ✗ Sem sessão disponível');
+    return null;
   } catch (error) {
     console.error('[ensureFreshSession] Exceção:', error?.message || error);
     return null;
