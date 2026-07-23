@@ -2,6 +2,7 @@ import { createServer } from 'node:http';
 import { readFile, stat } from 'node:fs/promises';
 import { extname, join, normalize } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { OpenAI } from 'openai';
 import { buildGoogleAuthUrl, exchangeGoogleCode, refreshGoogleToken, fetchGoogleCalendars } from './js/google-calendar-handler.js';
 import { discoverAppleCalDAV, fetchAppleCalendars, fetchAppleEvents, parseICS } from './js/apple-calendar-handler.js';
 import { startCalendarSync } from './js/calendar-sync.js';
@@ -12,8 +13,18 @@ const port = Number(process.env.PORT || 3000);
 const distDir = fileURLToPath(new URL('./dist/', import.meta.url));
 const supabaseUrl = (process.env.SUPABASE_URL || process.env.VITE_SUPABASE_URL || '').replace(/\/$/, '');
 const supabaseAnonKey = process.env.SUPABASE_ANON_KEY || process.env.VITE_SUPABASE_ANON_KEY || '';
-const geminiApiKey = process.env.GEMINI_API_KEY || '';
-const geminiModel = process.env.GEMINI_MODEL || 'gemini-2.5-flash';
+const nvidiaApiKey = process.env.NVIDIA_API_KEY || '';
+const nvidiaModel = process.env.NVIDIA_MODEL || 'z-ai/glm-5.2';
+const nvidiaEndpoint = 'https://integrate.api.nvidia.com/v1';
+
+// Initialize NVIDIA/OpenAI client
+const nvdiaClient = nvidiaApiKey ? new OpenAI({
+  baseURL: nvidiaEndpoint,
+  apiKey: nvidiaApiKey,
+  defaultHeaders: {
+    'User-Agent': 'TimeTasksSX/2.1.0'
+  }
+}) : null;
 
 const googleClientId = process.env.GOOGLE_CLIENT_ID || '';
 const googleClientSecret = process.env.GOOGLE_CLIENT_SECRET || '';
@@ -427,7 +438,7 @@ async function handleCreateTrigger(request, response, user) {
 }
 
 async function handleSx(request, response, user) {
-  if (!geminiApiKey) return sendJson(response, 503, { error: 'SX_NOT_CONFIGURED' });
+  if (!nvidiaApiKey || !nvidiaClient) return sendJson(response, 503, { error: 'SX_NOT_CONFIGURED' });
   if (!allowRequest(user.id)) return sendJson(response, 429, { error: 'RATE_LIMITED' });
 
   const body = await readJson(request);
@@ -494,35 +505,31 @@ async function handleSx(request, response, user) {
     { role: 'user', parts: [{ text: contextText }] }
   ];
 
-  const geminiResponse = await fetch(
-    `https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(geminiModel)}:generateContent`,
-    {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'x-goog-api-key': geminiApiKey
-      },
-      body: JSON.stringify({
-        system_instruction: { parts: [{ text: systemInstruction }] },
-        contents,
-        generationConfig: {
-          responseMimeType: 'application/json',
-          maxOutputTokens: 900
-        }
-      }),
-      signal: AbortSignal.timeout(25_000)
-    }
-  );
+  let raw;
+  try {
+    const completion = await nvidiaClient.chat.completions.create({
+      model: nvidiaModel,
+      messages: [
+        { role: 'system', content: systemInstruction },
+        ...history.map(entry => ({
+          role: entry.role === 'assistant' ? 'assistant' : 'user',
+          content: entry.content
+        })),
+        { role: 'user', content: contextText }
+      ],
+      temperature: 0.7,
+      top_p: 0.9,
+      max_tokens: 900,
+      response_format: { type: 'json_object' },
+      timeout: 25_000
+    });
 
-  if (!geminiResponse.ok) {
-    const detail = await geminiResponse.text();
-    console.error('Gemini respondeu com erro:', geminiResponse.status, detail.slice(0, 500));
+    raw = completion.choices?.[0]?.message?.content || '';
+    if (!raw) return sendJson(response, 502, { error: 'SX_EMPTY_RESPONSE' });
+  } catch (error) {
+    console.error('NVIDIA GLM-5.2 respondeu com erro:', error.message);
     return sendJson(response, 502, { error: 'SX_PROVIDER_ERROR' });
   }
-
-  const payload = await geminiResponse.json();
-  const raw = payload?.candidates?.[0]?.content?.parts?.map(part => part.text || '').join('').trim();
-  if (!raw) return sendJson(response, 502, { error: 'SX_EMPTY_RESPONSE' });
 
   let parsed;
   try {
@@ -604,7 +611,7 @@ const server = createServer(async (request, response) => {
       return sendJson(response, 200, {
         status: 'ok',
         service: 'time-tasks',
-        sx: Boolean(geminiApiKey),
+        sx: Boolean(nvidiaApiKey),
         supabase: Boolean(supabaseUrl && supabaseAnonKey)
       });
     }

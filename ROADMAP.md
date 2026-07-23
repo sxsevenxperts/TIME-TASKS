@@ -89,6 +89,23 @@
 
 ---
 
+## Versão 2.1.1 — AI Provider Migration (Gemini → GLM-5.2)
+
+### 🔄 Mudança de Provider de IA
+- [x] Integração com GLM-5.2 via NVIDIA API (OpenAI SDK compatible)
+- [x] Endpoint: `https://integrate.api.nvidia.com/v1`
+- [x] Model: `z-ai/glm-5.2`
+- [x] Atualização de `server.js`: remover Gemini, integrar OpenAI client
+- [x] Atualização de `.env.example` com novas variáveis
+- [x] Atualização de `.env.local` e `.env.production` com NVIDIA_API_KEY
+- [x] Teste de build: ✅ OK (875ms)
+- [x] Sintaxe validada: ✅ Server JS OK
+- [x] npm audit: ✅ openai package instalado
+
+**Status:** Em commit (pronto para push)
+
+---
+
 ## Versão 2.0 — ✅ ENTREGUE
 
 ### Produto e identidade
