@@ -3,6 +3,25 @@
 **Última revisão técnica:** 18/07/2026 → 20/07/2026 (v2.1 FINAL COMPLETE)
 **Status:** ✅ v2.0 PRODUÇÃO + ✅ v2.1 DESENVOLVIMENTO FINALIZADO + 🚀 PRONTO PARA v2.2
 
+## Atualização — 2026-07-24 (v2.1.4) — CAUSA RAIZ do "sessão expirou"
+
+### Concluído
+- [x] **Causa raiz identificada por teste real:** `SUPABASE_ANON_KEY` do runtime (EasyPanel) diverge da `VITE_SUPABASE_ANON_KEY` do build. Login/calendário usavam o par do build (correto); só a SX (validada pelo servidor) rejeitava — inclusive tokens válidos. Provado: token novo → 200 direto no Supabase, 401 via app.
+- [x] `server.js`: resolução autocurável de credenciais — sonda `/auth/v1/settings` e escolhe o par que o Supabase aceita; usado em auth, membership, calendar-sync e triggers. `cleanEnv()` tolera aspas/espaços.
+- [x] `server.js`: **fix GLM** — `timeout` movido para as opções do SDK (estava no corpo → NVIDIA retornava 400 → `SX_PROVIDER_ERROR`). Removido código morto do Gemini.
+- [x] `/api/health` com diagnóstico: `supabaseHost`, `supabaseSource`, `supabaseKeyTail`.
+- [x] Service Worker v2 + reload automático (`controllerchange`) → abas/PWA abertos param de rodar bundle antigo após deploy.
+- [x] E2E local validado (conversa + criação de evento) simulando a env errada do EasyPanel.
+
+### Próximos passos
+- [ ] Redeploy no EasyPanel; verificação minha em produção (health + SX E2E com token real).
+- [ ] Limpar a env `SUPABASE_ANON_KEY` errada no EasyPanel (código já tolera, mas env correta é o ideal).
+- [ ] Remover instrumentação `🔎`/`reason` quando estabilizar.
+
+### Riscos e débitos técnicos
+- A env errada no runtime continua lá (mascarada pelo código). Débito: alinhar as variáveis no painel.
+- Usuário de teste `markalancamentos7d+sxdiag@gmail.com` criado para diagnóstico; remover depois.
+
 ## Atualização — 2026-07-23 (v2.1.3)
 
 ### Concluído

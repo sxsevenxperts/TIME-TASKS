@@ -18,6 +18,21 @@
       .catch((error) => {
         console.error('Service Worker registration failed:', error);
       });
+
+    // Deploy novo → SW novo assume (skipWaiting + clients.claim) → recarrega a
+    // página UMA vez para trocar o bundle em memória. Sem isso, abas/PWA
+    // abertos continuam rodando o JavaScript antigo indefinidamente (foi o que
+    // fez testes pós-deploy rodarem código velho em 2026-07-23).
+    // hadController: na PRIMEIRA instalação (página ainda sem controller) o
+    // controllerchange também dispara — não recarregar nesse caso, para não
+    // interromper o primeiro acesso/login.
+    const hadController = Boolean(navigator.serviceWorker.controller);
+    let reloadedBySW = false;
+    navigator.serviceWorker.addEventListener('controllerchange', () => {
+      if (!hadController || reloadedBySW) return;
+      reloadedBySW = true;
+      window.location.reload();
+    });
   }
 
   // A inscrição em Web Push é responsabilidade do app (js/push-notifications.js),

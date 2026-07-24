@@ -1,4 +1,4 @@
-const CACHE_VERSION = 'sx-time-tasks-v1';
+const CACHE_VERSION = 'sx-time-tasks-v2';
 const STATIC_ASSETS = [
   '/',
   '/index.html',

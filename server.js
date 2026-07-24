@@ -11,9 +11,68 @@ import { initPushSender } from './js/push-sender.js';
 
 const port = Number(process.env.PORT || 3000);
 const distDir = fileURLToPath(new URL('./dist/', import.meta.url));
-const supabaseUrl = (process.env.SUPABASE_URL || process.env.VITE_SUPABASE_URL || '').replace(/\/$/, '');
-const supabaseAnonKey = process.env.SUPABASE_ANON_KEY || process.env.VITE_SUPABASE_ANON_KEY || '';
-const supabaseServiceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY || '';
+// Lê env tolerando espaços e aspas acidentais (copy-paste no EasyPanel).
+const cleanEnv = (name) => String(process.env[name] || '').trim().replace(/^["']|["']$/g, '');
+
+// CAUSA RAIZ do "sessão expirou" na SX (diagnóstico 2026-07-23): o runtime no
+// EasyPanel tinha SUPABASE_ANON_KEY divergente da VITE_SUPABASE_ANON_KEY usada
+// no build do cliente. O login funcionava (par VITE_* correto no bundle), mas o
+// servidor validava tokens com a key errada e rejeitava QUALQUER token — até os
+// válidos (provado: token recém-emitido → 200 direto no Supabase, 401 via app).
+// Agora o servidor monta os pares candidatos (runtime e build) e SONDA qual o
+// Supabase aceita, em vez de confiar cegamente no env.
+const supabaseCandidates = [];
+{
+  const urls = [
+    { value: cleanEnv('SUPABASE_URL').replace(/\/$/, ''), name: 'SUPABASE_URL' },
+    { value: cleanEnv('VITE_SUPABASE_URL').replace(/\/$/, ''), name: 'VITE_SUPABASE_URL' }
+  ];
+  const keys = [
+    { value: cleanEnv('SUPABASE_ANON_KEY'), name: 'SUPABASE_ANON_KEY' },
+    { value: cleanEnv('VITE_SUPABASE_ANON_KEY'), name: 'VITE_SUPABASE_ANON_KEY' }
+  ];
+  for (const u of urls) {
+    for (const k of keys) {
+      if (!u.value || !k.value) continue;
+      if (!supabaseCandidates.some(c => c.url === u.value && c.key === k.value)) {
+        supabaseCandidates.push({ url: u.value, key: k.value, source: `${u.name}+${k.name}` });
+      }
+    }
+  }
+}
+const supabaseServiceRoleKey = cleanEnv('SUPABASE_SERVICE_ROLE_KEY');
+
+// Par de credenciais validado pela sonda (/auth/v1/settings só exige apikey:
+// 200 = apikey aceita; 401 = apikey inválida). Cacheado após o primeiro êxito.
+let activeSupabase = null;
+let resolvingSupabase = null;
+async function resolveSupabaseAuth() {
+  if (activeSupabase) return activeSupabase;
+  if (resolvingSupabase) return resolvingSupabase;
+  resolvingSupabase = (async () => {
+    for (const candidate of supabaseCandidates) {
+      try {
+        const probe = await fetch(`${candidate.url}/auth/v1/settings`, {
+          headers: { apikey: candidate.key },
+          signal: AbortSignal.timeout(8_000)
+        });
+        if (probe.ok) {
+          console.log(`[auth] credenciais Supabase validadas: ${candidate.source} (${new URL(candidate.url).host})`);
+          activeSupabase = candidate;
+          return candidate;
+        }
+        console.warn(`[auth] par ${candidate.source} rejeitado pela sonda, status ${probe.status}`);
+      } catch (error) {
+        console.warn(`[auth] sonda falhou para ${candidate.source}:`, error.message);
+      }
+    }
+    // Nenhum passou (ex.: rede fora): usa o primeiro sem cachear, para a
+    // próxima requisição sondar de novo.
+    console.error('[auth] nenhum par de credenciais Supabase passou na sonda — fallback temporário no primeiro');
+    return supabaseCandidates[0] || null;
+  })().finally(() => { resolvingSupabase = null; });
+  return resolvingSupabase;
+}
 const nvidiaApiKey = process.env.NVIDIA_API_KEY || '';
 const nvidiaModel = process.env.NVIDIA_MODEL || 'z-ai/glm-5.2';
 const nvidiaEndpoint = 'https://integrate.api.nvidia.com/v1';
@@ -31,18 +90,20 @@ const googleClientId = process.env.GOOGLE_CLIENT_ID || '';
 const googleClientSecret = process.env.GOOGLE_CLIENT_SECRET || '';
 const googleRedirectUri = process.env.GOOGLE_REDIRECT_URI || '';
 const requestCounters = new Map();
-const supabaseOrigin = (() => {
+// CSP libera TODAS as origens candidatas (runtime e build): se as URLs
+// divergirem, o cliente — que usa a URL do build — não pode ser bloqueado.
+const supabaseCspOrigins = [...new Set(supabaseCandidates.flatMap(candidate => {
   try {
-    return new URL(supabaseUrl).origin;
+    const origin = new URL(candidate.url).origin;
+    return [origin, origin.replace(/^http/, 'ws')];
   } catch {
-    return '';
+    return [];
   }
-})();
-const supabaseSocketOrigin = supabaseOrigin.replace(/^http/, 'ws');
+}))].join(' ');
 const contentSecurityPolicy = [
   "default-src 'self'",
   "base-uri 'self'",
-  `connect-src 'self' ${supabaseOrigin} ${supabaseSocketOrigin} https://api.open-meteo.com https://geocoding-api.open-meteo.com`.trim(),
+  `connect-src 'self' ${supabaseCspOrigins} https://api.open-meteo.com https://geocoding-api.open-meteo.com`.trim(),
   "font-src 'self' https://fonts.gstatic.com data:",
   "form-action 'self'",
   "frame-ancestors 'self'",
@@ -98,7 +159,8 @@ async function authenticate(request) {
     console.warn('[auth] sem Bearer token');
     return { user: null, reason: 'NO_BEARER' };
   }
-  if (!supabaseUrl || !supabaseAnonKey) {
+  const creds = await resolveSupabaseAuth();
+  if (!creds) {
     console.warn('[auth] SUPABASE_URL/ANON_KEY ausentes no servidor');
     return { user: null, reason: 'SERVER_ENV' };
   }
@@ -106,9 +168,9 @@ async function authenticate(request) {
   // Portão de segurança real: o token precisa ser válido no Supabase.
   let authResponse;
   try {
-    authResponse = await fetch(`${supabaseUrl}/auth/v1/user`, {
+    authResponse = await fetch(`${creds.url}/auth/v1/user`, {
       headers: {
-        apikey: supabaseAnonKey,
+        apikey: creds.key,
         Authorization: authorization
       },
       signal: AbortSignal.timeout(10_000)
@@ -133,16 +195,16 @@ async function authenticate(request) {
   // do fluxo de cadastro do app. Agora, se a linha faltar, ela é provisionada
   // (service role quando disponível; senão com o token do próprio usuário via
   // política RLS de insert_own). Um token válido nunca é bloqueado aqui.
-  void ensureMembership(user.id, authorization);
+  void ensureMembership(user.id, authorization, creds);
   return { user, reason: 'OK' };
 }
 
-async function ensureMembership(userId, authorization) {
+async function ensureMembership(userId, authorization, creds) {
   try {
     const check = await fetch(
-      `${supabaseUrl}/rest/v1/time_tasks_members?user_id=eq.${encodeURIComponent(userId)}&select=user_id&limit=1`,
+      `${creds.url}/rest/v1/time_tasks_members?user_id=eq.${encodeURIComponent(userId)}&select=user_id&limit=1`,
       {
-        headers: { apikey: supabaseAnonKey, Authorization: authorization },
+        headers: { apikey: creds.key, Authorization: authorization },
         signal: AbortSignal.timeout(10_000)
       }
     );
@@ -153,9 +215,9 @@ async function ensureMembership(userId, authorization) {
 
     // Linha ausente → provisionar. Service role ignora RLS; sem ela, usa o
     // token do usuário (política insert_own permite auth.uid() = user_id).
-    const apikey = supabaseServiceRoleKey || supabaseAnonKey;
+    const apikey = supabaseServiceRoleKey || creds.key;
     const auth = supabaseServiceRoleKey ? `Bearer ${supabaseServiceRoleKey}` : authorization;
-    const insert = await fetch(`${supabaseUrl}/rest/v1/time_tasks_members`, {
+    const insert = await fetch(`${creds.url}/rest/v1/time_tasks_members`, {
       method: 'POST',
       headers: {
         apikey,
@@ -554,16 +616,11 @@ async function handleSx(request, response, user) {
     `Pedido: ${JSON.stringify(text)}`
   ].join('\n');
 
-  const contents = [
-    ...history.map(entry => ({
-      role: entry.role === 'assistant' ? 'model' : 'user',
-      parts: [{ text: entry.content }]
-    })),
-    { role: 'user', parts: [{ text: contextText }] }
-  ];
-
   let raw;
   try {
+    // timeout é OPÇÃO do SDK (2º argumento). Dentro do 1º argumento ele é
+    // serializado no corpo JSON e a API da NVIDIA rejeita com 400 — era isso
+    // que derrubava a SX com SX_PROVIDER_ERROR após a migração para o GLM.
     const completion = await nvidiaClient.chat.completions.create({
       model: nvidiaModel,
       messages: [
@@ -577,9 +634,8 @@ async function handleSx(request, response, user) {
       temperature: 0.7,
       top_p: 0.9,
       max_tokens: 900,
-      response_format: { type: 'json_object' },
-      timeout: 25_000
-    });
+      response_format: { type: 'json_object' }
+    }, { timeout: 25_000 });
 
     raw = completion.choices?.[0]?.message?.content || '';
     if (!raw) return sendJson(response, 502, { error: 'SX_EMPTY_RESPONSE' });
@@ -664,11 +720,17 @@ const server = createServer(async (request, response) => {
   try {
     const url = new URL(request.url, `http://${request.headers.host || 'localhost'}`);
     if (url.pathname === '/api/health' && request.method === 'GET') {
+      // Diagnóstico seguro: host + fonte do par de credenciais ativo e o FINAL
+      // da anon key (a anon key é pública — vai em todo bundle do cliente).
+      const creds = supabaseCandidates.length ? await resolveSupabaseAuth() : null;
       return sendJson(response, 200, {
         status: 'ok',
         service: 'time-tasks',
         sx: Boolean(nvidiaApiKey),
-        supabase: Boolean(supabaseUrl && supabaseAnonKey)
+        supabase: Boolean(creds),
+        supabaseHost: (() => { try { return new URL(creds?.url || '').host; } catch { return null; } })(),
+        supabaseSource: activeSupabase ? activeSupabase.source : 'nao-validado',
+        supabaseKeyTail: creds ? creds.key.slice(-8) : null
       });
     }
 
@@ -707,19 +769,21 @@ server.listen(port, '0.0.0.0', () => {
   console.log(`Time Tasks disponível na porta ${port}`);
 });
 
-// Iniciar sincronização de calendários em background
-if (supabaseUrl && supabaseAnonKey) {
-  startCalendarSync(supabaseUrl, supabaseAnonKey).catch(err => {
-    console.error('Erro ao inicializar sincronização de calendários:', err);
-  });
-}
-
 // Web Push (VAPID) — desativado sem as chaves, sem quebrar o boot
 initPushSender();
 
-// Iniciar executor de triggers em background
-if (supabaseUrl && supabaseAnonKey) {
-  const triggerExecutor = new TriggerExecutor(supabaseUrl, supabaseAnonKey, process.env.SUPABASE_SERVICE_ROLE_KEY || '');
-  triggerExecutor.start(60000); // Executar a cada 1 minuto
-  console.log('✅ Trigger Executor iniciado');
+// Sincronização de calendários e triggers usam as credenciais VALIDADAS pela
+// sonda (a env do runtime pode estar errada — mesma causa raiz do 401 na SX).
+if (supabaseCandidates.length) {
+  resolveSupabaseAuth().then(creds => {
+    if (!creds) return;
+    startCalendarSync(creds.url, creds.key).catch(err => {
+      console.error('Erro ao inicializar sincronização de calendários:', err);
+    });
+    const triggerExecutor = new TriggerExecutor(creds.url, creds.key, supabaseServiceRoleKey);
+    triggerExecutor.start(60000); // Executar a cada 1 minuto
+    console.log('✅ Trigger Executor iniciado');
+  }).catch(err => {
+    console.error('Erro ao resolver credenciais Supabase no boot:', err);
+  });
 }

@@ -1,7 +1,56 @@
 # 📔 Diário de Bordo — SX Time Tasks
 
-**Versão:** 2.1.3  
-**Data:** 2026-07-23
+**Versão:** 2.1.4  
+**Data:** 2026-07-24
+
+---
+
+## 2026-07-24 — CAUSA RAIZ ENCONTRADA E CORRIGIDA: anon key errada no runtime + timeout no corpo da chamada GLM
+
+### Objetivo
+"CORRIJA" — resolver definitivamente o "Sua sessão expirou" da SX, sem depender de testes do usuário.
+
+### Diagnóstico (provas coletadas por teste real, sem suposição)
+1. Criado usuário de teste via API (`/auth/v1/signup`, metadata `app=time-tasks`) → token válido emitido.
+2. `POST /api/sx` em produção com esse token VÁLIDO → `401 {"reason":"REJECTED_401"}`. **O servidor rejeitava até token válido.**
+3. Mesmo token direto no Supabase (`/auth/v1/user` com a anon key do build) → **HTTP 200**.
+4. CSP de produção confirma que a URL do Supabase no runtime é a correta.
+5. **Por eliminação: a `SUPABASE_ANON_KEY` do runtime no EasyPanel está errada/divergente da `VITE_SUPABASE_ANON_KEY` usada no build.** Por isso: login/calendário funcionavam (cliente usa o par do build, correto) e SÓ a SX falhava (único endpoint validado pelo servidor). Explica 100% dos sintomas em todos os aparelhos.
+6. Corrigido o gate → surgiu o 2º elo quebrado: `SX_PROVIDER_ERROR`. Log: `NVIDIA GLM-5.2 respondeu com erro: 400`. Chave NVIDIA testada direto na API → 200 OK. Causa: `timeout: 25_000` passado DENTRO do 1º argumento de `chat.completions.create()` — o SDK serializa no corpo JSON e a NVIDIA rejeita com 400. (Também explicaria falha futura mesmo com auth OK.)
+
+### Alterações realizadas
+#### `server.js`
+- **Resolução autocurável de credenciais Supabase:** monta candidatos combinando `SUPABASE_URL/SUPABASE_ANON_KEY` (runtime) e `VITE_SUPABASE_URL/VITE_SUPABASE_ANON_KEY` (build), com `cleanEnv()` (tolera aspas/espaços). `resolveSupabaseAuth()` sonda cada par via `GET /auth/v1/settings` (200 = apikey aceita) e cacheia o vencedor. `authenticate()`, `ensureMembership()`, `startCalendarSync` e `TriggerExecutor` usam o par validado — **calendar-sync e triggers também estavam quebrados pela mesma env errada**.
+- CSP `connect-src` passa a liberar todas as origens candidatas.
+- `/api/health` expõe diagnóstico seguro: `supabaseHost`, `supabaseSource` (qual par venceu) e `supabaseKeyTail` (últimos 8 chars da anon key — chave pública, presente em todo bundle).
+- **Fix GLM:** `timeout` movido do corpo para opções do SDK: `create({...}, { timeout: 25_000 })`. Removido código morto do Gemini (`contents`).
+
+#### `public/service-worker.js` + `public/pwa-register.js` + `index.html`
+- `CACHE_VERSION` v1→v2; reload automático único no `controllerchange` (com guarda `hadController` para não recarregar no primeiro acesso); `pwa-register.js?v=3`. Motivo: abas/PWA abertos rodavam JavaScript antigo indefinidamente após deploys — foi o que fez os testes do usuário rodarem código velho o dia todo.
+
+### Validações executadas (locais, simulando o bug do EasyPanel: runtime key ERRADA + VITE par correto)
+| Validação | Resultado |
+|-----------|-----------|
+| Sonda rejeita par ruim e escolhe `SUPABASE_URL+VITE_SUPABASE_ANON_KEY` | ✅ log confirma |
+| `/api/health` | ✅ mostra host/source/keyTail corretos |
+| `POST /api/sx` token válido — conversa | ✅ HTTP 200, GLM respondeu naturalmente |
+| `POST /api/sx` token válido — "marca reuniao amanha 14h" | ✅ HTTP 200, `CREATE_EVENT` correto (data/hora/calendário/lembrete) |
+| `POST /api/sx` token falso | ✅ 401 (segurança preservada) |
+| `node --check` server.js/pwa-register/service-worker + `npm run build` | ✅ |
+
+### Impactos
+- SX volta a funcionar para TODOS os usuários (a falha era global, não por conta).
+- Sincronização de calendários e triggers em produção passam a usar credenciais válidas.
+- Deploys futuros se propagam sozinhos para abas/PWA abertos (reload automático).
+
+### Pendências
+- Redeploy no EasyPanel + verificação minha em produção (health `supabaseSource` + SX E2E).
+- Recomendado: corrigir/remover a env `SUPABASE_ANON_KEY` errada no EasyPanel (o código agora tolera, mas env limpa é melhor).
+- Usuário de teste criado para diagnóstico: `markalancamentos7d+sxdiag@gmail.com` (inofensivo; pode ser removido depois via painel).
+- Remover instrumentação `🔎` quando estabilizar.
+
+### Arquivos principais envolvidos
+- `server.js`, `public/service-worker.js`, `public/pwa-register.js`, `index.html`
 
 ---
 
