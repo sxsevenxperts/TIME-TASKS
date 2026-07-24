@@ -13,6 +13,7 @@ const port = Number(process.env.PORT || 3000);
 const distDir = fileURLToPath(new URL('./dist/', import.meta.url));
 const supabaseUrl = (process.env.SUPABASE_URL || process.env.VITE_SUPABASE_URL || '').replace(/\/$/, '');
 const supabaseAnonKey = process.env.SUPABASE_ANON_KEY || process.env.VITE_SUPABASE_ANON_KEY || '';
+const supabaseServiceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY || '';
 const nvidiaApiKey = process.env.NVIDIA_API_KEY || '';
 const nvidiaModel = process.env.NVIDIA_MODEL || 'z-ai/glm-5.2';
 const nvidiaEndpoint = 'https://integrate.api.nvidia.com/v1';
@@ -90,34 +91,87 @@ async function readJson(request) {
 
 async function authenticate(request) {
   const authorization = request.headers.authorization || '';
-  if (!authorization.startsWith('Bearer ') || !supabaseUrl || !supabaseAnonKey) return null;
+  if (!authorization.startsWith('Bearer ')) {
+    console.warn('[auth] sem Bearer token');
+    return null;
+  }
+  if (!supabaseUrl || !supabaseAnonKey) {
+    console.warn('[auth] SUPABASE_URL/ANON_KEY ausentes no servidor');
+    return null;
+  }
 
-  const authResponse = await fetch(`${supabaseUrl}/auth/v1/user`, {
-    headers: {
-      apikey: supabaseAnonKey,
-      Authorization: authorization
-    },
-    signal: AbortSignal.timeout(10_000)
-  });
-  if (!authResponse.ok) return null;
-  const user = await authResponse.json();
-  if (!user?.id) return null;
-
-  // O Auth é compartilhado no servidor, mas somente membros explícitos do
-  // Time Tasks podem consumir as APIs privadas deste aplicativo.
-  const membershipResponse = await fetch(
-    `${supabaseUrl}/rest/v1/time_tasks_members?user_id=eq.${encodeURIComponent(user.id)}&select=user_id&limit=1`,
-    {
+  // Portão de segurança real: o token precisa ser válido no Supabase.
+  let authResponse;
+  try {
+    authResponse = await fetch(`${supabaseUrl}/auth/v1/user`, {
       headers: {
         apikey: supabaseAnonKey,
         Authorization: authorization
       },
       signal: AbortSignal.timeout(10_000)
+    });
+  } catch (error) {
+    console.warn('[auth] falha de rede ao validar token:', error.message);
+    return null;
+  }
+  if (!authResponse.ok) {
+    console.warn('[auth] /auth/v1/user rejeitou o token, status', authResponse.status);
+    return null;
+  }
+  const user = await authResponse.json();
+  if (!user?.id) {
+    console.warn('[auth] token válido mas resposta sem user.id');
+    return null;
+  }
+
+  // Autorização de membro: garantida de forma AUTO-CURÁVEL e NÃO fatal.
+  // Antes, um usuário logado e válido virava 401 ("sessão expirou") só por não
+  // ter linha em time_tasks_members — o que travava a SX de contas criadas fora
+  // do fluxo de cadastro do app. Agora, se a linha faltar, ela é provisionada
+  // (service role quando disponível; senão com o token do próprio usuário via
+  // política RLS de insert_own). Um token válido nunca é bloqueado aqui.
+  void ensureMembership(user.id, authorization);
+  return user;
+}
+
+async function ensureMembership(userId, authorization) {
+  try {
+    const check = await fetch(
+      `${supabaseUrl}/rest/v1/time_tasks_members?user_id=eq.${encodeURIComponent(userId)}&select=user_id&limit=1`,
+      {
+        headers: { apikey: supabaseAnonKey, Authorization: authorization },
+        signal: AbortSignal.timeout(10_000)
+      }
+    );
+    if (check.ok) {
+      const rows = await check.json();
+      if (Array.isArray(rows) && rows.length >= 1) return true;
     }
-  );
-  if (!membershipResponse.ok) return null;
-  const membership = await membershipResponse.json();
-  return Array.isArray(membership) && membership.length === 1 ? user : null;
+
+    // Linha ausente → provisionar. Service role ignora RLS; sem ela, usa o
+    // token do usuário (política insert_own permite auth.uid() = user_id).
+    const apikey = supabaseServiceRoleKey || supabaseAnonKey;
+    const auth = supabaseServiceRoleKey ? `Bearer ${supabaseServiceRoleKey}` : authorization;
+    const insert = await fetch(`${supabaseUrl}/rest/v1/time_tasks_members`, {
+      method: 'POST',
+      headers: {
+        apikey,
+        Authorization: auth,
+        'Content-Type': 'application/json',
+        Prefer: 'resolution=ignore-duplicates,return=minimal'
+      },
+      body: JSON.stringify({ user_id: userId }),
+      signal: AbortSignal.timeout(10_000)
+    });
+    if (insert.ok || insert.status === 409) {
+      console.log('[auth] membership garantido para', userId);
+    } else {
+      console.warn('[auth] não foi possível provisionar membership, status', insert.status);
+    }
+  } catch (error) {
+    console.warn('[auth] ensureMembership erro (não fatal):', error.message);
+  }
+  return true;
 }
 
 function allowRequest(userId) {
@@ -607,13 +661,18 @@ const server = createServer(async (request, response) => {
   try {
     const url = new URL(request.url, `http://${request.headers.host || 'localhost'}`);
     if (url.pathname === '/api/health' && request.method === 'GET') {
-    if (url.pathname === '/api/auth/google/callback' && request.method === 'GET') return handleGoogleCallback(request, response);
       return sendJson(response, 200, {
         status: 'ok',
         service: 'time-tasks',
         sx: Boolean(nvidiaApiKey),
         supabase: Boolean(supabaseUrl && supabaseAnonKey)
       });
+    }
+
+    // Callback OAuth do Google é público (o Google redireciona sem o Bearer do
+    // app); precisa ficar ANTES do portão authenticate de /api/*.
+    if (url.pathname === '/api/auth/google/callback' && request.method === 'GET') {
+      return handleGoogleCallback(request, response);
     }
 
     if (url.pathname.startsWith('/api/')) {

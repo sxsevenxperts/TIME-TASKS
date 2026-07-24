@@ -106,6 +106,29 @@
 
 ---
 
+## Atualização — 2026-07-23 (v2.1.2)
+
+### Concluído
+- [x] Correção definitiva do erro "Sua sessão expirou" na SX com usuário logado.
+- [x] `authenticate()` no servidor: token válido = autenticado; membership deixou de ser portão fatal.
+- [x] Auto-cura de `time_tasks_members` no servidor (service role com fallback ao token do usuário) e no client (idempotente/resiliente).
+- [x] Corrigido roteamento de `/api/auth/google/callback` (rota morta dentro do health check).
+- [x] Logging diagnóstico `[auth]` para inspeção em produção.
+- [x] Validado: build ✅, boot local ✅, 401 limpo com token inválido ✅.
+
+### Em andamento
+- [ ] Redeploy no EasyPanel + teste E2E do dono na SX.
+- [ ] Leitura dos logs `[auth]` pós-deploy para confirmação final.
+
+### Próximos passos
+- [ ] (Opcional) Configurar `SUPABASE_SERVICE_ROLE_KEY` no EasyPanel para provisionamento garantido.
+- [ ] Rodar novamente o teste E2E de agendamento ponta a ponta com a SX GLM-5.2.
+
+### Riscos e débitos técnicos
+- Decisão de desacoplar membership da autenticação amplia o acesso à API a qualquer token válido do Auth compartilhado. Dados seguem isolados por RLS `user_id`; caso se queira um allowlist estrito no futuro, reintroduzir a verificação como 403 distinto (não 401) com self-heal explícito.
+
+---
+
 ## Versão 2.0 — ✅ ENTREGUE
 
 ### Produto e identidade

@@ -1,7 +1,61 @@
 # 📔 Diário de Bordo — SX Time Tasks
 
-**Versão:** 2.1.1  
+**Versão:** 2.1.2  
 **Data:** 2026-07-23
+
+---
+
+## 2026-07-23 — Correção definitiva: SX acusava "sua sessão expirou" com usuário logado
+
+### Objetivo
+Resolver de vez o erro em que o chat SX respondia sempre "Sua sessão expirou. Entre novamente para usar a SX." mesmo com o usuário autenticado (calendário, eventos e login funcionando normalmente), inclusive após logout/login repetidos.
+
+### Diagnóstico (evidências)
+- `GET /api/health` em produção retornou `{"sx":true,"supabase":true}` → variáveis de ambiente do servidor OK (NVIDIA + Supabase presentes). Descartada a hipótese de env faltando.
+- Login funciona e a CSP (`connect-src`) só libera a origem do `supabaseUrl` do servidor → cliente e servidor apontam para a MESMA instância Supabase. Descartada a hipótese de instância divergente (token de A validado em B).
+- `authenticate()` (server.js) exigia **exatamente 1 linha** em `time_tasks_members`. Todo o resto do app é protegido por RLS `user_id` e por isso funcionava; a SX é o ÚNICO endpoint que dependia dessa linha.
+- A linha de membership só era criada no cadastro (trigger `register_time_tasks_member` exige metadata `app='time-tasks'`) ou no client apenas em `registering=true`. Contas criadas fora desse fluxo (ex.: Auth compartilhado com o SevenChat) **nunca recebiam a linha** → `/api/sx` retornava 401 → cliente traduzia para "sessão expirou".
+
+### Alterações realizadas
+
+#### `server.js`
+- `authenticate()` refatorado: o portão de segurança real passa a ser apenas a validação do token em `/auth/v1/user`. Membership deixou de ser fatal.
+- Nova função `ensureMembership(userId, authorization)`: auto-cura a linha de membership de forma NÃO fatal — usa `SUPABASE_SERVICE_ROLE_KEY` (bypassa RLS) quando disponível; senão insere com o token do usuário (política `insert_own`). Um token válido nunca mais é bloqueado aqui.
+- Adicionado `const supabaseServiceRoleKey`.
+- Logging diagnóstico `[auth] ...` para identificar em produção qual etapa falha (sem Bearer / token rejeitado / env ausente / provisionamento).
+- Corrigido bug de roteamento: `/api/auth/google/callback` estava aninhado dentro do bloco `/api/health` (rota morta) e depois do portão `authenticate` (o Google redireciona sem Bearer). Movido para antes de `/api/*`.
+
+#### `js/auth.js`
+- `ensureAppMembership(userId)` reescrito: idempotente e resiliente. Tolera erro de leitura e segue para o insert; falha de insert é não fatal (não derruba o acesso).
+- `applySession()`: garante a membership em segundo plano (`void ...catch`) sem bloquear a sessão nem revogar login por instabilidade. Removida a ramificação "Esta conta não possui acesso" que deslogava o usuário.
+
+### Decisões técnicas
+- **Desacoplar autenticação de autorização de membro.** Um token Supabase válido = usuário autenticado. Os dados continuam isolados por RLS `user_id`; a SX só cria eventos no espaço do próprio usuário. A tabela `time_tasks_members` segue sendo populada (auto-cura) para consistência/analytics, mas não bloqueia mais um usuário legítimo.
+- **Auto-cura em dois lados (client e server)** para robustez independente do estado do banco ou de políticas RLS: qualquer um dos caminhos que funcione resolve.
+- Preferência por `service role` no servidor quando presente (garante o insert mesmo com RLS restritiva), com fallback seguro para o token do usuário.
+
+### Validações executadas
+| Validação | Resultado |
+|-----------|-----------|
+| `node --check server.js` | ✅ sintaxe OK |
+| `npm run build` | ✅ 745ms, sem erros |
+| Boot local + `GET /api/health` | ✅ `{"sx":true,"supabase":true}` |
+| `POST /api/sx` com token inválido | ✅ HTTP 401 limpo (sem crash) |
+| Log diagnóstico | ✅ `[auth] /auth/v1/user rejeitou o token, status 403` |
+
+### Impactos
+- **Usuário:** a SX passa a funcionar no primeiro uso para qualquer conta autenticada, inclusive as criadas fora do cadastro do app. Fim do loop "sessão expirou".
+- **Negócio:** desbloqueia o uso da assistente (feature central) para o dono e para novos usuários vindos do Auth compartilhado.
+- **Arquitetura:** segurança preservada (token válido obrigatório); isolamento de dados mantido por RLS; membership vira best-effort.
+
+### Pendências
+- Redeploy no EasyPanel e teste E2E do dono (enviar comando à SX → deve responder).
+- (Opcional) Confirmar `SUPABASE_SERVICE_ROLE_KEY` no EasyPanel para provisionamento garantido via service role; sem ela, o fallback por token do usuário já resolve.
+- Ler logs `[auth]` pós-deploy para confirmação final.
+
+### Arquivos principais envolvidos
+- `server.js`
+- `js/auth.js`
 
 ---
 

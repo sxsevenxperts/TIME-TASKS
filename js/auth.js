@@ -43,19 +43,30 @@ export async function initAuth() {
     });
   }
 
-  const ensureAppMembership = async (userId, createIfMissing = false) => {
-    const { data, error } = await supabase
-      .from('time_tasks_members')
-      .select('user_id')
-      .eq('user_id', userId)
-      .maybeSingle();
-    if (error) throw new Error('Não foi possível validar o acesso exclusivo do Time Tasks.');
-    if (data) return true;
-    if (!createIfMissing) return false;
+  // Garante a linha em time_tasks_members de forma idempotente e resiliente.
+  // Qualquer usuário autenticado é membro: se a linha faltar, criamos (RLS
+  // insert_own permite auth.uid() = user_id). Erros de leitura NÃO derrubam o
+  // acesso — o servidor também auto-cura a membership. Antes, contas criadas
+  // fora do cadastro do app (ex.: Auth compartilhado) ficavam sem linha e a SX
+  // acusava "sessão expirou" para sempre.
+  const ensureAppMembership = async (userId) => {
+    try {
+      const { data } = await supabase
+        .from('time_tasks_members')
+        .select('user_id')
+        .eq('user_id', userId)
+        .maybeSingle();
+      if (data) return true;
+    } catch (error) {
+      console.warn('Leitura de membership falhou (seguindo para insert):', error?.message || error);
+    }
     const { error: insertError } = await supabase
       .from('time_tasks_members')
       .insert({ user_id: userId });
-    if (insertError && insertError.code !== '23505') throw insertError;
+    if (insertError && insertError.code !== '23505') {
+      // Não bloquear: token válido já autentica; servidor provisiona também.
+      console.warn('Insert de membership falhou (não fatal):', insertError.message);
+    }
     return true;
   };
 
@@ -128,7 +139,7 @@ export async function initAuth() {
             'O serviço demorou para responder.'
           );
           if (loginError || !existing.user) throw new Error('Este e-mail já existe e a senha informada não corresponde.');
-          await ensureAppMembership(existing.user.id, true);
+          await ensureAppMembership(existing.user.id);
           registrationSession = existing.session;
         }
 
@@ -154,23 +165,13 @@ export async function initAuth() {
   const applySession = async (session) => {
     if (session && session.user) {
       if (lastSessionId === session.user.id) return;
-      let allowed = false;
-      try {
-        allowed = await ensureAppMembership(session.user.id, registering);
-      } catch (error) {
-        // Erro de consulta (rede fora, token em renovação, iOS retomando do
-        // background) NÃO significa falta de acesso — antes isso chamava
-        // signOut() e revogava o login a cada instabilidade. A RLS do banco
-        // continua protegendo os dados; seguimos com a sessão.
-        console.warn('Validação de membership adiada (erro transitório):', error.message);
-        allowed = true;
-      }
-      if (!allowed) {
-        authError.style.color = 'var(--color-danger)';
-        authError.textContent = 'Esta conta não possui acesso ao Time Tasks. Use “Criar conta” para cadastrar este acesso.';
-        await supabase.auth.signOut({ scope: 'local' });
-        return;
-      }
+      // Um token válido já autentica. Garantimos a linha de membership em
+      // segundo plano (idempotente, auto-curável) SEM bloquear a sessão nem
+      // revogar login por instabilidade de rede/RLS. O servidor também provisiona
+      // a membership ao atender /api/sx, então a SX funciona no primeiro uso.
+      void ensureAppMembership(session.user.id).catch(error => {
+        console.warn('ensureAppMembership em segundo plano falhou (não fatal):', error?.message || error);
+      });
       registering = false;
       lastSessionId = session.user.id;
       currentUser = session.user;
