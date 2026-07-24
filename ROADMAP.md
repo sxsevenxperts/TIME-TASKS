@@ -3,6 +3,25 @@
 **Última revisão técnica:** 18/07/2026 → 20/07/2026 (v2.1 FINAL COMPLETE)
 **Status:** ✅ v2.0 PRODUÇÃO + ✅ v2.1 DESENVOLVIMENTO FINALIZADO + 🚀 PRONTO PARA v2.2
 
+## Atualização — 2026-07-23 (v2.1.3)
+
+### Concluído
+- [x] Corrigido typo `nvdiaClient` → `nvidiaClient` em `server.js:22` (bug latente da migração GLM que quebraria a SX com 500 assim que a auth passasse).
+- [x] `authenticate()` devolve `{ user, reason }`; 401 passa a expor código de diagnóstico (`NETWORK` / `REJECTED_<status>` / `NO_BEARER` / `SERVER_ENV` / `NO_USER_ID`).
+- [x] Cliente (`js/ai.js`) exibe `🔎 <diagnóstico>` na bolha de erro — identifica a causa do 401 sem DevTools.
+
+### Em andamento
+- [ ] Isolar causa final do "sessão expirou": aguardando redeploy para ler o `reason` em produção (cliente-sem-token × servidor-não-alcança-Supabase).
+
+### Próximos passos
+- [ ] Se `reason=NETWORK` em produção: apontar as chamadas server→Supabase para o hostname interno do EasyPanel (hairpin/DNS).
+- [ ] Se `reason=REJECTED`/cliente-sem-token: investigar renovação de token no PWA iOS (`ensureFreshSession`).
+- [ ] Remover a instrumentação de diagnóstico visível quando a sessão estiver estável.
+
+### Riscos e débitos técnicos
+- Instrumentação de `reason`/`🔎` é temporária; não expõe segredos, mas deve ser removida após a resolução.
+- Chave NVIDIA real commitada em `.env.production` (43e96c6, a pedido do dono) — recomendável regenerar.
+
 ## Versão 2.1 — ✅ FINALIZADA (Fases 12.1-12.10 — 20/07/2026)
 
 **Fase 12: Integrações + Triggers + Performance + PWA + Push — ✅ 10 SUB-FASES CONCLUÍDAS**

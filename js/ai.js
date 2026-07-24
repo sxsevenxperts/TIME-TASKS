@@ -181,7 +181,9 @@ async function askSx(text) {
   }
   if (!token) {
     console.error('[askSx] ✗ Nenhum token disponível mesmo após força de renovação');
-    throw new Error('UNAUTHORIZED');
+    const err = new Error('UNAUTHORIZED');
+    err.diag = 'cliente/sem-token'; // request nem chegou ao servidor
+    throw err;
   }
   console.log('[askSx] Token obtido, enviando pedido...');
   let response = await sxRequest(text, token);
@@ -191,14 +193,19 @@ async function askSx(text) {
     token = await sessionToken(true);
     if (!token) {
       console.error('[askSx] ✗ Não consegui renovar após 401');
-      throw new Error('UNAUTHORIZED');
+      const err = new Error('UNAUTHORIZED');
+      err.diag = 'cliente/sem-token-apos-401';
+      throw err;
     }
     response = await sxRequest(text, token);
   }
   const payload = await response.json().catch(() => ({}));
   if (!response.ok) {
-    console.error('[askSx] ✗ Resposta erro:', response.status, payload.error);
-    throw new Error(payload.error || 'SX_REQUEST_FAILED');
+    console.error('[askSx] ✗ Resposta erro:', response.status, payload.error, payload.reason || '');
+    const err = new Error(payload.error || 'SX_REQUEST_FAILED');
+    // reason vem do servidor (NETWORK / REJECTED_401 / SERVER_ENV / NO_USER_ID...)
+    if (response.status === 401) err.diag = `servidor/${payload.reason || '401'}`;
+    throw err;
   }
   console.log('[askSx] ✓ Pedido bem-sucedido');
   return payload;
@@ -339,9 +346,12 @@ export function initAI(callbacks = {}) {
       rememberMessage('assistant', response);
     } catch (error) {
       loading?.remove();
-      const message = ['EVENT_SAVE_FAILED', 'SEED_SAVE_FAILED'].includes(error.message)
+      const base = ['EVENT_SAVE_FAILED', 'SEED_SAVE_FAILED'].includes(error.message)
         ? 'A SX entendeu o pedido, mas o Supabase não conseguiu salvar. Tente novamente.'
         : errorMessage(error.message);
+      // Diagnóstico temporário visível na tela (sem DevTools) para localizar a
+      // causa do 401. Remover quando o problema de sessão estiver resolvido.
+      const message = error.diag ? `${base}\n\n🔎 ${error.diag}` : base;
       addMessage(message, 'assistant');
       void persistMessage('assistant', message, 'ERROR');
       rememberMessage('assistant', message);

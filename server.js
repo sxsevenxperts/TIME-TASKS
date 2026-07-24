@@ -19,7 +19,7 @@ const nvidiaModel = process.env.NVIDIA_MODEL || 'z-ai/glm-5.2';
 const nvidiaEndpoint = 'https://integrate.api.nvidia.com/v1';
 
 // Initialize NVIDIA/OpenAI client
-const nvdiaClient = nvidiaApiKey ? new OpenAI({
+const nvidiaClient = nvidiaApiKey ? new OpenAI({
   baseURL: nvidiaEndpoint,
   apiKey: nvidiaApiKey,
   defaultHeaders: {
@@ -89,15 +89,18 @@ async function readJson(request) {
   }
 }
 
+// Devolve { user, reason }. reason é um código de diagnóstico NÃO sensível
+// (sem tokens nem segredos) para identificar em produção por que um 401 acontece:
+// NO_BEARER | SERVER_ENV | NETWORK:<msg> | REJECTED_<status> | NO_USER_ID | OK.
 async function authenticate(request) {
   const authorization = request.headers.authorization || '';
   if (!authorization.startsWith('Bearer ')) {
     console.warn('[auth] sem Bearer token');
-    return null;
+    return { user: null, reason: 'NO_BEARER' };
   }
   if (!supabaseUrl || !supabaseAnonKey) {
     console.warn('[auth] SUPABASE_URL/ANON_KEY ausentes no servidor');
-    return null;
+    return { user: null, reason: 'SERVER_ENV' };
   }
 
   // Portão de segurança real: o token precisa ser válido no Supabase.
@@ -112,16 +115,16 @@ async function authenticate(request) {
     });
   } catch (error) {
     console.warn('[auth] falha de rede ao validar token:', error.message);
-    return null;
+    return { user: null, reason: `NETWORK:${error.message}` };
   }
   if (!authResponse.ok) {
     console.warn('[auth] /auth/v1/user rejeitou o token, status', authResponse.status);
-    return null;
+    return { user: null, reason: `REJECTED_${authResponse.status}` };
   }
   const user = await authResponse.json();
   if (!user?.id) {
     console.warn('[auth] token válido mas resposta sem user.id');
-    return null;
+    return { user: null, reason: 'NO_USER_ID' };
   }
 
   // Autorização de membro: garantida de forma AUTO-CURÁVEL e NÃO fatal.
@@ -131,7 +134,7 @@ async function authenticate(request) {
   // (service role quando disponível; senão com o token do próprio usuário via
   // política RLS de insert_own). Um token válido nunca é bloqueado aqui.
   void ensureMembership(user.id, authorization);
-  return user;
+  return { user, reason: 'OK' };
 }
 
 async function ensureMembership(userId, authorization) {
@@ -676,8 +679,8 @@ const server = createServer(async (request, response) => {
     }
 
     if (url.pathname.startsWith('/api/')) {
-      const user = await authenticate(request);
-      if (!user) return sendJson(response, 401, { error: 'UNAUTHORIZED' });
+      const { user, reason } = await authenticate(request);
+      if (!user) return sendJson(response, 401, { error: 'UNAUTHORIZED', reason });
             if (url.pathname === '/api/auth/google/connect' && request.method === 'GET') return handleGoogleConnect(response, user);
 
       if (url.pathname === '/api/auth/apple/connect' && request.method === 'GET') return handleAppleConnect(response, user);

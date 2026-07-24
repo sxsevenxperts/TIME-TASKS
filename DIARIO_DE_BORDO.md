@@ -1,7 +1,49 @@
 # 📔 Diário de Bordo — SX Time Tasks
 
-**Versão:** 2.1.2  
+**Versão:** 2.1.3  
 **Data:** 2026-07-23
+
+---
+
+## 2026-07-23 — SX ainda em "sessão expirou": bug de typo no client GLM + instrumentação de diagnóstico
+
+### Objetivo
+O fix de membership (v2.1.2) NÃO resolveu — usuário reportou "MESMO JEITO". Rastrear a causa real do 401 sem mais suposições e corrigir um bug latente descoberto no caminho.
+
+### Diagnóstico (evidências reais, não suposição)
+- Produção confirmada no ar: `GET /api/health` → `{"sx":true,"supabase":true}`; `POST /api/sx` com token inválido → `401 {"error":"UNAUTHORIZED"}`; sem header → 401. O gate de auth funciona como projetado (rejeita inválido).
+- A mensagem "Sua sessão expirou" é o código `UNAUTHORIZED` (401). Como o fix v2.1.2 só mexeu em membership (irrelevante para o token), "MESMO JEITO" é coerente: o 401 vem ANTES da membership, na validação do token.
+- **Bug latente encontrado (server.js:22):** o client era declarado como `nvdiaClient` (typo, sem "i"), mas usado como `nvidiaClient` (linhas 495 e 564). Identificador não declarado → `ReferenceError` → 500 assim que a SX passasse da auth. Introduzido na migração GLM (43e96c6). Estava MASCARADO pelo 401 atual (handleSx nunca era alcançado).
+- Calendário/eventos vão **direto** ao Supabase (RLS `user_id`); a SX é o ÚNICO endpoint validado pelo servidor. Logo, não havia evidência de que o container EasyPanel conseguisse validar tokens (fetch server→Supabase). Hipótese aberta: hairpin/DNS interno impedindo o servidor de alcançar a URL pública do Supabase.
+
+### Alterações realizadas
+#### `server.js`
+- **Correção do typo** `nvdiaClient` → `nvidiaClient` (linha 22). Sem isso, a SX quebraria com 500 assim que o 401 fosse resolvido.
+- `authenticate()` agora devolve `{ user, reason }` com código de diagnóstico NÃO sensível: `NO_BEARER | SERVER_ENV | NETWORK:<msg> | REJECTED_<status> | NO_USER_ID | OK`. O 401 passa a incluir `reason` no corpo.
+
+#### `js/ai.js`
+- `askSx()` captura o `reason` do servidor e distingue falha de cliente (token nulo, request nem sai) de falha de servidor. Anexa `error.diag`.
+- A bolha de erro na tela passa a exibir `🔎 <diagnóstico>` (ex.: `cliente/sem-token` ou `servidor/NETWORK:...`), permitindo identificar a causa SEM DevTools (usuário só lê a tela).
+
+### Decisões técnicas
+- **Instrumentar antes de "consertar às cegas".** Como o 401 tinha duas origens plausíveis (cliente sem token × servidor rejeitando), surfaçar o motivo exato evita mais um ciclo de deploy sem resposta. O `reason` é diagnóstico e não expõe token/segredo (o hostname do Supabase já é público no bundle).
+- Diagnóstico é **temporário**; remover a exibição na tela quando a sessão estiver estável.
+
+### Validações executadas
+| Validação | Resultado |
+|-----------|-----------|
+| `node --check server.js` / `js/ai.js` | ✅ sintaxe OK |
+| `npm run build` | ✅ 737ms |
+| Boot local (env prod) + `POST /api/sx` bogus | ✅ `{"error":"UNAUTHORIZED","reason":"REJECTED_403"}` (servidor alcança Supabase da minha rede) |
+| `POST /api/sx` sem header | ✅ `reason:"NO_BEARER"` |
+
+### Pendências
+- Redeploy no EasyPanel. Depois: eu testo `POST /api/sx` bogus em produção → se `reason=REJECTED_403`, EasyPanel alcança o Supabase (causa é cliente); se `reason=NETWORK:...`, o container não alcança (causa raiz de infra).
+- Usuário testa a SX 1x e lê o `🔎 <diagnóstico>` na tela.
+
+### Arquivos principais envolvidos
+- `server.js`
+- `js/ai.js`
 
 ---
 
